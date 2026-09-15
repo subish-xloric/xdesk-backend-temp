@@ -1,0 +1,87 @@
+{% extends "layouts/base.html" %}
+{% block title %}
+{{category.category}}
+{% endblock title %}
+{% block content %}
+<div class="container featured-area-default padding-30">
+    <div class="row">
+        <!-- ARTICLE OVERVIEW SECTION -->
+        <div class="col-md-8 padding-20">
+            <div class="row">
+                <!-- BREADCRUMBS -->
+                <div class="breadcrumb-container">
+                    <ol class="breadcrumb">
+                        <li>
+                            <a href="{% url 'home' %}">
+                                <i class="fa fa-home"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'knowledge_base' %}">Knowledge Base</a>
+                        </li>
+                        <li class="active">{{category.category}}</li>
+                    </ol>
+                </div>
+                <!-- END BREADCRUMBS -->
+                <!-- ARTICLES -->
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="fb-heading" style="margin-bottom: 0;">
+                            <i class="fa fa-folder"></i> Category: {{category.category}}
+                            <span class="cat-count">({{page_count}})</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <select name="sub_category" id="sub_category" class="form-control">
+                            <option value="">--All--</option>
+                            {% for sub in sub_category %}
+                            <option value="{{sub.id}}">{{sub.sub_category}}</option>
+                            {% endfor %}
+                            <option value="0">Other's</option>
+                        </select>
+                    </div>
+                </div>
+
+                <hr class="style-three">
+                <div id="articles">
+                    {% include "common/article_box.html" %}
+                </div>
+                <!-- END ARTICLES -->
+
+            </div>
+        </div>
+        <!-- END ARTICLES OVERVIEW SECTION-->
+        {% include "common/sidebar.html" %}
+    </div>
+</div>
+{% endblock content %}
+{% block scripts %}
+<script>
+    $('#sub_category').change(function () {
+        var sub_category_id = $(this).val();
+        if (sub_category_id != "") {
+            load_articles(page=1,sub_category_id)
+        } else {
+           return window.location.reload()
+        }
+    });
+    $(document).on('click','.page_number',function(){
+        page = $(this).attr('id')
+        var sub_category_id = $('#sub_category').val();
+        load_articles(page,sub_category_id)
+    })
+    function load_articles(page,sub_category){
+        $.ajax({
+            url: '.',
+            type: 'post',
+            headers: {
+                'X-CSRFToken': '{{csrf_token}}'
+            },
+            data: {page:page,sub_category:sub_category },
+            success: function (res) {
+                $('#articles').html(res)
+            }
+        })
+    }
+</script>
+{% endblock scripts %}

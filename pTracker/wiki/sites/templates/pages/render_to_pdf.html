@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{article.page_heading}}</title>
+    <style>
+        pre{
+            border: 1px solid #999;
+            background-color: #ddd;
+            padding: 10px;
+            font-size: 12px;
+        }
+        p{font-size: 15px;}
+        h1{
+            font-size: 20px;
+        }
+        li{
+            font-size: 12px; 
+        }
+        code {
+            padding: 2px 4px;
+            font-size: 90%;
+            color: #c7254e;
+            background-color: #f9f2f4;
+            border-radius: 4px;
+        }
+        pre code {
+            color: #000;
+            background-color: transparent;
+        }
+    </style>
+</head>
+<body>
+    <h1>{{article.page_heading}}</h1>
+    <hr>
+    <div>
+        {{article.page_content|safe}}
+    </div>
+</body>
+</html>
+

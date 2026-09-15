@@ -1,0 +1,107 @@
+{% extends "layouts/base.html" %}
+
+{% load static %}
+{% block title %}
+{{article.page_heading}}
+{% endblock title %}
+{% block styles %}
+<!-- color code for code snippet -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.5.0/themes/prism.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.5.0/prism.min.js"></script>
+<!-- color code for code snippet end-->
+{% endblock styles %}
+{% load wiki_common_tags %}
+{% block content %}
+
+<div class="container featured-area-default padding-30">
+    <div class="row">
+        <div class="col-md-12 padding-20">
+            <div class="row">
+                <!-- BREADCRUMBS -->
+                <div class="breadcrumb-container">
+                    <ol class="breadcrumb">
+                        <li>
+                            <a href="{% url 'home' %}">
+                                <i class="fa fa-home"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <b>Masters</b>
+                        </li>
+                        <li>
+                            <a href="{% url 'page_list' %}">Pages</a>
+                        </li>
+                        <li class="active">{{article.page_heading}}</li>
+                    </ol>
+                </div>
+                <!-- END BREADCRUMBS -->
+                <!-- ARTICLE  -->
+                <div class="panel panel-default">
+                    <div class="article-heading margin-bottom-5">
+                        <a href="#">
+                            <i class="fa fa-file-text-o"></i>{{article.page_heading}}</a>
+                    </div>
+                    <div class="article-info">
+                        <div class="art-date">
+                            <a href="#">
+                                <i class="fa fa-calendar-o"></i> {{ article.created_at|date:"d M,Y"}} </a>
+                        </div>
+                        <div class="art-category">
+                            <a href="{% url 'page_category_wise' slug=article.category.id %}">
+                                <i class="fa fa-folder"></i> {{article.category}} </a>
+                        </div>
+                        <div class="art-comments">
+                            <a href="{% url 'page_author_wise' slug=article.created_by %}">
+                                <i class="fa fa-user"></i> {% get_author article.created_by %}</a>
+                        </div>
+                    </div>
+                    <div class="article-content">
+                        {{article.page_content|safe}}
+                    </div>
+                    <div class="article-content">
+                        {% if tags|length > 1 %}
+                        <div class="article-tags">
+                            <b>Tags:</b>
+                            {% for tag in tags %}
+                            <a href="{% url 'page_tag_wise' slug=tag %}" class="btn btn-default btn-o btn-sm">{{tag}}</a>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        
+                        {% if attachments %}
+                        <div class="article-tags">
+                            <b>Attachments:</b>
+                            {% for att in attachments %}
+                            <a href="/media/{{att.path}}/{{ att.attachments }}" class="btn btn-link btn-o btn-sm"><b>{{att.attachments}}</b></a>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                            
+                    </div>
+                </div>
+                <!-- END ARTICLE -->
+                
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}
+{% block scripts %}
+<script>
+    $('.like_button').click(function(){
+        if($(this).is(':checked')){
+            var like = '{{article.id}}_'+$(this).val()
+            $.ajax({
+                url: '{% url "like_page" %}',
+                type: 'post',
+                data: { like: like, csrfmiddlewaretoken: '{{ csrf_token }}' },
+                success: function (data) {
+                    
+                }
+            });
+        }
+    });
+</script>
+{% endblock scripts %}

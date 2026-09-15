@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>{{heading}}</title>
+</head>
+<body>
+    <div style="width: 100%;">
+		<div style="background-color: #e5e5e5;padding: 8px; margin: 1%;">
+			<!-- <div style="width: max-content;text-align: left;margin-bottom: 1%;">
+				<span style="color: #f4a261;font-weight: bold;font-size: 21px;">Leave request</span>
+			</div> -->
+            <!-- <div style="background-color: #fffffc;  padding: 1%;border-radius: 3px;font-weight: bold;margin-bottom: 1%;">
+                <span style="color: #f4a261;font-weight: bold;font-size: 21px;">{{heading}}</span>
+            </div> -->
+            <div style="width: 100%; display: inline-flex;">
+                <div style="position: relative; width: 100%;background-color: #fffffc; padding: 8px;border-radius: 3px;text-align: left;color: #677473;">
+                    <div>
+                        <br>
+                        <p>Dear All,</p>
+
+                        <p>We would like to inform you that your payslip for the month of {{month_and_year}} has been uploaded to the DM Desk portal.</p>
+                        <p>To access your payslip, please follow these steps:</p>
+                        <ol>
+                            <li>Visit <a href="https://dmdesk.digitalmesh.com/">DM Desk portal</a></li>
+                            <li>Log in using your credentials.</li>
+                            <li>Once logged in, navigate to the "Finance ---> My Payslip" section.</li>
+                            <li>Locate the payslip for the corresponding month.</li>
+                            <li>Click on the password protected payslip to view and download the PDF file.</li>
+                        </ol>
+                        <br>
+                        <p>If you have any questions or need further assistance regarding your payslip, please don't hesitate to reach out to the account department.</p>
+                        <p>Ensure that you access your payslip from a secure device and protect your login credentials to maintain the confidentiality of your personal information. Please remember that your payslip contains confidential information and should not be shared with anyone else.</p>
+                        <p>Thank you for your attention, and we appreciate your cooperation. If you encounter any technical issues or require additional support, please let us know.</p>
+
+                        <p>{{messages}}</p>
+                        <p>Best regards,</p>
+
+                        <p>{{emp_name}}<br>
+                        {{emp_position}}<br>
+                       </p>
+
+                    </div>
+                </div>
+            </div>
+		</div>
+	</div>
+</body>
+</html>

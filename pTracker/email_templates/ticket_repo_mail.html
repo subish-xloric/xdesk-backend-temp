@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta http-equiv="X-UA-Compatible" content="IE=edge">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Document</title>
+ <style>
+     @media only screen
+    and (max-device-width: 540px){
+        .span{
+            display: inline-block !important;
+        }
+        .span1{
+            width: 100% !important;
+        }
+        .span2{
+            display: none;
+        }
+    }
+ </style>
+</head>
+<body>
+	<div style="width: 100%;">
+		<div style="background-color: #e5e5e5;padding: 8px; margin: 1%;">
+			<!-- <div style="width: max-content;text-align: left;margin-bottom: 1%;">
+				<span style="color: #f4a261;font-weight: bold;font-size: 21px;">Leave request</span>
+			</div> -->
+            <div style="background-color: #ffffffe5;  padding: 1%;border-radius: 3px;font-weight: bold;margin-bottom: 1%;">
+                <span style="color: #f4a261;font-weight: bold;font-size: 21px;">{{project_name}} Ticket #{{ticket_id}} {{heading}}</span>
+            </div>
+            <div style="width: 100%; display: inline-flex;">
+                <div style="position: relative; width: 100%;background-color: #fffffc; padding: 8px;border-radius: 3px;text-align: left;color: #677473;">
+                    <div>
+                            <table width="100%" border="0" cellspacing="0" style="padding:12px;">
+                            <tbody>
+                                <tr style="background-color:#ecebeb;">
+                                <td style="padding:12px;"><a rel="noopener noreferrer" data-auth="NotApplicable" style="color:#4C4C4C;font-size:90%;text-decoration:none;" data-linkindex="4"><b>{{project_name}}</b></a></td>
+                                </tr>
+                            </tbody>
+                            </table>
+                        
+                        {% if message %}
+                        <table width="100%" border="0" cellspacing="0" style="padding:12px;">
+                            <tbody>
+                                <tr style="background-color: #f1f3f3;">
+                                    <td style="padding:12px;">
+                                        <a rel="noopener noreferrer" data-auth="NotApplicable" style="color:#00c220 !important; font-size:75%; text-decoration:none;" data-linkindex="4">
+                                            <b><span style="color: #00c220;">Success: </span>{{message}}</b>
+                                        </a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        {% endif %}
+                        
+                        {% if error %}
+                        <table width="100%" border="0" cellspacing="0" style="padding:12px;">
+                            <tbody>
+                                <tr style="background-color: #f1f3f3;">
+                                    <td style="padding:12px;">
+                                        <a rel="noopener noreferrer" data-auth="NotApplicable" style="color:#f82525 !important; font-size:75%; text-decoration:none;" data-linkindex="4">
+                                            <b><span style="color: #f82525;">Error: </span>{{error}}</b>
+                                        </a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta http-equiv="X-UA-Compatible" content="IE=edge">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Document</title>
+</head>
+<body>
+	<div style="margin: 1%;width: 100%;">
+		<div style="background-color: #e5e5e5;padding: 1%;">
+			<!-- <div style="width: max-content;text-align: left;margin-bottom: 1%;">
+				<span style="color: #f4a261;font-weight: bold;font-size: 21px;">Leave request</span>
+			</div> -->
+            <!-- <div style="background-color: #fffffc;  padding: 1%;border-radius: 3px;font-weight: bold;margin-bottom: 1%;">
+                <span style="color: #f4a261;font-weight: bold;font-size: 18px;">{{heading}}</span>
+            </div> -->
+            <div style="width: 100%; display: inline-flex;">
+                <div style="position: relative; width: 100%;background-color: #fffffc; padding: 1%;border-radius: 3px;text-align: left;color: #677473;">
+                    <div>
+                        <P>Dear &nbsp;{{candidate_name|upper}},<br><br>
+                            Congratulations, We are pleased to inform you that you have been shortlisted for the interview with Digital Mesh Softech India (P) Limited for the position of {{position_name}}.
+                            To proceed further, we kindly request you to fill out the Candidate Information Sheet using the URL provided below. This sheet contains essential details that will assist us in facilitating the interview process.</p>
+                            Candidate Information Sheet URL: <a href = "{{url}}"> CIS</a>
+                            <p>Your prompt attention to this matter would be greatly appreciated. Please ensure that all the information you provide is accurate and up-to-date. We assure you that the details you provide will be treated with the utmost confidentiality and used solely for the purpose of the interview process.</p>
+                            <p>If you have any questions or require any assistance, please do not hesitate to reach out to us.</p>
+                            <p style="font-weight: bold;color: hsl(0, 89%, 45%);">Please ensure that you access this URL using a laptop or desktop computer, as it is not compatible with mobile devices.</p>
+                            <br>Best Regards,
+                            <br>
+                            {{emp_name}}
+                            <br>
+                            {{emp_designation}}
+                            <br>
+                            Email: {{emp_email}}
+                        </P>
+                    </div>
+                </div>
+            </div>
+		</div>
+	</div>
+</body>
+</html>

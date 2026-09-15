@@ -1,0 +1,57 @@
+# Python 3.13 / Django 5.2 runtime dependencies.
+#
+# Migration notes:
+# - django-rest-auth was replaced by dj-rest-auth.
+# - djangorestframework-jwt was replaced by djangorestframework-simplejwt.
+# - django-pyodbc-azure was replaced by mssql-django.
+# - pycrypto was replaced by pycryptodome, which still provides Crypto.* imports.
+
+Django==5.2.9
+djangorestframework>=3.16,<3.18
+dj-rest-auth>=7,<8
+djangorestframework-simplejwt>=5.5,<6
+django-cors-headers>=4.7,<5
+django-widget-tweaks>=1.5,<2
+
+mysqlclient>=2.2,<3
+mssql-django>=1.5,<2
+pyodbc>=5.2,<6
+
+celery[redis]>=5.5,<6
+redis>=5.2,<7
+gunicorn>=23,<27
+
+python-dotenv>=1,<2
+requests>=2.32,<3
+beautifulsoup4>=4.13,<5
+lxml>=5.4,<7
+html5lib>=1.1,<2
+python-dateutil>=2.9,<3
+
+cryptography>=45,<50
+pycryptodome>=3.22,<4
+PyJWT>=2.10,<3
+pyotp>=2.9,<3
+rsa>=4.9,<5
+
+Pillow>=11.2,<13
+openpyxl>=3.1,<4
+reportlab>=4.4,<6
+xhtml2pdf>=0.2.17,<0.3
+PyPDF2>=2.12,<3
+pikepdf>=9.8,<10
+qrcode>=8.2,<9
+arabic-reshaper>=3,<4
+python-bidi>=0.6,<1
+
+firebase-admin>=6.8,<7
+google-api-python-client>=2.170,<3
+google-auth>=2.40,<3
+google-auth-httplib2>=0.2,<1
+google-cloud-firestore>=2.20,<3
+google-cloud-storage>=3.1,<4
+
+pyfcm>=2,<3
+python-gitlab>=6,<7
+debugpy>=1.8,<2
+boto3

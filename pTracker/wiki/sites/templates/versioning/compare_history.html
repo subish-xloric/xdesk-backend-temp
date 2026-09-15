@@ -1,0 +1,95 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+{% block title %}
+Revision:History | {{article.page_heading}}
+{% endblock title %}
+{% block styles %}
+  <style>
+      .diff_next {background-color:#c0c0c0}
+        .diff_add {background-color:#aaffaa}
+        .diff_chg {background-color:#ffff77}
+        .diff_sub {background-color:#ffaaaa}
+  </style>
+{% endblock styles %}
+{% load wiki_common_tags %}
+{% block content %}
+<div class="container featured-area-default padding-30">
+    <div class="row">
+        <div class="col-md-12 padding-20">
+            <div class="row">
+                <!-- BREADCRUMBS -->
+                <div class="breadcrumb-container">
+                    <ol class="breadcrumb">
+                        <li>
+                            <a href="{% url 'home' %}">
+                                <i class="fa fa-home"></i>
+                            </a>
+                        </li>
+                        <li><a href="{% url 'articles' %}">Articles</a></li>
+                        <li>
+                            <a href="{% url 'page_history' slug=content_2.page_id permalink=content_2.page.permalink%}">Revision History</a>
+                        </li>
+                        <li class="active">Difference between revisions</li>
+
+                    </ol>
+                </div>
+                <!-- END BREADCRUMBS -->
+                <!-- ARTICLE  -->
+                <div class="fb-heading">
+                    <i class="fa fa-files-o"></i> <span class="text-capitalize">
+                        Difference between revisions
+                     </span>
+                     <br/>
+                </div>
+                <hr class="style-three">
+                <h3 class="text-center">
+                <i class="fa fa-file-text-o"></i> <span class="text-capitalize">
+                    Page : <a href="{% url 'article' slug=content_2.page_id permalink=content_2.page.permalink %}">{{content_2.page.page_heading}}</a>(Current)
+                 </span>
+                </h3>
+                <br/>
+                 <div class="row">
+                     <div class="col-md-6">
+                        {% if content_2 %}
+                             <h4 class="text-center">Revision as on {{content_2.last_updated_at}}
+                                 (<a href="{% url 'view_page_source_history' type='H' slug=content_2.id %}">View Source</a>)
+                                 <br>
+                                 Author : <b class=""> {% get_author content_2.last_updated_by %}</b>
+                             </h4>
+                             <div class="panel panel-default">
+                                 <div class="panel-body">
+                                    <div class="table-responsive">
+                                    {{content_2.page_content|safe}}
+                                    </div>
+                                 </div>
+                             </div>
+                         {% endif %}
+                     </div>
+                     <div class="col-md-6">
+                         {% if content_1 %}
+                             <h4 class="text-center">{% if version_type == 'M' %}Latest{%endif%} Revision as on {{content_1.last_updated_at}}
+                                (<a href="{% if version_type == 'M' %}{% url 'view_page_source_history' type='M' slug=content_1.id %} {% else %} {% url 'view_page_source_history' type='H' slug=content_1.id %} {%endif%}">View Source</a>)
+                                <br>
+                                 Author :<b class="">{% get_author content_1.last_updated_by %}</b>
+                             </h4>
+                             <div class="panel panel-default">
+                                <div class="panel-body">
+                                    <div class="table-responsive">
+                                        {{content_1.page_content|safe}}
+                                    </div>
+                                   
+                                </div>
+                            </div>
+                         {% endif %}
+                             
+                     </div>
+                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}
+{% block scripts %}
+
+{% endblock scripts %}

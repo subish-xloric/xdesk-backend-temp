@@ -1,0 +1,124 @@
+{
+	"questions":[
+    {
+        "slnumber": "1",
+		"parent_question": "Do you have prior experience? Y/N",
+        "answer":"",
+		"child_questions":[
+            {
+                "order":"a",
+                "label": "If yes, how many years?",
+                "value": ""
+            }
+        ]
+    },
+
+    {
+        "slnumber": "2",
+		"parent_question": "Who’s your current employer?",
+        "answer":"",
+		"child_questions":[
+            {
+                "order":"a",
+                "label": "Company Name",
+                "value": ""
+            },
+            {
+                "order":"b",
+                "label": "Designation",
+                "value": ""
+            },
+            {
+                "order":"c",
+                "label": "Duration",
+                "value": ""
+            }
+        ]
+    },
+    {
+        "slnumber": "3",
+		"parent_question": "Mention your previous employer",
+        "answer":"",
+		"child_questions":[
+            {
+                "order":"a",
+                "label": "Company Name",
+                "value": ""
+            },
+            {
+                "order":"b",
+                "label": "Designation",
+                "value": ""
+            },
+            {
+                "order":"c",
+                "label": "Duration",
+                "value": ""
+            }
+        ]
+    },
+    {
+        "slnumber": "4",
+		"parent_question": "What is your highest educational qualification?",
+        "answer":"",
+		"child_questions":[]
+    },
+    {
+        "slnumber": "5",
+		"parent_question": "Mention the reasons for leaving the current employer?",
+        "answer":"",
+		"child_questions":[]
+    },
+    {
+        "slnumber": "6",
+		"parent_question": "Your current cost to the company per month?",
+        "answer":"",
+		"child_questions":[]
+    },
+    {
+        "slnumber": "7",
+		"parent_question": "Your expected remuneration?",
+        "answer":"",
+		"child_questions":[]
+    },
+    {
+        "slnumber": "8",
+		"parent_question": "Are you willing to negotiate your expected remuneration?",
+        "answer":"",
+		"child_questions":[]
+    },
+    {
+        "slnumber": "9",
+		"parent_question": "Notice period to the current employer?",
+        "answer":"",
+		"child_questions":[]
+    },
+     {
+        "slnumber": "10",
+		"parent_question": "How many years are you willing to be associated with Digital Mesh?",
+        "answer":"",
+		"child_questions":[]
+    },
+    {
+        "slnumber": "11",
+		"parent_question": "Are you willing to work in any Technology?",
+        "answer":"",
+		"child_questions":[]
+    },
+    {
+        "slnumber": "12",
+		"parent_question": "Are you confident in earning a professional certificate within 3 months of joining?",
+        "answer":"",
+		"child_questions":[]
+    },
+    {
+        "slnumber": "13",
+		"parent_question": "Do you handle client communication & interaction? ",
+        "answer":"",
+		"child_questions":[]
+    }
+    ]
+
+
+
+}

@@ -1,0 +1,182 @@
+{% load static %}
+{% load wiki_common_tags %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'wiki/images/favicon.ico' %}">
+    <title>{% block title %} {% endblock title %} | Digitalmesh - Wikipedia </title>
+    <!-- LOADING STYLESHEETS -->
+    <link href="{% static 'wiki/css/bootstrap.css' %}" rel="stylesheet">
+    <link href="{% static 'wiki/css/font-awesome.min.css' %}" rel="stylesheet">
+    <link href="{% static 'wiki/css/style.css' %}" rel="stylesheet">
+    <link href="{% static 'wiki/css/wiki.css' %}" rel="stylesheet">
+    {% block styles %}
+      
+    {% endblock styles %}
+</head>
+
+<body>
+    <!-- <div class="container-fluid featured-area-white-border">
+        <div class="container">
+            <div class="row">
+                {% if user.is_authenticated %}
+                <div class="col-md-12">
+                    <div class="login-box border-right-1 border-left-1">
+                        <a href="{% url 'logout' %}">Logout <i class="fa fa-power-off"></i></a>
+                    </div>
+                    <div class="login-box border-right-1 border-left-1">
+                        <a href="#">Hello <b>{{user.first_name}} {{user.last_name }}</b></a>
+                    </div>
+                </div>
+                {% else %}
+                <div class="col-md-12">
+                    <div class="login-box border-right-1 border-left-1">
+                        <a href="{% url 'login' %}">
+                            <i class="fa fa-key"></i> Login</a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div> -->
+    <!-- LOGO -->
+    <div class="container">
+        <div class="row">
+            <div class="col-sm-3">
+                <div class="header">
+                    <div class="logo">
+                        <img src="{% static 'wiki/images/digitalmesh-logo.png' %}" alt="logo">
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-5">
+                <div class="search-box-header">
+                    <form action="{% url 'search_results' %}" method="post">
+                        {% csrf_token %}
+                    <input type="text" name="search_term" class="form-control" placeholder="What do you need help with?" required>
+                    <button class="btn btn-default search-button"><i class="fa fa-search"></i></button>
+                </form>
+                </div>
+            </div>
+            {% if user.is_authenticated %}
+                <div class="col-md-4">
+                    <div class="login-box">
+                        <a href="#">Hello <b>{{user.first_name}} {{user.last_name }}</b></a>
+                    </div>
+                    <div class="login-box">
+                        <a href="{% url 'logout' %}">Logout <i class="fa fa-power-off"></i></a>
+                    </div>
+                </div>
+                {% else %}
+                <div class="col-md-2">
+                    <div class="login-box">
+                        <a href="{% url 'login' %}">
+                            <i class="fa fa-key"></i> Login</a>
+                    </div>
+                </div>
+                {% endif %}
+        </div>
+    </div>
+    <!-- END LOGO-->
+    <!-- TOP NAVIGATION -->
+    <div class="">
+        <div class="navigation">
+            <div class="container">
+                <ul class="topnav">
+                    <li>
+                        <a href="{% url 'home' %}">
+                            <i class="fa fa-home"></i> Home</a>
+                    </li>
+                    <li>
+                        <a href="{% url 'knowledge_base' %}">
+                            <i class="fa fa-book"></i> Knowledge Base</a>
+                    </li>
+                    <li>
+                        <a href="{% url 'articles' %}">
+                            <i class="fa fa-file-text-o"></i> Articles</a>
+                    </li>
+                    <li>
+                        <a href="{% url 'add_page' %}">
+                            <i class="fa fa-lightbulb-o"></i> New Article</a>
+                    </li>
+                    {% if user.is_authenticated %}
+                        <li>
+                            <a href="{% url 'my_articles' %}">
+                                <i class="fa fa-clone"></i> My Articles</a>
+                        </li>
+                    {% endif %}
+                   
+                    {% if user.is_authenticated %}
+                        {% if user_group != 5 %}
+                    <li class="dropdown">
+                        <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+                            <i class="fa fa-external-link"></i> Masters
+                        <span class="caret"></span></a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a href="{% url 'page_list' %}">
+                                    <i class="fa fa-file-text-o"></i> Submited Articles</a>
+                            </li>
+                            <li>
+                                <a href="{% url 'edited_page_list' %}">
+                                    <i class="fa fa-file-text-o"></i> Edited Articles</a>
+                            </li>
+                            <li>
+                                <a href="{% url 'all_page_list' %}">
+                                    <i class="fa fa-file-text-o"></i> All Articles</a>
+                            </li>
+                            {% if user_group < 5 %}
+                            <li>
+                                <a href="{% url 'admin_view_statistics' %}">
+                                    <i class="fa fa-file-text-o"></i> Statistics</a>
+                            </li>
+                            {% endif %}
+                            <li>
+                                <a href="{% url 'page_categories_list' %}">
+                                    <i class="fa fa-file-text-o"></i> Categories</a>
+                            </li>
+                        </ul>
+                      </li>
+                      {% endif %}
+                      {% endif %}
+                      <li class="icon">
+                        <a href="javascript:void(0);" onclick="myFunction()">&#9776;</a>
+                    </li>
+                </ul>
+                
+            </div>
+        </div>
+    </div>
+    <!-- END TOP NAVIGATION -->
+    {% block content %}
+      
+    {% endblock content %}
+
+
+    <!-- COPYRIGHT INFO -->
+    <div class="container-fluid footer-copyright marg30">
+        <div class="container">
+            <div class="pull-left">
+                ©2021 Digital Mesh - All rights reserved
+            </div>
+            <div class="pull-right">
+                <a href="https://www.digitalmesh.com/" target="_blank">www.digitalmesh.com</a>
+            </div>
+        </div>
+    </div>
+    <!-- END COPYRIGHT INFO -->
+
+    <!-- LOADING MAIN JAVASCRIPT -->
+    <script src="{% static 'wiki/js/jquery-2.2.4.min.js' %}"></script>
+    <script src="{% static 'wiki/js/main.js' %}"></script>
+    <script src="{% static 'wiki/js/bootstrap.min.js' %}"></script>
+    <script src='https://cdn.rawgit.com/VPenkov/okayNav/master/app/js/jquery.okayNav.js'></script>
+    {% block scripts %}
+      
+    {% endblock scripts %}
+</body>
+
+</html>

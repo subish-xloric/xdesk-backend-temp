@@ -1,0 +1,95 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+{% block title %}
+Revision:History | {{article.page_heading}}
+{% endblock title %}
+
+{% block content %}
+<div class="container featured-area-default padding-30">
+    <div class="row">
+        <div class="col-md-8 padding-20">
+            <div class="row">
+                <!-- BREADCRUMBS -->
+                <div class="breadcrumb-container">
+                    <ol class="breadcrumb">
+                        <li>
+                            <a href="{% url 'home' %}">
+                                <i class="fa fa-home"></i>
+                            </a>
+                        </li>
+                        <li><a href="{% url 'articles' %}">Articles</a></li>
+                        <li><a href="{% url 'article' slug=article.id permalink=article.permalink %}">{{article.page_heading}}</a></li>
+                        <li class="active">Revision History</li>
+
+                    </ol>
+                </div>
+                <!-- END BREADCRUMBS -->
+                <!-- ARTICLE  -->
+                <div class="fb-heading">
+                    <i class="fa fa-files-o"></i> <span class="text-capitalize">{{article.page_heading}} : <span
+                            class="text-danger">Revision History</span></span>
+                </div>
+                <hr class="style-three">
+                        
+                        {% if page_history|length > 1 %}
+                        <form action="{% url 'compare_page_history' %}" method="post">
+                            {% csrf_token %}
+                            <input type="submit" class="btn btn-default" name="submit" value="Compare selected versions" />
+                            <br><br>
+                            <table class="table table-bordered table-striped"  id="wiki_pagehistory">
+                                <tr>
+                                    <th>Version</th>
+                                    <th>Compare</th>
+                                    <th>Author</th>
+                                    <th>Created</th>
+                                    <th>Options</th>
+                                </tr>
+                                {% for hist in page_history  %}
+                                <tr class="alt">
+                                    <td>{% if hist.type == 'M'%}current{%else%}previous{% endif %}</td>
+                                    <td>
+                                        <span class="wiki_nobreak">
+                                            <input type="radio" value="{{hist.type}}_{%if hist.type == 'M' %}{{hist.page_id}}{%else%}{{hist.id}}{%endif%}" name="version"  {%if forloop.counter == 2 %}checked{%endif%}/>
+                                            <input type="radio" value="{{hist.type}}_{%if hist.type == 'M' %}{{hist.page_id}}{%else%}{{hist.id}}{%endif%}" name="diffver" {% if hist.type == 'M' %}checked{%endif%}/>
+                                        </span>
+                                    </td>
+                                    <td>{{ hist.first_name }}</td>
+                                    <td>{{ hist.last_updated_at}}</td>
+                                    <td>(<a href="{% if hist.type == 'M' %}{% url 'view_page_source_history' type='M' slug=hist.page_id %} {% else %} {% url 'view_page_source_history' type='H' slug=hist.id %} {%endif%}">View Source</a>)</td>
+                                </tr>
+                                {% endfor %}
+                            </table>
+
+                            <input type="submit" class="btn btn-default" name="submit" value="Compare selected versions" />
+                        </form>
+                {%else %}
+                <div class="well">
+                    <h3>History Not Found!.</h3>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% include "common/sidebar.html" %}
+    </div>
+</div>
+
+{% endblock content %}
+{% block scripts %}
+<script src="{% static 'wiki/js/page_history.js' %}"></script>
+<script>
+    $('.like_button').click(function () {
+        if ($(this).is(':checked')) {
+            var like = '{{article.id}}_' + $(this).val()
+            $.ajax({
+                url: '{% url "like_page" %}',
+                type: 'post',
+                data: { like: like, csrfmiddlewaretoken: '{{ csrf_token }}' },
+                success: function (data) {
+
+                }
+            });
+        }
+    });
+
+</script>
+{% endblock scripts %}

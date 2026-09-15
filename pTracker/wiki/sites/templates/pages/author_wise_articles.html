@@ -1,0 +1,40 @@
+{% extends "layouts/base.html" %}
+{% block title %}
+Author: {{author.first_name}}
+{% endblock title %}
+{% block content %}
+<div class="container featured-area-default padding-30">
+    <div class="row">
+        <!-- ARTICLE OVERVIEW SECTION -->
+        <div class="col-md-8 padding-20">
+            <div class="row">
+                <!-- BREADCRUMBS -->
+                <div class="breadcrumb-container">
+                    <ol class="breadcrumb">
+                        <li>
+                            <a href="{% url 'home' %}">
+                                <i class="fa fa-home"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'knowledge_base' %}">Knowledge Base</a>
+                        </li>
+                        <li class="active">Author</li>
+                    </ol>
+                </div>
+                <!-- END BREADCRUMBS -->
+                <!-- ARTICLES -->
+                <div class="fb-heading">
+                    <i class="fa fa-user"></i> Author: {{author.first_name}}
+                    <span class="cat-count">({{page_count}})</span>
+                </div>
+                <hr class="style-three">
+                {% include "common/article_box.html" %}
+                <!-- END ARTICLES -->
+            </div>
+        </div>
+        <!-- END ARTICLES OVERVIEW SECTION-->
+        {% include "common/sidebar.html" %}
+    </div>
+</div>
+{% endblock content %}

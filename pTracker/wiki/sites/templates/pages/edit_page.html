@@ -1,0 +1,135 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+{% block title %}
+Edit: {{article.page_heading}}
+{% endblock title %}
+{% block styles %}
+<link href="{% static 'wiki/tags-input/css/amsify.suggestags.css' %}" rel="stylesheet">
+{% endblock styles %}
+{% block content %}
+<div class="container featured-area-default padding-30">
+    <div class="row">
+        <!-- ARTICLE OVERVIEW SECTION -->
+        <div class="col-md-8 padding-20">
+            <div class="row">
+                <!-- BREADCRUMBS -->
+                <div class="breadcrumb-container">
+                    <ol class="breadcrumb">
+                        <li>
+                            <a href="{% url 'home' %}">
+                                <i class="fa fa-home"></i>
+                            </a>
+                        </li>
+                        <li><a href="{% url 'articles' %}">Articles</a></li>
+                        <li>Edit</li>
+                        <li class="active"><a
+                                href="{% url 'article' slug=article.id permalink=article.permalink %}">{{article.page_heading}}</a>
+                        </li>
+                    </ol>
+                </div>
+                <!-- END BREADCRUMBS -->
+                <!-- ARTICLES -->
+                <div class="fb-heading">
+                    Title : <span class="text-capitalize">{{article.page_heading}}</span>
+                </div>
+                <hr class="style-three">
+                {% if messages %} {% for x in messages %}
+                <div class="alert alert-{{ x.tags }}">
+                    {{x}}
+                </div>
+                {% endfor %}
+                {% endif %}
+                <form action="." method="post">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="page">Category <i class="text-danger">*</i></label>
+                        {% render_field form.category class="form-control category" %}
+                        <span class="text-danger">{{form.errors.category}}</span>
+                    </div> 
+                    <div class="form-group">
+                        <label for="page">Sub Category</label>
+                        <input type="hidden" value="{{article.sub_category_id}}" id="sub_category_id">
+                        <select name="sub_category" id="sub_category" class="form-control">
+                            <option value="">-----</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <input type="hidden" name="page_id" value="{{article.id}}">
+                        <!-- <label for="page">Page Content <i class="text-danger">*</i></label> -->
+                        <textarea name="page_content" id="id_page_content" cols="30" rows="30">
+                            {{article.page_content}}
+                        </textarea>
+                        <span class="text-danger">{{form.errors.page_content}}</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="page">Short Description</label>
+                        <textarea name="short_description" class="form-control" placeholder="Short Description">{{article.short_description}}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="page">Tags</label>
+                        <div class="panel panel-default">
+                            <input type="text" id="tags" name="tags" placeholder="Enter Tags" class="form-control"
+                                data-role="tagsinput" value="{% for tag in article.tags %}{{tag}}{%endfor%}">
+                        </div>
+                    </div>
+                    {% if user_group == 5 %}
+                        <div class="form-group">
+                            <label for="page">Approver <i class="text-danger">*</i></label>
+                            {% render_field form.approver class="form-control" %}
+                            <span class="text-danger">{{form.errors.approver}}</span>
+                        </div> 
+                    {%else%}
+                    <input type="hidden" value="{{user.id}}" name="approver">
+                    <span class="text-danger">{{form.errors.approver}}</span>
+                    {% endif %}
+                    <!-- <div class="form-group">
+                        <label for="">Confidential&nbsp;</label>
+                        <input type="checkbox" value="1" name="is_confidential" {% if article.is_confidential %}checked{% endif %}>
+                        <span>(Note : If the Confidential is enabled then, Only logged in users can view this article)</span>
+                    </div> -->
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    {% if  not article.status == 1 %}
+                    <a href="{% url 'my_articles' %}" class="btn btn-default">Cancel</a>
+                    {% else %}
+                    <a href="{% url 'article' slug=article.id permalink=article.permalink %}" class="btn btn-default">Cancel</a>
+                    {% endif %}
+
+                </form>
+                <!-- END ARTICLES -->
+            </div>
+        </div>
+        <!-- END ARTICLE OVERVIEW SECTION -->
+        {% include "common/sidebar.html" %}
+    </div>
+</div>
+
+{% endblock content %}
+
+{% block scripts %}
+<script src="{% static 'wiki/ckeditor/ckeditor.js' %}"></script>
+<script src="{% static 'wiki/ckeditor/editor-conf.js' %}"></script>
+<script src="{% static 'wiki/tags-input/js/jquery.amsify.suggestags.js' %}"></script>
+<script>
+    initSample();
+    load_subcategory();
+    $('input[name="tags"]').amsifySuggestags();
+    $('.category').change(function () {
+        load_subcategory(event='change',category=$(this).val()) 
+    });
+    function load_subcategory(event='',category=$('.category').val()){
+        $.ajax({
+            url: '{% url "sub_category" %}',
+            type: 'post',
+            data: {category: category, csrfmiddlewaretoken: '{{ csrf_token }}' },
+            success: function (data) {
+                $('#sub_category').html(data);
+                if(!event){
+                sub_category_id = $('#sub_category_id').val();
+                $("#sub_category").val(sub_category_id != 0 ?  sub_category_id : '');
+                }
+            }
+        });
+    }
+</script>
+{% endblock scripts %}

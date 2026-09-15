@@ -1,0 +1,130 @@
+{% extends "layouts/base.html" %}
+{% block title %}
+Knowledge Base
+{% endblock title %}
+{% block content %}
+
+<div class="container featured-area-default padding-30">
+    <div class="row">
+        <div class="col-md-8 padding-20">
+            <div class="row">
+                <!-- BREADCRUMBS -->
+                <div class="breadcrumb-container">
+                    <ol class="breadcrumb">
+                        <li>
+                            <a href="{% url 'home' %}">
+                                <i class="fa fa-home"></i>
+                            </a>
+                        </li>
+                        <li class="active">Knowledge Base</li>
+                    </ol>
+                </div>
+                <!-- END BREADCRUMBS -->
+                <!-- ARTICLES CATEGORIES SECTION -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="fb-heading" style="margin-bottom: 0px;">
+                            Knowledge Base
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <input type="text" autofocus class="search form-control" placeholder="Search by category...">
+                    </div>
+                </div>
+                <hr class="style-three">
+                <div class="row posts" id="posts">
+                    <div class="col-md-6">
+                        {% with  cateCount=cate_div|stringformat:"s" %}
+                        {% with  cateSlice=":"|add:cateCount%}
+                        {% for cat in categories|slice:cateSlice %}
+                        {% if cat.pages|length > 0 %}
+                        <div class="item col-md-12  margin-bottom-20">
+                            <div class="fat-heading-abb">
+                                <a href="{% url 'page_category_wise' slug=cat.id %}">
+                                    <i class="fa fa-folder"></i> {{cat.category}}
+                                    <span class="cat-count">({{cat.pages|length}})</span>
+                                </a>
+                            </div>
+                            <div class="fat-content-small padding-left-30">
+                                <ul>
+                                    {% for page in cat.pages|slice:":5" %}
+                                    <li>
+                                        <a href="{% url 'article' slug=page.id permalink=page.permalink %}">
+                                            <i class="fa fa-file-text-o"></i>{{page.page_heading}}
+                                            <br> (<span class="text-primary">Last updated on - {{page.created_at|date:"d M,Y"}}</span>)
+                                        </a>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                        {% endwith %}
+                        {% endwith %}
+                    </div>
+                    <div class="col-md-6">
+                        {% with  cateCount=cate_div|stringformat:"s" %}
+                        {% with  cateSlice=cateCount|add:":" %}
+                        {% for cat in categories|slice:cateSlice %}
+                        {% if cat.pages|length > 0 %}
+                        <div class="item col-md-12  margin-bottom-20">
+                            <div class="fat-heading-abb">
+                                <a href="{% url 'page_category_wise' slug=cat.id %}">
+                                    <i class="fa fa-folder"></i> {{cat.category}}
+                                    <span class="cat-count">({{cat.pages|length}})</span>
+                                </a>
+                            </div>
+                            <div class="fat-content-small padding-left-30">
+                                <ul>
+                                    {% for page in cat.pages|slice:":5" %}
+                                    <li>
+                                        <a href="{% url 'article' slug=page.id permalink=page.permalink %}">
+                                            <i class="fa fa-file-text-o"></i>{{page.page_heading}}
+                                            <br> (<span class="text-primary">Last updated on - {{page.created_at|date:"d M,Y"}}</span>)
+                                        </a>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                        {% endwith %}
+                        {% endwith %}
+                    </div>
+                </div>
+                <!-- END ARTICLES CATEOGIRES SECTION -->
+            </div>
+        </div>
+        {% include "common/sidebar.html" %}
+    </div>
+</div>
+{% endblock content %}
+{% block scripts %}
+<script>
+    //the following script is used to keep categories in position
+    //$.getScript('/cdn.jsdelivr.net/isotope/1.5.25/jquery.isotope.min.js', function () {
+        /* activate jquery isotope */
+       // $('#posts').imagesLoaded(function () {
+        //    $('#posts').isotope({
+               // itemSelector: '.item'
+        //    });
+        //});
+
+    //}); 
+
+    $('.search').on("keyup", function () {
+        var filter =  $(this).val().toLowerCase();
+        var nodes = document.getElementsByClassName('item');
+
+        for (i = 0; i < nodes.length; i++) {
+            if (nodes[i].innerText.toLowerCase().includes(filter)) {
+            nodes[i].style.display = "block";
+            } else {
+            nodes[i].style.display = "none";
+            }
+        }
+      });
+</script>
+{% endblock scripts %}

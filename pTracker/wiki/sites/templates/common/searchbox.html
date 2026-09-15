@@ -1,0 +1,18 @@
+<!-- SEARCH FIELD AREA -->
+<div class="searchfield bg-hed-six">
+    <div class="container" style="padding-top: 20px; padding-bottom: 20px;">
+        <div class="row text-center margin-bottom-20">
+            <h1 class="white">Digital Mesh Wiki</h1>
+            <span class="nested"> Learn to use wiki </span>
+        </div>
+        <br>
+        <div class="row search-row">
+            <form action="{% url 'search_results' %}" method="post">
+                {% csrf_token %}
+            <input type="text" name="search_term" class="search" placeholder="What do you need help with?" required>
+            <button type="submit" class="buttonsearch btn btn-info btn-lg">Search</button>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- END SEARCH FIELD AREA -->

@@ -1,0 +1,530 @@
+{
+	"form_type": "Employee",
+	"employee": {
+		"section_header": "AI KNOWLEDGE & APPLICATION - EMPLOYEE PERFORMANCE APPRAISAL FORM",
+		"name_of_the_employee": {
+			"label": "Name of the Employee",
+			"value": ""
+		},
+		"employee_id": "",
+		"designation": {
+			"label": "Designation",
+			"value": ""
+		},
+		"department": {
+			"label": "Department",
+			"value": ""
+		},
+		"date_of_joining": {
+			"label": "Date of Joining",
+			"value": ""
+		},
+		"total_years_in_Service": {
+			"label": "Number of Years in Service (Total)",
+			"value": ""
+		},
+		"period_assessment": {
+			"label": "Period of Assessment",
+			"value": ""
+		},
+		"employee_code": ""
+	},
+	"appraiser": {
+		"name_of_the_employee": "",
+		"employee_id": ""
+	},
+	"reviewer": {
+		"name_of_the_employee": "",
+		"employee_id": ""
+	},
+	"guidlines": {
+		"section_header": "GUIDELINES",
+		"contents": {
+			"paragraph": "<p>This appraisal is designed to evaluate each employee's adoption, proficiency, and responsible use of Artificial Intelligence (AI) tools in their role and projects. The assessment helps identify AI skill gaps, reward proactive AI-driven contributors, and build an AI-ready workforce.</p>",
+			"guideline_point_list": [
+				"<b>70% weightage is given to AI Technical Assessment and 30% to AI Behavioural Assessment.</b>",
+				"Rate on a scale of 1–5: Outstanding (5), Very Good (4), Good (3), Average (2), Below Average (1).",
+				"Assessments should reflect the employee's typical performance across the full appraisal period.",
+				"Base ratings on direct observation, project evidence, and demonstrated AI tool usage.",
+				"Mention at least 2 AI technical and 2 non-technical training recommendations.",
+				"Rating scores must not be disclosed to the employee during the appraisal discussion.",
+				"Ensure all sections are completed and final comments are recorded before submission.",
+				"<span ><font color= 'red'>Please ensure that all the fields are filled and your signature is also recorded.</font color></span>",
+				" By clicking the Save for Later button, the form is only saved for you to continue filling it in a later session. The only way to submit the form to portal is by clicking on the Submit button after filling in the entire form.",
+				"<span ><font color= 'red'>Please note that you cannot Edit/Modify your form once you click SUBMIT button. Please ensure that all the particulars you have provided are correct.</font color></span>"
+			]
+		}
+	},
+	"self_assessment_form": {
+		"section_header": "SECTION 1: SELF ASSESSMENT",
+		"qustions": [
+			{
+				"order": "1",
+				"qustion": "What are your major achievements in the last one year?",
+				"value": "",
+				"input_rule": {
+					"type": "text",
+					"min": "0",
+					"max": "100"
+				}
+			},
+			{
+				"order": "2",
+				"qustion": "What are the technical skills that you have learnt over the last year?",
+				"value": "",
+				"input_rule": {
+					"type": "text",
+					"min": "0",
+					"max": "100"
+				}
+			},
+			{
+				"order": "3",
+				"qustion": "Identify the key technical competencies and professional development areas you intend to enhance during the next assessment year. Explain the actions you plan to take and how these improvements will contribute to your individual performance, team success, and organizational objectives.",
+				"value": "",
+				"input_rule": {
+					"type": "text",
+					"min": "0",
+					"max": "100"
+				}
+			},
+			{
+				"order": "4",
+				"qustion": "Based on your experience, what suggestions or recommendations do you have to improve project and organizational effectiveness in areas such as processes, communication, collaboration, technology, delivery, productivity, or overall operational efficiency?",
+				"value": "",
+				"input_rule": {
+					"type": "text",
+					"min": "0",
+					"max": "100"
+				}
+			},
+			{
+				"order": "5",
+				"qustion": "Which AI tools (e.g. ChatGPT, Copilot, Gemini, Claude, etc.) have you used and for what specific tasks or projects? (e.g. Existing Functionality Modification, Adding New Functionality, R & D, etc.)",
+				"value": "",
+				"input_rule": {
+					"type": "text",
+					"min": "0",
+					"max": "100"
+				}
+				
+			},
+			{
+				"order": "6",
+				"qustion": "Describe a situation where AI helped you significantly improve the quality or efficiency of your work. What was the outcome?",
+				"value": "",
+				"input_rule": {
+					"type": "text",
+					"min": "0",
+					"max": "100"
+				}
+			},
+			{
+				"order": "7",
+				"qustion": "What new AI skills, certifications, or learning programmes have you completed over the last year?",
+				"value": "",
+				"input_rule": {
+					"type": "text",
+					"min": "0",
+					"max": "100"
+				}
+			},
+			{
+				"order": "8",
+				"qustion": "How do you review and validate AI-generated outputs before using or sharing them?",
+				"value": "",
+				"input_rule": {
+					"type": "text",
+					"min": "0",
+					"max": "100"
+				}
+			},
+			{
+				"order": "9",
+				"qustion": "Concerns, if any",
+				"value": "",
+				"input_rule": {
+					"type": "text",
+					"min": "0",
+					"max": "100"
+				}
+			}
+		],
+		"appraisee_details": {
+			"label": "Name of the Appraisee",
+			"value": ""
+		},
+		"date": {
+			"label": "Date",
+			"value": ""
+		},
+		"signature": {
+			"label": "Signature",
+			"value": ""
+		},
+		"signed": {
+			"label": "signed",
+			"value": "false"
+		},
+		"designation": {
+			"label": "Designation",
+			"value": ""
+		}
+	},
+	"personal_appraisal": {
+		"section_header": "PERFORMANCE APPRAISAL CONFIDENTIAL",
+		"points_for_evaluation": "<h6>Please use the following points for evaluation.</h6><br><p>Outstanding - 5 &nbsp&nbsp Very Good - 4 &nbsp&nbsp Good - 3 &nbsp&nbsp Average - 2 &nbsp&nbsp Below Average - 1</p>",
+		"technical_assessment": {
+			"section_header": "SECTION 2: TECHNICAL ASSESSMENT (70% Weightage)",
+			"table_header": [
+				{
+					"label": "Sl.No.",
+					"width": "10%"
+				},
+				{
+					"label": "Technical Attributes",
+					"width": "54%"
+				},
+				{
+					"label": "Self",
+					"width": "12%"
+				},
+				{
+					"label": "Appraiser",
+					"width": "12%"
+				},
+				{
+					"label": "Reviewer",
+					"width": "12%"
+				}
+			],
+			"section_rule": {
+				"type": "number",
+				"min": 1,
+				"max": 5
+			},
+			"technical_assessment_result": [
+				{
+					"id": 1,
+					"technical_attributes": {
+						"head": "Execution Excellence & Delivery Ownership",
+						"sub_name": "Takes responsibility for assigned tasks and completes them within agreed timelines."
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": 2,
+					"technical_attributes": {
+						"head": "Innovation, Automation & Process Improvement",
+						"sub_name": "Suggests and implements improvements that enhance efficiency, quality, or productivity."
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": 3,
+					"technical_attributes": {
+						"head": "AI Integration in Projects",
+						"sub_name": "Degree to which AI tools are proactively embedded into project workflows and deliverables."
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": 4,
+					"technical_attributes": {
+						"head": "AI Tool Knowledge & Up-skilling",
+						"sub_name": "Awareness of latest AI tools, models, and industry practices; continuous self-learning."
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": 5,
+					"technical_attributes": {
+						"head": "Efficiency & Time Savings via AI",
+						"sub_name": "Measurable improvement in productivity, turnaround time, or output volume through AI use."
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": 6,
+					"technical_attributes": {
+						"head": "Continuous Technical Learning & Skill Development",
+						"sub_name": "Continuously updates technical knowledge and applies new learning to work."
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				}
+			],
+			"total_technical_attributes": {
+				"label": "TOTAL OF TECHNICAL ATTRIBUTES (A)",
+				"self_value": "",
+				"appraiser_value": "",
+				"reviewer_value": ""
+			},
+			"technical_attributes_sub_name": "*70% weightage for Technical attributes",
+			"technical_assessment_in_percentage": {
+				"technical": {
+					"label": "Technical % (Total(A)/35)*100",
+					"value": "50%"
+				},
+				"weighted": {
+					"label": "Weighted % (Tech % × 70%)",
+					"value": "50%"
+				}
+			}
+		},
+		"behavioural_assessment": {
+			"section_header": "SECTION 3: BEHAVIOURAL ASSESSMENT (30% Weightage)",
+			"section_rule": {
+				"type": "number",
+				"min": "1",
+				"max": "5"
+			},
+			"behavioural_assessment_result": [
+				{
+					"id": "7",
+					"technical_attributes": {
+						"head": "Collaboration & Team Contribution; Ownership & Accountability",
+						"sub_name": "Works well with team members and contributes positively to team goals. Takes responsibility for actions, commitments, and results."
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": "8",
+					"technical_attributes": {
+						"head": "Initiative & Proactiveness",
+						"sub_name": "Takes action without being prompted and looks for opportunities to improve."
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": "9",
+					"technical_attributes": {
+						"head": "Learning Agility",
+						"sub_name": "Demonstrates willingness and ability to learn new skills and adapt quickly."
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": "10",
+					"technical_attributes": {
+						"head": "Communication of AI Insights",
+						"sub_name": "Ability to explain AI-generated insights or recommendations clearly to stakeholders/Senior Management."
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": "11",
+					"technical_attributes": {
+						"head": "Self-Driven AI Learning",
+						"sub_name": "Proactively explores new AI tools and techniques without being directed."
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": "12",
+					"technical_attributes": {
+						"head": "Attitude toward AI Adoption",
+						"sub_name": "Open, positive, and growth-oriented mindset toward integrating AI into work."
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": "13",
+					"technical_attributes": {
+						"head": "Feedback & Continuous Improvement",
+						"sub_name": "Uses feedback to iterate on AI usage; actively improves prompts, workflows and outputs."
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				}
+			],
+			"total_technical_attributes": {
+				"label": "TOTAL OF BEHAVIOURAL ASSESSMENT (B)",
+				"self_value": "",
+				"appraiser_value": "",
+				"reviewer_value": ""
+			},
+			"technical_attributes_sub_name": "*30% weightage for Behavioural attributes",
+			"behavioural_assessment_in_percentage": {
+				"behavioural": {
+					"label": "Behavioural % (Total(B)/40)*100",
+					"value": "50%"
+				},
+				"weighted": {
+					"label": "Weighted % (Beh % × 30%)",
+					"value": "50%"
+				}
+			}
+		},
+		"overall_rating": {
+			"label": "SECTION 4: OVERALL RATING",
+			"values": [
+				{
+					"label": "TECHNICAL ASSESSMENT (70%)",
+					"value": ""
+				},
+				{
+					"label": "BEHAVIOURAL ASSESSMENT (30%)",
+					"value": ""
+				},
+				{
+					"label": "GRAND TOTAL",
+					"value": ""
+				},
+				{
+					"label": "RATING",
+					"value": ""
+				}
+			],
+			"attributes": [
+				{
+					"id": 1,
+					"value": "Exceptional Contributor"
+				},
+				{
+					"id": 2,
+					"value": "Significant Contributor"
+				},
+				{
+					"id": 3,
+					"value": "Contributor"
+				},
+				{
+					"id": 4,
+					"value": "Partial Contributor"
+				}
+			]
+		},
+		"perfomance": {
+			"label": "PERFORMANCE",
+			"value": ""
+		},
+		"grades": [
+			{
+				"label": "Exceptional Contributor",
+				"value": "100-81"
+			},
+			{
+				"label": "Significant Contributor",
+				"value": "66-80"
+			},
+			{
+				"label": "Contributor",
+				"value": "51-65"
+			},
+			{
+				"label": "Partial Contributor",
+				"value": "< 50"
+			}
+		]
+	},
+	"training_need_identification": {
+		"section_header": "SECTION 5: TRAINING NEED IDENTIFICATION",
+		"content_a": {
+			"heading_1": {
+				"id": 1,
+				"label": "Strengths of Appraisee"
+			},
+			"heading_2": {
+				"id": "2",
+				"label": "Areas for Improvement"
+			},
+			"major_strength": [],
+			"areas_for_improvement": []
+		},
+		"content_b": {
+			"heading": "B. Recommended AI Training Programs (Please prioritise at least 2 technical and 2 non-technical)",
+			"training_programs": {
+				"label": "Name of the Program",
+				"heading_1": {
+					"id": 1,
+					"value": "Technical Training / Certification"
+				},
+				"heading_2": {
+					"id": 2,
+					"value": "Non-Technical / Behavioural Training"
+				},
+				"technical": [],
+				"non_technical": []
+			}
+		}
+	},
+	"justification_for_rating": {
+		"section_header": "Justification for Rating",
+		"value": ""
+	},
+	"recommendation_to_management": {
+		"section_header": "Recommendation to Management",
+		"value": ""
+	},
+	"appraiser_details": {
+		"employee_id": "",
+		"section_header": {
+			"label": "Name of the Appraiser",
+			"value": ""
+		},
+		"date": {
+			"label": "Date",
+			"value": ""
+		},
+		"signature": {
+			"label": "Signature",
+			"value": ""
+		},
+		"signed": {
+			"label": "signed",
+			"value": "false"
+		},
+		"designation": {
+			"label": "Designation",
+			"value": ""
+		}
+	},
+	"reviewer_details": {
+		"employee_id": "",
+		"section_header": {
+			"label": "Name of the Reviewer",
+			"value": ""
+		},
+		"date": {
+			"label": "Date",
+			"value": ""
+		},
+		"signature": {
+			"label": "Signature",
+			"value": ""
+		},
+		"signed": {
+			"label": "signed",
+			"value": "false"
+		},
+		"designation": {
+			"label": "Designation",
+			"value": ""
+		}
+	}
+}

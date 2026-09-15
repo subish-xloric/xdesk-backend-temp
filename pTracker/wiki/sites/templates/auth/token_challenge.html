@@ -1,0 +1,37 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+{% block title %} 2FA Token Challenge {% endblock title %}
+{% block content %}
+    <div class="mt-5 mb-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4 col-md-offset-4">
+                    <div class="login-content">
+                        <div class="panel panel-default">
+                        <div class="panel-body">
+                            {% if messages %} {% for x in messages %}
+                            <div class="alert alert-{{ x.tags }}">
+                                {{x}}
+                            </div>
+                            {% endfor %} {% endif %}
+                            <h3>2FA Token Challenge</h3>
+                            <form action="." method="post">
+                                {% csrf_token %}
+                                <div class="form-group">
+                                    <label>Token</label>
+                                    {% render_field form.two_fa_token class='form-control' placeholder="OTP" %}
+                                    <span class="text-danger">{{form.errors.two_fa_token}}</span>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary btn-flat m-b-30 m-t-30">Verify Token</button>
+                                <!-- <a href="{% url 'password_reset' %}" class="btn btn-link">Forgot Password ?.</a> -->
+                            </form>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}

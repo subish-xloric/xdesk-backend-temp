@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>{{heading}}</title>
+</head>
+<body>
+    <div style="width: 100%;">
+		<div style="background-color: #e5e5e5;padding: 8px; margin: 1%;">
+            <div style="width: 100%; display: inline-flex;">
+                <div style="position: relative; width: 100%;background-color: #fffffc; padding: 8px;border-radius: 3px;text-align: left;color: #677473;">
+                    <div>
+                        <p>Dear {{emp_name}},</p>
+                        <p>Upcoming assessments are scheduled for your professional development and performance evaluation. These assessments will help us understand your skills, strengths, and areas for improvement, fostering your career growth within our organization.</p>
+                        <p>Please be assured that these assessments are not meant to be stressful or punitive. Instead, they are designed to help you flourish in your role and provide you with the necessary resources to succeed.</p>
+                        <p>Please mark the following assessment dates in your calendar:</p>
+                        <ul>
+                            {% for item in assessment_dates %}
+                              {% for key, value in item.items %}
+                                <li>Assessment {{ key }}: {{ value }}</li>
+                              {% endfor %}
+                            {% endfor %}
+                          </ul>
+
+                        <p>Additional details and instructions will be provided beforehand.</p>
+                        <p>For any questions or concerns, feel free to reach out to me or the designated point of contact. We are committed to supporting you throughout this process.</p>
+                        <p>Thank you for your dedication. We look forward to your continued success.</p>
+                        <p>Best regards, <br>
+                        {{hr_name}}<br>
+                        {{hr_position}}<br>
+                        {{hr_contact_info}}</p>
+                      </div>
+                </div>
+            </div>
+		</div>
+	</div>
+</body>
+</html>

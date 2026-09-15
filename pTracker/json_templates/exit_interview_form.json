@@ -1,0 +1,376 @@
+{
+	"header": "EXIT INTERVIEW FORM",
+	"paragraph": "Your departure from Digital Mesh Softech India Pvt. Ltd will indeed be a great loss to us. We would,however take this opportunity to understand from you the good practices we have and also gaps in our existing systems and processes and try to further improve upon them.Your feedback is extremely important to us and we would be grateful for your feedback and frank comments on the issues as mentioned hereunder",
+	"contents": {
+		"section_header": "To be filled in by HR Department :",
+		"employee": {
+			"employee_name": {
+				"label": "Employee's Name In Full: ",
+				"value": ""
+			},
+			"employee_id": {
+				"label": "Employee No:___",
+				"value": ""
+			},
+			"designation": {
+				"label": "Designation on leaving:",
+				"value": ""
+			},
+			"date_joined": {
+				"label": "Date Of Joining: ",
+				"value": ""
+			},
+			"date_resigned": {
+				"label": "Date Resigned: ",
+				"value": ""
+			},
+			"last_day_of_work": {
+				"label": "Last Day Of Work: ",
+				"value": ""
+			},
+			"date_interviewed": {
+				"label": "Date Interviewed: ",
+				"value": ""
+			},
+			"interviewed_by": {
+				"label": "Interviewed By: ",
+				"value": ""
+			}
+		},
+		"questions": [{
+				"id": "1",
+				"label": "How would you rate Digital Mesh as a MODEL employer (Please Select One)",
+				"section_rule": {
+					"type": "dropdown"
+				},
+				"value_list": [{
+					"label": "Excellent",
+					"value": "5"
+				}, {
+					"label": "Good",
+					"value": "4"
+				}, {
+					"label": "Average",
+					"value": "3"
+				}, {
+					"label": "Poor",
+					"value": "2"
+				}],
+				"answer": ""
+			},
+			{
+				"id": "2",
+				"label": "Please mention 3 things you like best about DM.",
+				"section_rule": {
+					"type": "list"
+				},
+				"answer_list": [{
+					"id": "1",
+					"value": ""
+				}, {
+					"id": "2",
+					"value": ""
+				}, {
+					"id": "3",
+					"value": ""
+				}]
+			},
+			{
+				"id": "3",
+				"label": "Please mention 3 things you do not like about DM",
+				"section_rule": {
+					"type": "list"
+				},
+				"answer_list": [{
+					"id": "1",
+					"value": ""
+				}, {
+					"id": "2",
+					"value": ""
+				}, {
+					"id": "3",
+					"value": ""
+				}]
+			},
+			{
+				"id": "4",
+				"label": "What is/are the reason(s) of you are leaving Digital Mesh?",
+				"section_rule": {
+					"type": "check"
+				},
+				"section_headers": ["Your Reasons for leaving", "Select One"],
+				"answer_list": [{
+						"id": "1",
+						"label": "Higher salary",
+						"value": "0"
+					}, {
+						"id": "2",
+						"label": "Higher studies ",
+						"value": "0"
+					}, {
+						"id": "3",
+						"label": "Dissatisfaction with the job content",
+						"value": "0"
+					},
+					{
+						"id": "4",
+						"label": "Lack of role clarity",
+						"value": "0"
+					}, {
+						"id": "5",
+						"label": "Not very good relationships with the peers / superior / subordinates",
+						"value": "0"
+					}, {
+						"id": "6",
+						"label": "Lack of Infrastructure ",
+						"value": "0"
+					},
+					{
+						"id": "7",
+						"label": "Lack of Developmental Opportunities",
+						"value": "0"
+					}, {
+						"id": "8",
+						"label": "Poor Work Culture",
+						"value": "0"
+					}, {
+						"id": "9",
+						"label": "Leadership styles of Superiors",
+						"value": "0"
+					},
+					{
+						"id": "10",
+						"label": "Shifting to the industry",
+						"value": "0"
+					}, {
+						"id": "11",
+						"label": "Any other (please specify)",
+						"value": "0"
+					}
+				]
+			},
+			{
+				"id": "5",
+				"label": "Rating of Digital Mesh: (Please Select One )",
+				"section_rule": {
+					"type": "dropdown_list"
+				},
+				"value_list": [{
+					"label": "Excellent",
+					"value": "5"
+				}, {
+					"label": "Good",
+					"value": "4"
+				}, {
+					"label": "Average",
+					"value": "3"
+				}, {
+					"label": "Poor",
+					"value": "2"
+				}],
+				"answer_list": [{
+						"id": "1",
+						"label": "Company Benefits",
+						"value": ""
+					}, {
+						"id": "2",
+						"label": "Salary",
+						"value": ""
+					}, {
+						"id": "3",
+						"label": "Working Conditions",
+						"value": ""
+					}, {
+						"id": "4",
+						"label": "Advancement/Training Opportunity",
+						"value": ""
+					},
+					{
+						"id": "5",
+						"label": "Others",
+						"value": ""
+					}, {
+						"id": "6",
+						"label": "Overall Rating",
+						"value": ""
+					}
+				]
+			},
+			{
+				"id": "6",
+				"label": "How would you describe communication? (Please Select One )",
+				"section_rule": {
+					"type": "dropdown_list"
+				},
+				"value_list": [{
+					"label": "Excellent",
+					"value": "5"
+				}, {
+					"label": "Good",
+					"value": "4"
+				}, {
+					"label": "Average",
+					"value": "3"
+				}, {
+					"label": "Poor",
+					"value": "2"
+				}],
+				"answer_list": [{
+						"id": "1",
+						"label": "Throughout the company:",
+						"value": ""
+					}, {
+						"id": "2",
+						"label": "Between managers and staff:",
+						"value": ""
+					}, {
+						"id": "3",
+						"label": "Between departments:",
+						"value": ""
+					},
+					{
+						"id": "4",
+						"label": "Advancement/Training Opportunity",
+						"value": ""
+					}, {
+						"id": "5",
+						"label": "Within your department:",
+						"value": ""
+					}
+				]
+			},
+			{
+				"id": "7",
+				"label": "How, in your opinion, the next assignment is going to add value to your career?",
+				"section_rule": {
+					"type": "textarea"
+				},
+				"answer": ""
+			},
+			{
+				"id": "8",
+				"label": "Would you recommend your friends to join Digital Mesh? Please give reasons.",
+				"section_rule": {
+					"type": "textarea"
+				},
+				"answer": ""
+			},
+			{
+				"id": "9",
+				"label": "Would you re-join Digital Mesh, if given an offer in future? If yes, on what terms?",
+				"section_rule": {
+					"type": "textarea"
+				},
+				"answer": ""
+			},
+			{
+				"id": "10",
+				"label": "Please complete the following by select one :-",
+				"section_rule": {
+					"type": "dropdown_list"
+				},
+				"value_list": [{
+					"label": "Strongly Agree",
+					"value": "5"
+				}, {
+					"label": "Agree",
+					"value": "4"
+				}, {
+					"label": "Disagree",
+					"value": "3"
+				}, {
+					"label": "Strongly Disagree",
+					"value": "3"
+				}],
+				"answer_list": [{
+						"id": "1",
+						"label": "My orientation to the job was effective.",
+						"value": ""
+					}, {
+						"id": "2",
+						"label": "My skills have been used effectively.",
+						"value": ""
+					}, {
+						"id": "3",
+						"label": "I was provided all useful information, on time.",
+						"value": ""
+					},
+					{
+						"id": "4",
+						"label": "My work schedule met my professional needs.",
+						"value": ""
+					}, {
+						"id": "5",
+						"label": "I was given opportunities to grow (career advancement)",
+						"value": ""
+					},
+					{
+						"id": "6",
+						"label": "I had a clear understanding of the tasks and expectations ",
+						"value": ""
+					}, {
+						"id": "7",
+						"label": "I had the opportunity to work on different and/ or latest technologies",
+						"value": ""
+					}, {
+						"id": "8",
+						"label": "My Job training was adequate.",
+						"value": ""
+					}
+				]
+			},
+			{
+				"id": "11",
+				"label": "Please give suggestions to develop Digital Mesh.",
+				"section_rule": {
+					"type": "textarea"
+				},
+				"answer": ""
+			}
+
+
+
+
+		],
+		"employee_signature": {
+			"label": "Employee Signature: ",
+			"value": "",
+			"signed_date": "",
+			"is_signed": ""
+		},
+		"date": {
+			"label": "Date",
+			"value": ""
+		},
+		"sub_header": "Thank you for your co-operation",
+		"hr_signature": {
+			"label": "Signature of HR Manager:",
+			"value": "",
+			"emp_id": "",
+			"signed_date": "",
+			"is_signed": ""
+		},
+		"ceo_signature": {
+			"label": "Signature of CEO:",
+			"value": "",
+			"emp_id": "",
+			"signed_date": "",
+			"is_signed": ""
+		},
+		"cto_signature": {
+			"label": "Signature of CTO:",
+			"value": "",
+			"emp_id": "",
+			"signed_date": "",
+			"is_signed": ""
+		},
+		"remarks": {
+			"label": "Remarks if any:",
+			"type": "textarea",
+			"value": ""
+		}
+
+
+
+	}
+}

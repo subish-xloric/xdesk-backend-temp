@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta http-equiv="X-UA-Compatible" content="IE=edge">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Document</title>
+ <style>
+     @media only screen
+    and (max-device-width: 540px){
+        .span{
+            display: inline-block !important;
+        }
+        .span1{
+            width: 100% !important;
+        }
+        .span2{
+            display: none;
+        }
+    }
+ </style>
+</head>
+<body>
+	<div style="width: 100%;">
+		<div style="background-color: #e5e5e5;padding: 8px; margin: 1%;">
+			<!-- <div style="width: max-content;text-align: left;margin-bottom: 1%;">
+				<span style="color: #f4a261;font-weight: bold;font-size: 21px;">Leave request</span>
+			</div> -->
+            <!-- <div style="background-color: #fffffc;  padding: 1%;border-radius: 3px;font-weight: bold;margin-bottom: 1%;">
+                <span style="color: #7b7a92;font-weight: bold;font-size: 21px;">{{heading}}</span>
+            </div> -->
+            <div style="width: 100%; display: inline-flex;">
+                <div style="position: relative; width: 100%;background-color: #fffffc; padding: 8px;border-radius: 3px;text-align: left;color: #677473;">
+                    <div>
+                        <p>Dear {{candidate}},</p>
+                        <p>I wanted to take a moment to thank you for taking the time to come in for an interview with our team at {{company_name}}. It was a pleasure to meet you and learn more about your skills and experience.</p>
+                        <p>We will notify you of any updates on your candidacy as soon as possible.</p>
+                        <p>Once again, thank you for your time and interest in our organization. If you have any further questions or comments, please don't hesitate to reach out.</p>
+                        Regards,<br>
+                        <br>
+                        {{emp_name}}
+                        <br>
+                        {{designation}}
+                        <br>
+                        Email : {{emp_email}}
+                    </div>
+                </div>
+            </div>
+		</div>
+	</div>
+</body>
+</html>

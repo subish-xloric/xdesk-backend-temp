@@ -1,0 +1,183 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+{% block title %}
+Add New Article
+{% endblock title %}
+{% block styles %}
+<link href="{% static 'wiki/tags-input/css/amsify.suggestags.css' %}" rel="stylesheet">
+{% endblock styles %}
+{% block content %}
+<div class="container featured-area-default padding-30">
+    <div class="row">
+        <!-- ARTICLE OVERVIEW SECTION -->
+        <div class="col-md-8 padding-20">
+            <div class="row">
+                <!-- BREADCRUMBS -->
+                <div class="breadcrumb-container">
+                    <ol class="breadcrumb">
+                        <li>
+                            <a href="index.html">
+                                <i class="fa fa-home"></i>
+                            </a>
+                        </li>
+                        <li><a href="{% url 'articles' %}">Articles</a></li>
+                        <li class="active">Add New Article</li>
+                    </ol>
+                </div>
+                <!-- END BREADCRUMBS -->
+                <!-- ARTICLES -->
+                <div class="fb-heading">
+                    Add New Article
+                </div>
+                <hr class="style-three">
+
+                {% if messages %} {% for x in messages %}
+                <div class="alert alert-{{ x.tags }}">
+                    {{x}}
+                </div>
+                {% endfor %}
+                {% endif %}
+                <form action="." method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="page">Title <i class="text-danger">*</i> </label>
+                        <span class="text-muted"> &nbsp;Note : Title cannot be changed after submission</span>
+                        {% render_field form.page_heading class="form-control" placeholder="Please provide a heading for the article" autofocus="true"%}
+                        <span class="text-danger">{{form.errors.page_heading}}</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="page">Category <i class="text-danger">*</i></label>
+                        {% render_field form.category class="form-control category" %}
+                        <span class="text-danger">{{form.errors.category}}</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="page">Sub Category</label>
+                        <select name="sub_category" id="sub_category" class="form-control">
+                            <option value="">-----</option>
+                        </select>
+
+                    </div>
+                    <div class="form-group">
+                        <label for="page">Content <i class="text-danger">*</i></label>
+                        <textarea name="page_content" id="id_page_content" cols="30" rows="10"></textarea>
+                        <span class="text-danger">{{form.errors.page_content}}</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="page">Short Description</label>
+                        <textarea name="short_description" class="form-control"
+                            placeholder="Enter a short description about the content"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="page">Tags</label>
+                        <div class="panel panel-default">
+                            <input type="text" id="tags" name="tags" placeholder="Enter Tags" class="form-control"
+                                data-role="tagsinput">
+                        </div>
+                    </div>
+                    <div class="panel panel-default">
+                        <div class="panel-body">
+                            <div class="input_fields_wrap">
+                                <a href="#" class="add_field_button">+ Add</a>
+                                <div>
+                                    <label for="file">Attachments</label>
+                                    <input type="file" name="attachment[]">
+                                </div>
+                              </div>
+                        </div>
+                    </div>
+                    {% if user_group == 5 %}
+                        <div class="form-group">
+                            <label for="page">Approver <i class="text-danger">*</i></label>
+                            {% render_field form.approver class="form-control" %}
+                            <span class="text-danger">{{form.errors.approver}}</span>
+                        </div> 
+                    {%else%}
+                    <input type="hidden" value="{{user.id}}" name="approver">
+                    {% endif %}
+                    <!-- <div class="form-group">
+                        <label for="">Confidential&nbsp;</label>
+                        <input type="checkbox" value="1" name="is_confidential" checked title="Only logged in users can view this article">
+                        <span>(Note : If the Confidential is enabled then, Only logged in users can view this article)</span>
+                    </div> -->
+                    
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                    <a href="{% url 'home' %}" class="btn btn-default">Cancel</a>
+                </form>
+                <!-- END ARTICLES -->
+            </div>
+        </div>
+        <!-- END ARTICLE OVERVIEW SECTION -->
+        {% include "common/sidebar.html" %}
+    </div>
+</div>
+
+{% endblock content %}
+
+{% block scripts %}
+<script src="{% static 'wiki/ckeditor/ckeditor.js' %}"></script>
+<script src="{% static 'wiki/ckeditor/editor-conf.js' %}"></script>
+<script src="{% static 'wiki/tags-input/js/jquery.amsify.suggestags.js' %}"></script>
+<script>
+    initSample();
+    $('input[name="tags"]').amsifySuggestags();
+
+    $('.category').change(function () {
+        $.ajax({
+            url: '{% url "sub_category" %}',
+            type: 'post',
+            data: { category: $(this).val(), csrfmiddlewaretoken: '{{ csrf_token }}' },
+            success: function (data) {
+                $('#sub_category').html(data);
+            }
+        });
+    });
+    $(document).ready(function() {
+        var max_fields = 5;
+        var wrapper = $(".input_fields_wrap");
+        var add_button = $(".add_field_button");
+      
+        var x = 1;
+        $(add_button).click(function(e) {
+          e.preventDefault();
+          if (x < max_fields) {
+            x++;
+            $(wrapper).append('<div class="row">'+
+                '<div class="col-sm-6"><input type="file" name="attachment[]"></div>'+
+                '<div class="col-sm-4"><a href="#" class="remove_field">Remove</a></div>'+
+                '</div>');
+          }
+        });
+      
+        $(wrapper).on("click", ".remove_field", function(e) {
+          e.preventDefault();
+          $(this).parent('div').parent('.row').remove();
+          x--;
+        })
+      });
+      
+      function getTotal() {
+        var total = 0;
+      
+        $(':file').each(function() {    
+          if (this.files && this.files[0]) {
+            total += this.files[0].size;
+          }
+        });
+      
+        return total;
+      }
+      
+      $(function() {
+        var maxSize = 20 * 1000 * 1000 ; // ~20MB
+        $(document).on('change', ':file', function() {    
+          if (getTotal() > maxSize) {
+            $(this).val('');
+                alert('Total size of attachments exceeded. Please reduce the size.');
+          } else {
+            $('#total').text(getTotal());
+          }
+        });
+      });
+</script>
+{% endblock scripts %}

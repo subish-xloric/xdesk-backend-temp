@@ -1,0 +1,71 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+{% block title %}
+View source: {{article.page_heading}}
+{% endblock title %}
+{% block styles %}
+<!-- color code for code snippet -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.5.0/themes/prism.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.5.0/prism.min.js"></script>
+<!-- color code for code snippet end-->
+{% endblock styles %}
+{% load wiki_common_tags %}
+{% block content %}
+<div class="container featured-area-default padding-30">
+    <div class="row">
+        <div class="col-md-8 padding-20">
+            <div class="row">
+                <!-- BREADCRUMBS -->
+                <div class="breadcrumb-container">
+                    <ol class="breadcrumb">
+                        <li>
+                            <a href="{% url 'home' %}">
+                                <i class="fa fa-home"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <b>Pages</b>
+                        </li>
+                        <li><a href="{% url 'page_history' slug=article.id permalink=article.permalink %}">Revision History</a></li>
+                            <li class="active">View Source</li>
+                    </ol>
+                </div>
+                <!-- END BREADCRUMBS -->
+                <!-- ARTICLE  -->
+                <div class="panel panel-default">
+                    <div class="article-heading margin-bottom-5">
+                        <a href="#">
+                            <i class="fa fa-file-text-o"></i>{{article.page_heading}}</a>
+                    </div>
+                    <div class="article-content">
+                        {{article.page_content|safe}}
+                    </div>
+                    
+             
+                </div>
+                <!-- END ARTICLE -->
+                
+            </div>
+        </div>
+        {% include "common/sidebar.html" %}
+    </div>
+</div>
+
+{% endblock content %}
+{% block scripts %}
+<script>
+    $('.like_button').click(function(){
+        if($(this).is(':checked')){
+            var like = '{{article.id}}_'+$(this).val()
+            $.ajax({
+                url: '{% url "like_page" %}',
+                type: 'post',
+                data: { like: like, csrfmiddlewaretoken: '{{ csrf_token }}' },
+                success: function (data) {
+                    
+                }
+            });
+        }
+    });
+</script>
+{% endblock scripts %}

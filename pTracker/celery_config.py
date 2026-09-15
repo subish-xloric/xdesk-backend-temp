@@ -1,0 +1,38 @@
+
+from pTracker.celery_imports import CELERY_IMPORTS_TUPLE
+from pTracker.celery_routes import CELERY_ROUTES_DICT
+from pTracker.celery_beat import PRO_SCHEDULE
+
+from pTracker.settings.constants import CELERY_QUEUE
+
+CELERY_BROKER_URL = 'redis://redis:6379'
+
+CELERY_RESULT_BACKEND = 'redis://redis:6379'
+
+CELERY_ACCEPT_CONTENT = ['application/json']
+
+CELERY_RESULT_SERIALIZER = 'json'
+
+CELERY_TASK_SERIALIZER = 'json'
+
+CELERY_TASK_RESULT_EXPIRES = 3600
+
+BROKER_POOL_LIMIT = 0
+
+CELERY_DEFAULT_QUEUE = CELERY_QUEUE['daily_report']
+
+CELERY_BEAT_SCHEDULE = PRO_SCHEDULE
+
+CELERY_IMPORTS = CELERY_IMPORTS_TUPLE
+
+CELERY_QUEUES = {
+    CELERY_DEFAULT_QUEUE: {
+        'exchange': CELERY_DEFAULT_QUEUE,
+        'binding_key': CELERY_DEFAULT_QUEUE,
+        }
+    }
+
+CELERY_CREATE_MISSING_QUEUES = True
+
+CELERY_ROUTES = CELERY_ROUTES_DICT
+

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta http-equiv="X-UA-Compatible" content="IE=edge">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Document</title>
+ <style>
+     @media only screen
+    and (max-device-width: 540px){
+        .span{
+            display: inline-block !important;
+        }
+        .span1{
+            width: 100% !important;
+        }
+        .span2{
+            display: none;
+        }
+    }
+ </style>
+</head>
+<body>
+	<div style="margin: 1%;width: 100%;">
+		<div style="background-color: #e5e5e5;padding: 1%;">
+			<!-- <div style="width: max-content;text-align: left;margin-bottom: 1%;">
+				<span style="color: #f4a261;font-weight: bold;font-size: 21px;">Leave request</span>
+			</div> -->
+            <div style="background-color: #fffffc;  padding: 1%;border-radius: 3px;font-weight: bold;margin-bottom: 1%;">
+                <span style="color: #f4a261;font-weight: bold;font-size: 21px;">{{heading}}</span>
+            </div>
+            <div style="width: 100%; display: inline-flex;">
+                <div style="position: relative; width: 55%;background-color: #fffffc; padding: 1%;border-radius: 3px;text-align: left;color: #677473;">
+                    <div>
+                        <p>Hi {{lead_name}}, </p>
+                        <p>{{request}}</p>
+                        <p>Reason: {{reason}}.</p>
+                        <p></p>
+                        <p><span style="font-weight: bold;color: #202525;">{{emp_name}}</span></p>
+                    </div>
+                </div>
+                <div style="position: relative; width: 45%; background-color: #fffffc;padding-bottom: 5%;
+                border-radius: 3px;text-align: left;color: #677473;margin-left: 1%; font-size: 14px;">
+
+                    <div style="width: 95%;padding: 5px;display: inline-flex;" class="span">
+                        <span style="min-width: 45%;max-width: 45%;" class="span1">Applied Date</span>
+                        <span style="width: 3%;" class="span2">&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                        <span style="width: 30%;color: rgb(66, 44, 165);">{{submitted_date}}</span>
+                    </div>
+                    <div style="padding: 5px;display: inline-flex;width: 95%;background-color: #e5e5e5;" class="span">
+                        <span style="min-width: 45%;max-width: 45%;" class="span1">Submitted By </span>
+                        <span style="width: 3%;" class="span2">&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                        <span style="width: 30%;color: rgb(66, 44, 165);">{{emp_name}}</span>
+                    </div>
+                    <div style="width: 95%;padding: 5px;display: inline-flex;" class="span">
+                        <span style="min-width: 45%;max-width: 45%;" class="span1">Approver Name</span>
+                        <span style="width: 3%;" class="span2">&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                        <span style="width: 30%;color: rgb(66, 44, 165)">{{lead_name}}</span>
+                    </div>
+                    <div style="padding: 5px;display: inline-flex;width: 95%;background-color: #e5e5e5;" class="span">
+                        <span style="min-width: 45%;max-width: 45%;" class="span1">Category </span>
+                        <span style="width: 3%;" class="span2">&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                        <span style="width: 30%;color: rgb(66, 44, 165);">{{category}}</span>
+                    </div>
+                    <div style="width: 95%;padding: 5px;display: inline-flex;" class="span">
+                        <span style="min-width: 45%;max-width: 45%;" class="span1">Start Date</span>
+                        <span style="width: 3%;" class="span2">&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                        <span style="width: 30%;color: rgb(66, 44, 165);">{{start_date}}</span>
+                    </div>
+                    <div style="padding: 5px;display: inline-flex;width: 95%;background-color: #e5e5e5;" class="span">
+                        <span style="min-width: 45%;max-width: 45%;" class="span1">End Date</span>
+                        <span style="width: 3%;" class="span2">&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                        <span style="width: 30%;color: rgb(66, 44, 165);">{{end_date}}</span>
+                    </div>
+                    <div style="width: 95%;padding: 5px;display: inline-flex;" class="span">
+                        <span style="min-width: 45%;max-width: 45%;" class="span1">No Of Days</span>
+                        <span style="width: 3%;" class="span2">&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                        <span style="width: 30%;color: rgb(66, 44, 165);">{{no_of_days}}</span>
+                    </div>
+                    <div style="padding-top: 15px;padding-left: 5px;">
+                        Click <a href={{link}}>here</a> to  Approve/Reject
+                    </div>
+                </div>
+            </div>
+		</div>
+	</div>
+</body>
+</html>

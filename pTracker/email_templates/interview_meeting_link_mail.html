@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta http-equiv="X-UA-Compatible" content="IE=edge">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Document</title>
+ <style>
+     @media only screen
+    and (max-device-width: 540px){
+        .span{
+            display: inline-block !important;
+        }
+        .span1{
+            width: 100% !important;
+        }
+        .span2{
+            display: none;
+        }
+    }
+ </style>
+</head>
+<body>
+	<div style="width: 100%;">
+		<div style="background-color: #e5e5e5;padding: 8px; margin: 1%;">
+			<!-- <div style="width: max-content;text-align: left;margin-bottom: 1%;">
+				<span style="color: #f4a261;font-weight: bold;font-size: 21px;">Leave request</span>
+			</div> -->
+            <div style="background-color: #fffffc;  padding: 1%;border-radius: 3px;font-weight: bold;margin-bottom: 1%;">
+                <span style="color: #7b7a92;font-weight: bold;font-size: 21px;">{{heading}}</span>
+            </div>
+            <div style="width: 100%; display: inline-flex;">
+                <div style="position: relative; width: 100%;background-color: #fffffc; padding: 8px;border-radius: 3px;text-align: left;color: #677473;">
+                    <div>
+                        <p>Dear {{candidate_name}},</p>
+                        <p>I hope this email finds you well. I am {{emp_name}}, and I will be conducting your interview on behalf of {{company_name}}  {{date_time}} as confirmed by our HR team.</p>
+                        <p>I am writing to share the meeting link for the interview, which has been provided below: </p>
+                        <p><a href="{{content}}">{{content}}</a></p>
+                        <p>Please make sure to test the link prior to the interview and check that your audio and video settings are working correctly. If you experience any technical difficulties, please let me know as soon as possible so we can make alternative arrangements.</p>
+                        <p>I look forward to meeting with you and learning more about your qualifications and experiences.</p>
+                        Regards,<br>
+                        <br>
+                        {{emp_name}}
+                        <br>
+                        {{designation}}
+                        <br>
+                        Email : {{emp_email}}
+                    </div>
+                </div>
+            </div>
+		</div>
+	</div>
+</body>
+</html>

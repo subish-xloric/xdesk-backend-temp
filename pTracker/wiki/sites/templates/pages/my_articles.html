@@ -1,0 +1,108 @@
+{% extends "layouts/base.html" %}
+{% block title %}
+My Articles
+{% endblock title %}
+{% block styles %}
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs/dt-1.10.23/datatables.min.css"/>
+<style>
+    /*- datatable */
+    .created_date{
+        width: 300px !important;
+    }
+    .heading{
+        width: 761px !important;
+    }
+</style>
+{% endblock styles %}
+{% block content %}
+<div class="container featured-area-default padding-30">
+    <div class="row">
+        <div class="col-md-12 padding-20">
+            <div class="row">
+                <!-- BREADCRUMBS -->
+                <div class="breadcrumb-container">
+                    <ol class="breadcrumb">
+                        <li>
+                            <a href="{% url 'home' %}">
+                                <i class="fa fa-home"></i>
+                            </a>
+                        </li>
+                        <li class="active">My Articles</li>
+                    </ol>
+                </div>
+                <!-- END BREADCRUMBS -->
+                <div class="panel panel-default">
+                    <div class="article-heading margin-bottom-5">
+                        MY ARTICLES
+                    </div>
+
+                    <div class="article-content">
+                        {% if messages %} {% for x in messages %}
+                        <div class="alert alert-{{ x.tags }}">
+                            {{x}}
+                        </div>
+                        {% endfor %}
+                        {% endif %}
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="table-responsive">
+
+                                    <table id="my_articles_table" class="table table-bordered table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th class='heading'>Heading</th>
+                                                <th class="created_date">Created date</th>
+                                                <th class="created_date">Remarks</th>
+                                                <th>Status</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                           {% for row in my_articles %}
+                                             <tr>
+                                                 <td class="heading">{{row.page_heading}}
+                                                     <b>({{row.tabl}})</b>
+                                                    </td>
+                                                 <td class="created_date">{{row.created_at}}</td>
+                                                 <td class="created_date">
+                                                 {% if row.remarks %}
+                                                 {{row.remarks}}
+                                                 {%else%}
+                                                 -----
+                                                 {% endif %}
+                                                </td>
+                                                 <td>
+                                                     {{row.status_label|safe}}
+                                                </td>
+                                                <td>
+                                                    <a href="{% url 'edit_page' slug=row.id %}" class="btn btn-primary btn-xs">Edit</a>
+                                                </td>
+                                             </tr>
+                                           {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                </div>
+                <!-- END ARTICLE -->
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+{% block scripts %}
+<script type="text/javascript" src="https://cdn.datatables.net/v/bs/dt-1.10.23/datatables.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#my_articles_table').DataTable({
+            sorting:false,
+        });
+    });
+
+</script>
+{% endblock scripts %}

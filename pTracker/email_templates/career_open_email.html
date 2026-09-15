@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta http-equiv="X-UA-Compatible" content="IE=edge">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Document</title>
+</head>
+<body>
+	<div style="margin: 1%;width: 100%;">
+		<div style="background-color: #e5e5e5;padding: 1%;">
+			<!-- <div style="width: max-content;text-align: left;margin-bottom: 1%;">
+				<span style="color: #f4a261;font-weight: bold;font-size: 21px;">Leave request</span>
+			</div> -->
+            <div style="background-color: #fffffc;  padding: 1%;border-radius: 3px;font-weight: bold;margin-bottom: 1%;">
+                <span style="color: #f4a261;font-weight: bold;font-size: 18px;">{{heading}}</span>
+            </div>
+            <div style="width: 100%; display: inline-flex;">
+                <div style="position: relative; width: 100%;background-color: #fffffc; padding: 1%;border-radius: 3px;text-align: left;color: #677473;">
+                    <div>
+                        <p>Dear Team, </p>
+                        <p>We currently have an opening for {{position_name}} (Ref No.: {{ref_no}}), #Opening : {{number_of_opening}},
+                        and I'd appreciate your input on candidates or sources for this role.
+                        Below I've provided details about the position we wish to fill.</p>
+                        <p>Required Experience - {{required_experience}}&nbsp;
+                            {% if required_experience == 'Experienced' %}
+                                ({{years_of_exp_required}} year(s))
+                            {% endif %}
+                        </p>
+                        <p>Required Qualification - {{required_qualification}}</p>
+                        <!--<p><b>Required Skills</b></p>
+                        <p>Soft Skills : {{soft_skills}}</p><br>-->
+                        <p>Technical Skills Required : {{technical_skills}}</p>
+                        <p>Job Description : {{jobDescription |safe}}</p>
+                        <p>Feel free to email me any suggestions for candidates and/or sources. Also, please feel free to share this job specification within your network.</p>
+                        <p>Thank you for your consideration.</p>
+                        <br>Regards,<br>
+                        <br>
+                        {{emp_name}}
+                        <br>
+                        {{empDesignation}}
+                        <br>
+                        Email: {{empEmail}}
+                    </div>
+                </div>
+            </div>
+		</div>
+	</div>
+</body>
+</html>

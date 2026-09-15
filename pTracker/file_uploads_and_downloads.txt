@@ -1,0 +1,120 @@
+Based on a search of the codebase, here are the files and methods where file uploads are being handled:
+
+API / Business Logic Files
+1. api/user/user_management_bl_v1.py
+
+Method: save_employee_profile_image(self, user_id, request)
+Code: image = request.FILES.get("image", None)
+Purpose: Uploading an employee profile image.
+2. api/finance/emp_ctc_biz.py
+
+Method: import_csv_ctc(self, request)
+Code: inputFile = request.FILES['csv']
+Purpose: Uploading and importing employee CTC data from a CSV file.
+3. api/onboarding/onboarding_biz.py
+
+Method: create_onboarding_candidate(self, user_id, candidate_data)
+Code: doc = candidate_data.FILES['offer_letter']
+Method: edit_onboarding_candidate_details(self, user_id, edit_request)
+Code: doc = edit_request.FILES['offer_letter']
+Purpose: Uploading candidate offer letters and pre-employment documents.
+4. api/offboard/off_board_biz.py
+
+Method: upload_relieving_documents(self, user_id, request)
+Code: doc = request.FILES['image']
+Purpose: Uploading relieving documents (typically in PDF format) during the offboarding process.
+5. wiki/sites/master_bl.py
+
+Method: add_page(self, request)
+Code: files = request.FILES
+Method: manage_attachments(self,request,slug)
+Code: files = request.FILES
+Purpose: Handing document attachments for Wiki pages.
+Django Models
+6. wiki/data_access/wiki_models/models.py
+
+Class: WikiPageAttachments
+Code: attachments = models.FileField(upload_to=upload_path_handler)
+Purpose: The database model field definition for storing wiki page attachments.
+These are the primary entry points and fields in your application managing file and document uploads. Let me know if you need to modify or review any of these specific workflows!
+
+Methods that read or download the uploaded files:
+
+1. api/offboard/off_board_biz.py
+Method: get_relieving_documents_by_off_boarding_id(self, user_id, off_boarding_id)
+Reads: Relieving documents (e.g., pdfs/images uploaded during offboarding) and encodes them as base64 strings for viewing/download.
+
+2. api/onboarding/onboarding_biz.py
+Method: __get_offer_letter_url(self, file_name)
+Reads: Pre-employment documents (like offer letters) using open() and returns them as a base64 encoded string.
+
+3. api/user/user_management_bl.py and api/user/user_management_helper_bl.py
+Methods: format_basic_info and get_employee_detail_profile
+Reads: 
+- Employee profile pictures (employee_profile_photo/)
+- User verification documents like Experience Certificates (experience_certificates/), Relieving letters (relieving_letters/), Pay slips (pay_slip/), and Educational Certificates (educational_certificates/) are opened in rb mode and encoded to base64.
+
+4. api/interview/candidate_biz.py and api/interview/interview_biz.py
+Method: __get_candidate_profile_url(self, file_name)
+Reads: Candidate profiles/resumes and returns them as base64-encoded content for viewing on the dashboard.
+
+Note: In this application, files are primarily "downloaded" or viewed by reading them as binary (rb) from the disk and converting them into base64 strings (using base64.b64encode(_file.read())), which are then returned directly in the JSON API payload, rather than serving them as traditional HTTP file downloads.
+
+
+
+Listed directory common
+Created file_manager.py
+
+I have created a brand new, production-ready utility class and saved it to **`pTracker/common/file_manager.py`**!
+
+Here is how I designed it specifically to handle your application's architecture:
+
+### Key Features of `FileManager`:
+1. **Dynamic Toggling**: It automatically checks `settings.FILE_UPLOAD_MODE`. If it's set to `"S3"`, it uses `boto3`. If not, it falls back to your local file system automatically.
+2. **Absolute Path Sanitization (`_get_s3_key`)**: Since your app passes absolute paths (e.g., `/var/www/dm_ptracker/confidential_docs/file.pdf`), the wrapper safely strips out the root prefixes when uploading to S3, ensuring clean bucket keys!
+3. **Built-in Fernet Encryption**: I included `upload_encrypted_file` and `read_encrypted_file` methods. This means you no longer need to manually manage the `Fernet` logic inside your business layers!
+
+### Example: How to refactor your current code
+
+**Before (Your current code in `user_management_helper_bl.py`)**:
+```python
+def save_relieving_letter(self, emp_id, base64_relieving_letter):
+    obj_doc = str(base64_relieving_letter).replace("data:application/pdf;base64,","")
+    fileName = uuid.uuid4()
+    
+    # Manual Encryption and Open
+    encrypted_content = self.__fernet.encrypt(obj_doc.encode())
+    file_path = os.path.join(settings.CONFIDENTIAL_DOCS, f"relieving_letters/{fileName}.pdf")
+    with open(file_path ,'wb') as f:
+        f.write(encrypted_content)
+        f.close()
+
+    return f"{fileName}.pdf"
+```
+
+**After (Using your new `FileManager`)**:
+```python
+from pTracker.common.file_manager import FileManager
+
+def save_relieving_letter(self, emp_id, base64_relieving_letter):
+    obj_doc = str(base64_relieving_letter).replace("data:application/pdf;base64,","")
+    fileName = uuid.uuid4()
+    file_path = os.path.join(settings.CONFIDENTIAL_DOCS, f"relieving_letters/{fileName}.pdf")
+    
+    # Let the FileManager handle the encryption and the S3/Local routing!
+    FileManager().upload_encrypted_file(file_path, obj_doc.encode())
+
+    return f"{fileName}.pdf"
+```
+
+To enable the cloud feature, you simply need to add this to your `settings/production.py`:
+
+```python
+FILE_UPLOAD_MODE = "S3"
+AWS_ACCESS_KEY_ID = "your-access-key"
+AWS_SECRET_ACCESS_KEY = "your-secret-key"
+AWS_S3_REGION_NAME = "ap-south-1" 
+AWS_STORAGE_BUCKET_NAME = "your-bucket-name"
+```
+
+Feel free to open `pTracker/common/file_manager.py` and take a look. Let me know if you would like any tweaks!

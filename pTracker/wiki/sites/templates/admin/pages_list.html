@@ -1,0 +1,118 @@
+{% extends "layouts/base.html" %}
+{% block title %}
+  Masters
+{% endblock title %}
+{% block styles %}
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs/dt-1.10.23/datatables.min.css"/>
+{% endblock styles %}
+{% block content %}
+<div class="container featured-area-default padding-30">
+    <div class="row">
+        <!-- ARTICLE OVERVIEW SECTION -->
+        <div class="col-md-12 padding-20">
+            <div class="row">
+                <!-- BREADCRUMBS -->
+                <div class="breadcrumb-container">
+                    <ol class="breadcrumb">
+                        <li>
+                            <a href="{% url 'home' %}">
+                                <i class="fa fa-home"></i>
+                            </a>
+                        </li>
+                        <li>Masters</li>
+                        <li class="active">Pages</li>
+                    </ol>
+                </div>
+                <!-- END BREADCRUMBS -->
+                <!-- ARTICLES -->
+                <div class="fb-heading">
+                    User Submitted Articles
+                </div>
+                <hr class="style-three">
+                {% if messages %} {% for x in messages %}
+                <div class="alert alert-{{ x.tags }}">
+                    {{x}}
+                </div>
+                {% endfor %}
+                {% endif %}
+                
+                {% if pages %}
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="submited_page_list">
+                        <thead>
+                            <th width="200">Page heading</th>
+                            <th>Category</th>
+                            <th>Created By</th>
+                            <th>Created at</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </thead>
+                        <tbody>
+                        {% for page in pages %}
+                          <tr>
+                              <td>{{page.page_heading}}</td>
+                              <td>{{page.category}}</td>
+                              <td>{{page.created_by}}</td>
+                              <td>{{page.created_at}}</td>
+                              <td>{{page.status_label|safe}}</td>
+                              <td>
+                                  <a href="{% url 'admin_view_page' slug=page.id %}" class="btn btn-sm btn-primary">View</a>
+                                  {% if page.status %}
+                                  <a href="#" class="btn btn-sm btn-success disabled">Approve</a>
+                                  {% else %}
+                                  <a href="{% url 'admin_change_page_status' slug=page.id %}" class="btn btn-sm btn-success">Approve</a>
+                                  {% endif %}
+                                  <a href="{% url 'admin_remove_page' slug=page.id %}" onclick="return confirm('are you sure ?')" class="btn btn-sm btn-danger">Delete</a>
+                                  
+                            </td>
+                          </tr>
+                        {% endfor %}
+                         </tbody>
+                    </table>
+
+                </div>
+                
+                <!-- PAGINATION -->
+                <!-- <nav class="text-center">
+                    <div class="pagination">
+                        <span class="step-links">
+                            {% if pages.has_previous %}
+                            <a href="?page=1">&laquo; first</a>
+                            <a href="?page={{ pages.previous_page_number }}">previous</a>
+                            {% endif %}
+
+                            <span class="current">
+                                Page {{ pages.number }} of {{ pages.paginator.num_pages }}.
+                            </span>
+
+                            {% if pages.has_next %}
+                            <a href="?page={{ pages.next_page_number }}">next</a>
+                            <a href="?page={{ pages.paginator.num_pages }}">last &raquo;</a>
+                            {% endif %}
+                        </span>
+                    </div>
+                </nav> -->
+                <!-- END PAGINATION -->
+                {% else %}
+                <div class="jumbotron">
+                    There is no pending Articles found !
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <!-- END ARTICLE OVERVIEW SECTION -->
+
+    </div>
+</div>
+  
+{% endblock content %}
+{% block scripts %}
+<script type="text/javascript" src="https://cdn.datatables.net/v/bs/dt-1.10.23/datatables.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#submited_page_list').DataTable({
+            sorting:false
+        });
+    });
+</script>
+{% endblock scripts %}

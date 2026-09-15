@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta http-equiv="X-UA-Compatible" content="IE=edge">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Document</title>
+ <style>
+     @media only screen
+    and (max-device-width: 540px){
+        .span{
+            display: inline-block !important;
+        }
+        .span1{
+            width: 100% !important;
+        }
+        .span2{
+            display: none;
+        }
+    }
+ </style>
+</head>
+<body>
+	<div style="width: 100%;">
+		<div style="background-color: #e5e5e5;padding: 8px; margin: 1%;">
+			<!-- <div style="width: max-content;text-align: left;margin-bottom: 1%;">
+				<span style="color: #f4a261;font-weight: bold;font-size: 21px;">Leave request</span>
+			</div> -->
+            <div style="background-color: #ffffffe5;  padding: 1%;border-radius: 3px;font-weight: bold;margin-bottom: 1%;">
+                <span style="color: #f4a261;font-weight: bold;font-size: 21px;">{{subject}}</span>
+            </div>
+            <div style="width: 100%; display: inline-flex;">
+                <div style="position: relative; width: 100%;background-color: #fffffc; padding: 8px;border-radius: 3px;text-align: left;color: #677473;">
+                    <div>
+                            <table width="100%" border="0" cellspacing="0" style="padding:12px;">
+                            <tbody>
+                                <tr style="background-color:#F2F2F2;">
+                                <td style="padding:12px;"><a rel="noopener noreferrer" data-auth="NotApplicable" style="color:#4C4C4C;font-size:90%;text-decoration:none;" data-linkindex="4"><b>{{project_name}}</b></a></td>
+                                <!-- <td style="text-align:right;padding:12px;"><a rel="noopener noreferrer" data-auth="NotApplicable" style="color:#4C4C4C;font-size:90%;text-decoration:none;" data-linkindex="5"><b>{{project_name}}</b></a></td> -->
+                                </tr>
+                            </tbody>
+                            </table>
+                        <!-- <div ><a style="width:98%; padding:12px; display:block; float:left; font-size:1.6em; font-weight:bold; color:#677473;text-decoration:none; margin-left: 13px;" target="_blank" href="https://dmdesk.digitalmesh.com/#/tickets/update-ticket/{{ticket_id}}/">{{heading}} - {{subject}}</a></div> -->
+                        <div style="width:98%; padding:12px; display:block; float:left; font-size:1em; margin-left: 13px;">{{description}}</div>
+                        
+                        <br>
+                        <table width="100%" border="0" cellspacing="0" style="padding:12px;">
+                            <tbody>
+                                <tr style="background-color:#F2F2F2;">
+                                    <td width="16%" style="padding:12px;">Created by: <b>{{created_by}}</b></td>
+                                    <td width="16%" style="text-align:center;padding:12px;">Assigned to: <b>{{assigned_to}}</b></td>
+                                    <td width="16%" style="text-align:center;padding:12px;">Deadline: <b>{{deadline}}</b></td>
+                                    <td width="16%" style="text-align:right;padding:12px;">Priority: <b>{{priority}}</b></td>
+                                    <td width="16%" style="text-align:right;padding:12px;">Type: <b>{{ticket_type}}</b></td>
+                                    <td width="16%" style="text-align:right;padding:12px;">Category: <b>{{category}}</b></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta http-equiv="X-UA-Compatible" content="IE=edge">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Document</title>
+ <style>
+     @media only screen
+    and (max-device-width: 540px){
+        .span{
+            display: inline-block !important;
+        }
+        .span1{
+            width: 100% !important;
+        }
+        .span2{
+            display: none;
+        }
+    }
+ </style>
+</head>
+<body>
+	<div style="width: 100%;">
+		<div style="background-color: #e5e5e5;padding: 8px; margin: 1%;">
+			<!-- <div style="width: max-content;text-align: left;margin-bottom: 1%;">
+				<span style="color: #f4a261;font-weight: bold;font-size: 21px;">Leave request</span>
+			</div> -->
+            <div style="background-color: #fffffc;  padding: 1%;border-radius: 3px;font-weight: bold;margin-bottom: 1%;">
+                <span style="color: #f4a261;font-weight: bold;font-size: 21px;">{{heading}}</span>
+            </div>
+            <div style="width: 100%; display: inline-flex;">
+                <div style="position: relative; width: 100%;background-color: #fffffc; padding: 8px;border-radius: 3px;text-align: left;color: #677473;">
+                    <div>
+                        <p>Dear &nbsp;{{emp_name}}, </p>
+                        <p>A year has gone by; it's time to evaluate our accomplishments and also set new objectives for the next year.</p>
+                        <p>We have initiated the annual performance appraisal for you on {{date}} for the year {{year}}</p>
+                        <p>The yearend process provides an essential opportunity for discussion about one’s goal achievements, performance assessment and development planning. As you are aware, the ratings assigned during yearend reviews are based on the 5 point rating scale. This enables a simpler rating scale focusing on moderations and peer reviews in evaluations.</p>
+                        <p>Important Dates</p>
+                        <p>Self Assessment Due Date :<b>{{employee_expiry_date}}</b></p>
+                        <p>Review with Appraiser Due Date :<b>{{appraiser_expiry_date}}</b></p>
+                        <p>Review with Reviewer Due Date :<b>{{reviewer_expiry_date}}</b></p>
+                        <p><b>To fill up your appraisal form please <a href="{{link}}">click</a> here</b></p>
+
+                        <p>Please ensure that you stick on to the timelines so that the entire appraisal process can be completed smoothly.</p>
+                        <p>Looking forward to your co-operation and support</p>
+                        <br>
+                        <p><span style="font-weight: bold;color: #202525;">{{hr_name}}</span></p>
+                    </div>
+                </div>
+            </div>
+		</div>
+	</div>
+</body>
+</html>

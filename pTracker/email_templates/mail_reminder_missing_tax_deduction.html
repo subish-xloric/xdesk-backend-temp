@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>{{heading}}{{initiator_name}}</title>
+</head>
+<body>
+    <div style="width: 100%;">
+		<div style="background-color: #e5e5e5;padding: 8px; margin: 1%;">
+			<!-- <div style="width: max-content;text-align: left;margin-bottom: 1%;">
+				<span style="color: #f4a261;font-weight: bold;font-size: 21px;">Leave request</span>
+			</div> -->
+            <!-- <div style="background-color: #fffffc;  padding: 1%;border-radius: 3px;font-weight: bold;margin-bottom: 1%;">
+                <span style="color: #f4a261;font-weight: bold;font-size: 21px;">{{heading}}</span>
+            </div> -->
+
+            <div style="width: 100%; display: inline-flex;">
+                <div style="position: relative; width: 100%;background-color: #fffffc; padding: 8px;border-radius: 3px;text-align: left;color: #677473;">
+                    <div>
+                        <br>
+                        <p>Dear {{emp_name}},</p>
+
+                        <p>Upon review, it appears that there is a discrepancy between the amount you declared {{ estimated_amount }} and the amount you have claimed is only {{ claimed_amount }} ({{round_submit_percentage}}% of the declared amount).</p>
+
+                        <p>To ensure accurate reporting and compliance with tax regulations, we kindly request that you submit the missing data as soon as possible. Your prompt attention to this matter would be greatly appreciated.</p>
+
+                        <p>Should you require any clarification or assistance in completing the submission, please do not hesitate to reach out to the accounting department.</p>
+
+                        <p>Thank you for your cooperation.</p>
+
+                        <p>Best Regards,<br>
+                            {{initiator_name}},<br>
+                            {{initiator_designation}}<br>
+                            Email: {{initiator_email}}</p>
+
+                    </div>
+                </div>
+            </div>
+		</div>
+	</div>
+</body>
+</html>

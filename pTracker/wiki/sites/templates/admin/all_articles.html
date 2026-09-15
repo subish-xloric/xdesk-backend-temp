@@ -1,0 +1,173 @@
+{% extends "layouts/base.html" %}
+{% block title %}
+All Articles
+{% endblock title %}
+{% block styles %}
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs/dt-1.10.23/datatables.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/css/selectize.bootstrap3.min.css" integrity="sha256-ze/OEYGcFbPRmvCnrSeKbRTtjG4vGLHXgOqsyLFTRjg=" crossorigin="anonymous" />
+<style>
+.title{
+    width: 300px!important;
+    }
+</style>
+{% endblock styles %}
+{% block content %}
+<div class="container featured-area-default padding-30">
+    <div class="row">
+        <!-- ARTICLE OVERVIEW SECTION -->
+        <div class="col-md-12 padding-20">
+            <div class="row">
+                <!-- BREADCRUMBS -->
+                <div class="breadcrumb-container">
+                    <ol class="breadcrumb">
+                        <li>
+                            <a href="{% url 'home' %}">
+                                <i class="fa fa-home"></i>
+                            </a>
+                        </li>
+                        <li>Masters</li>
+                        <li class="active">Pages</li>
+                    </ol>
+                </div>
+                <!-- END BREADCRUMBS -->
+                <!-- ARTICLES -->
+                <div class="fb-heading">
+                    All Articles
+                </div>
+                <hr class="style-three">
+                {% if messages %} {% for x in messages %}
+                <div class="alert alert-{{ x.tags }}">
+                    {{x}}
+                </div>
+                {% endfor %}
+                {% endif %}
+                <div class="well">
+                    Filter<br><br>
+
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="">Category</label>
+                            <select name="category" id="category" class="form-control">
+                                <option value="">----</option>
+                                {% for cate in categories %}
+                                  <option value="{{cate.id}}">{{cate.category}}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="">Author</label>
+                            <select name="author" id="author" class="form-control">
+                                <option value="">----</option>
+                                {% for auth in author %}
+                                  <option value="{{auth.id}}">{{auth.first_name}} {{auth.last_name}}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="">Approved By</label>
+                            <select name="approved_by" id="approved_by" class="form-control">
+                                <option value="">----</option>
+                                {% for app in approvers %}
+                                  <option value="{{app.id}}">{{app.first_name}} {{app.last_name}}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="">Status</label>
+                            <select name="status" id="status" class="form-control">
+                                <option value="">----</option>
+                                <option value="0">Pending</option>
+                                <option value="1">Approved</option>
+                                <option value="2">Rejected</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                <div class="table-responsive">
+                    <table id="articles_list" class="table table-bordered table-striped">
+                        <thead>
+                            <th class="title">Title</th>
+                            <th>Category</th>
+                            <th>Author</th>
+                            <th>ApprovedBy</th>
+                            <th>Status</th>
+                            <th>Remarks</th>
+                            <th>Created</th>
+                            <th width="150">Action</th>
+                        </thead>
+                        <tbody>
+
+                       </tbody>
+                    </table>
+  
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+{% block scripts %}
+<script type="text/javascript" src="https://cdn.datatables.net/v/bs/dt-1.10.23/datatables.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/js/standalone/selectize.min.js" integrity="sha256-+C0A5Ilqmu4QcSPxrlGpaZxJ04VjsRjKu+G82kl5UJk=" crossorigin="anonymous"></script>
+
+<script>
+    $(document).ready(function() {
+        $('select').selectize({
+            sortField: 'text'
+        });
+        load_datatable();
+        $('#category').change(function(){
+            category = $(this).val()
+            author = $('#author').val()
+            approved_by = $('#approved_by').val()
+            status = $('#status').val()
+            load_datatable(category,author,approved_by,status);
+        });
+        $('#author').change(function(){
+            category = $('#category').val()
+            author = $(this).val()
+            approved_by = $('#approved_by').val()
+            status = $('#status').val()
+            load_datatable(category,author,approved_by,status);
+        });
+        $('#approved_by').change(function(){
+            category = $('#category').val()
+            author = $('#author').val()
+            approved_by = $(this).val()
+            status = $('#status').val()
+            load_datatable(category,author,approved_by,status);
+        });
+        $('#status').change(function(){
+            category = $('#category').val()
+            author = $('#author').val()
+            approved_by = $('#approved_by').val()
+            status = $(this).val()
+            load_datatable(category,author,approved_by,status);
+        });
+        function load_datatable(category="",author="",approved_by="",status=""){
+            $('#articles_list').DataTable({
+                processing: true,
+                serverSide: true,
+                destroy: true,
+                ajax: {
+                    url: "{% url 'all_page_list' %}",
+                    type:'post',
+                    data:{category:category,author:author,approved_by:approved_by,status:status},
+                    headers: {
+                        'X-CSRFToken': '{{csrf_token}}'
+                    }
+                }
+            });
+    }
+    });
+
+</script>
+{% endblock scripts %}

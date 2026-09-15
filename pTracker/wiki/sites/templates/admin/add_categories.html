@@ -1,0 +1,190 @@
+{% extends "layouts/base.html" %}
+{% block title %}
+Add Categories
+{% endblock title %}
+{% block content %}
+<div class="container featured-area-default padding-30">
+    <div class="row">
+        <!-- ARTICLE OVERVIEW SECTION -->
+        <div class="col-md-12 padding-20">
+            <div class="row">
+                <!-- BREADCRUMBS -->
+                <div class="breadcrumb-container">
+                    <ol class="breadcrumb">
+                        <li>
+                            <a href="{% url 'home' %}">
+                                <i class="fa fa-home"></i>
+                            </a>
+                        </li>
+                        <li>Masters</li>
+                        <li><a href="{% url 'page_categories_list' %}">Categories</a></li>
+                        <li class="active">Add</li>
+                    </ol>
+                </div>
+                <!-- END BREADCRUMBS -->
+                <!-- ARTICLES -->
+                <div class="fb-heading">
+                    Add Category
+                </div>
+                {% if messages %} {% for x in messages %}
+                <div class="alert alert-{{ x.tags }}">
+                    {{x}}
+                </div>
+                {% endfor %}
+                {% endif %}
+                <div class="panel panel-default">
+                    <div class="panel-body">
+                        <form action="." method="post" id="categoryForm" onkeydown="return event.key != 'Enter';">
+                            {% csrf_token %}
+                            <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="">Category <i class="text-danger">*</i></label>
+                                <input type="text" name="category" class="form-control category" required>
+                                <span class="category-error text-danger"></span>
+                            </div>
+                            <div class="form-group">
+                                <label for="">Category Description</label>
+                                <textarea name="category_description" class="form-control" cols="30"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="">Active</label>
+                                <select name="active" class="form-control" required>
+                                    <option value="1">Active</option>
+                                    <option value="0">Inactive</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="well" style="padding:5px;"><b>Sub Categories</b></div>
+                            <div class="table-responsive">
+                                <button type="button" id="add_row" class="btn btn-link">+Add Sub Category</button>
+                                <table class="table table-striped" id="sub_category_table">
+                                    <thead>
+                                    <tr>
+                                        <th>Sub Category</th>
+                                        <th>Sub Category Description</th>
+                                        <th>Active</th>
+                                        <th>#</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <input type="text" name="sub_category[]" class="sub_category form-control">
+                                            <span class="subcategory-error text-danger"></span>
+                                        </td>
+                                        <td><textarea name="sub_category_description[]" class="form-control"></textarea></td>
+                                        <td>
+                                            <select name="sub_active[]" class="form-control">
+                                                <option value="1">Active</option>
+                                                <option value="0">Inactive</option>
+                                            </select>
+                                        </td>
+                                        <td><button type="button" class="delete-row btn btn-link btn-xs">Remove</button></td>
+                                    </tr>
+                                </tbody>
+
+                                </table>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <button type="button" id="submit-button" class="btn btn-primary">Save</button>
+                            <a href="{% url 'page_categories_list' %}" class="btn btn-default">Cancel</a>
+                        </div>
+                        
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}
+
+{% block scripts %}
+  <script>
+    $('#add_row').click(function (e) {
+        e.preventDefault();
+        addRow();
+    });
+
+    $('#sub_category_table').on('click', ".delete-row", function (e) {
+        e.preventDefault();
+        $(this).closest('tr').remove();
+    });
+
+    var cloned_tr = $('#sub_category_table tr:last').clone().find("input").val("").end();
+    
+    function addRow() {
+        cloned_tr.clone().appendTo('#sub_category_table');
+    }
+    $('.category').change(function(){
+        category = $(this).val()
+        check_category_is_existed(category)
+    });
+    $(document).on('change','.sub_category',function(){
+        sub_category = $(this).val()
+        element = $(this)
+        check_subcategory_is_existed(sub_category,element)
+    })
+    error_count = 0
+    function check_category_is_existed(category){
+        $.ajax({
+            url:'{% url "admin_check_category_is_existed" %}',
+            type:'post',
+            async:false,
+            data:{category:category,csrfmiddlewaretoken:'{{ csrf_token }}'},
+            success:function(res){
+                error_count += parseInt(res)
+                if(parseInt(res) > 0){
+                    $('.category').addClass('has-error')
+                    $('.category-error').html('The category is already existed!.')
+                }else{
+                    $('.category').removeClass('has-error')
+                    $('.category-error').html('')
+                    error_count -=1
+                }
+            }
+        });
+        console.log(error_count)
+    }
+    function check_subcategory_is_existed(sub_category,element){
+        category = $('.category').val()
+        $.ajax({
+            url:'{% url "admin_check_subcategory_is_existed" %}',
+            type:'post',
+            async:false,
+            data:{sub_category:sub_category,category:category,csrfmiddlewaretoken:'{{ csrf_token }}'},
+            success:function(res){
+                error_count += parseInt(res)
+                if(parseInt(res) > 0){
+                    element.addClass('has-error')
+                    element.siblings('.subcategory-error').html('The sub category is already existed!.')
+                }else{
+                    element.removeClass('has-error')
+                    element.siblings('.subcategory-error').html('')
+                    error_count -=1
+                }
+            }
+        });
+        console.log(error_count)
+    }
+    $('#submit-button').click(function(){
+        if(error_count <= 0){
+            if($('.category').val()==''){
+                $('.category').addClass('has-error')
+                $('.category-error').html('This field is required!')
+                alert('Please fill the mandatory fields')
+            }else{
+                $('.category').removeClass('has-error')
+                $('.category-error').html('')
+                $('form#categoryForm').submit();
+            }
+        }else{
+            alert('Please correct all the errors and retry')
+            return false
+        }
+    });
+  </script>
+{% endblock scripts %}

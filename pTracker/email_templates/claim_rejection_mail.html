@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>{{heading}}</title>
+</head>
+<body>
+    <div style="width: 100%;">
+		<div style="background-color: #e5e5e5;padding: 8px; margin: 1%;">
+			<!-- <div style="width: max-content;text-align: left;margin-bottom: 1%;">
+				<span style="color: #f4a261;font-weight: bold;font-size: 21px;">Leave request</span>
+			</div> -->
+            <!-- <div style="background-color: #fffffc;  padding: 1%;border-radius: 3px;font-weight: bold;margin-bottom: 1%;">
+                <span style="color: #f4a261;font-weight: bold;font-size: 21px;">{{heading}}</span>
+            </div> -->
+
+            <div style="width: 100%; display: inline-flex;">
+                <div style="position: relative; width: 100%;background-color: #fffffc; padding: 8px;border-radius: 3px;text-align: left;color: #677473;">
+                    <div>
+                        <br>
+                        <p>Dear {{emp_name}},</p>
+
+                        <p>We regret to inform you that your submitted Income Tax Assessment declaration of section {{section}}{% if category %} {{category}} {% endif %}{% if is_receipt %}, with claim amount of Rs {{claim_amount}}{% endif %} for the current financial year which was submitted on {{submitted_date}} has been rejected.</p>
+                        <p>Reason for Rejection: {{comment}}</p>
+                        <p>If you have any questions or concerns regarding the rejection or need clarification on the rejection reason, please do not hesitate to contact our dedicated HR or Account Department contacts.</p>
+                        <p>Your prompt attention to this matter is appreciated. You may resubmit your declaration with the necessary corrections before the deadline on {{deadline_date}}.</p>
+                        <p>Thank you for your understanding.</p>
+
+                        <p>Best Regards,<br>
+                            {{initiator_name}},<br>
+                            {{initiator_designation}}<br>
+                            Email: {{initiator_email}}</p>
+
+                    </div>
+                </div>
+            </div>
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,208 @@
+{% extends "layouts/base.html" %}
+{% block title %}
+Statistics
+{% endblock title %}
+{% block styles %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.css">
+<style>
+  .container {
+    width: 80%;
+    margin: 15px auto;
+  }
+</style>
+{% endblock styles %}
+{% block content %}
+<div class="container featured-area-default padding-30">
+  <div class="row">
+    <!-- ARTICLE OVERVIEW SECTION -->
+    <div class="col-md-12 padding-20">
+      <div class="row">
+        <!-- BREADCRUMBS -->
+        <div class="breadcrumb-container">
+          <ol class="breadcrumb">
+            <li>
+              <a href="{% url 'home' %}">
+                <i class="fa fa-home"></i>
+              </a>
+            </li>
+            <li>Masters</li>
+            <li class="active">Pages</li>
+          </ol>
+        </div>
+        <!-- END BREADCRUMBS -->
+        <!-- ARTICLES -->
+        <div class="fb-heading">
+          Statistics
+        </div>
+        <hr class="style-three">
+        {% if messages %} {% for x in messages %}
+        <div class="alert alert-{{ x.tags }}">
+          {{x}}
+        </div>
+        {% endfor %}
+        {% endif %}
+      </div>
+      <div class="well">
+        <div class="row">
+          <div class="col-md-4">
+            <div class="form-group">
+              <label for="">Start Date <span class="text-danger">*</span></label>
+              <input type="date" id="start_date" class="form-control">
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="form-group">
+              <label for="">End Date <span class="text-danger">*</span></label>
+              <input type="date" id="end_date" class="form-control">
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="form-group">
+              <label for="">Type <span class="text-danger">*</span></label>
+              <select name="type" id="type" class="form-control">
+                <option value="">----</option>
+                <option value="pie">Summary</option>
+                <option value="bar">Category Wise</option>
+                <option value="user_wise_report">User wise report</option>
+              </select>
+            </div>
+          </div>
+          <div class="col-md-12">
+            <button id="view_statistics" class="btn btn-danger btn-sm">View</button>
+            <form action="{% url 'make_user_wise_report' %}" method="post" id="user_excel_report_form">
+              {% csrf_token %}
+               <input type="hidden" name="from_date" id="user_from_date">
+               <input type="hidden" name="to_date" id="user_to_date">
+               <button type="button" style="display: none;" id="user_report_download" class="btn btn-danger">Download</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      <form action="{% url 'make_statistics_as_pdf' %}" method="post" target="_blank">
+        {% csrf_token %}
+      <input type="hidden" name="chart" id="chart-img">
+      <button id="print" class="btn btn-default pull-right" style="display: none;"><i class="fa fa-file-pdf-o text-danger"></i> PDF</button>
+      </form>
+      <div class="row">
+        <div class="col-md-12 print_me" id="chart_div" style="background:#fff;">
+          <div id="chart-heading" class="text-center"></div>
+          <canvas id="chart"></canvas>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{% endblock content %}
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
+<script>
+  /*$('#print').click(function (e) {
+    PrintDiv($('.print_me'))
+  });*/
+  function PrintDiv(div) {
+    html2canvas((div), {
+      onrendered: function (canvas) {
+        var myImage = canvas.toDataURL();
+        $('#chart-img').val(myImage)
+        //downloadURI(myImage, "statistics.png");
+      }
+    });
+  }
+
+  function downloadURI(uri, name) {
+    console.log(uri)
+    var link = document.createElement("a");
+
+    link.download = name;
+    link.href = uri;
+    document.body.appendChild(link);
+    link.click();
+    //after creating link you should delete dynamic link
+    //clearDynamicLink(link); 
+  }
+  $('#type').change(function(){
+    if($(this).val()=='user_wise_report'){
+      $('#user_report_download').show()
+      $('#view_statistics').hide()
+    }else{
+      $('#user_report_download').hide()
+      $('#view_statistics').show()
+    }
+
+  });
+  $('#start_date').change(function(){
+    $('#user_from_date').val($(this).val())
+  });
+  $('#end_date').change(function(){
+    $('#user_to_date').val($(this).val())
+  });
+  $('#user_report_download').click(function () {
+    var start_date = $('#start_date').val();
+    var end_date = $('#end_date').val();
+    var type = $('#type').val();
+    if (start_date && end_date && type) {
+      $('#user_excel_report_form').submit();
+    } else {
+      alert('Please fill all the mandatory fields');
+      return false
+    }
+  });
+  $('#view_statistics').click(function () {
+    var start_date = $('#start_date').val();
+    var end_date = $('#end_date').val();
+    var type = $('#type').val();
+    if (start_date && end_date && type) {
+      $.ajax({
+        url: '{% url "admin_view_statistics" %}',
+        type: 'post',
+        data: { start_date: start_date, end_date: end_date, type: type },
+        dataType: 'json',
+        headers: {
+          'X-CSRFToken': '{{csrf_token}}'
+        },
+        success: function (data) {
+          $('#chart').remove()
+          $('#chart_div').append('<canvas id="chart"></canvas>')
+          if (type == 'pie') {
+            chart_js('pie', data.data)
+          } else if (type == 'bar') {
+            chart_js('bar', data.data)
+          }
+          if(type=='pie'){
+            type='Summary';
+          }else{
+            type='Category Wise';
+          }
+          html=''
+          html+='<h3>Statistics ('+type+')</h3>'
+          html+='<h4>From - '+data.from_date+' To - '+data.to_date+'</h4><br>'
+          $('#chart-heading').html(html);
+        }
+      });
+    } else {
+      alert('Please fill all the mandatory fields')
+    }
+  });
+  function chart_js(type, data_list) {
+    var bar = document.getElementById("chart").getContext("2d");
+    var myBarChart = new Chart(bar, {
+      type: type,
+      data: data_list,
+      /*options: {
+        barValueSpacing: 20,
+        scales: {
+          yAxes: [{
+            ticks: {
+              min: 0,
+            }
+          }]
+        }
+      }*/
+    });
+    setTimeout(function(){ PrintDiv($('.print_me')),$('#print').show() }, 1000);
+  }
+</script>
+{% endblock scripts %}

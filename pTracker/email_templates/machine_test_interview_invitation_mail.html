@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta http-equiv="X-UA-Compatible" content="IE=edge">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Document</title>
+ <style>
+     @media only screen
+    and (max-device-width: 540px){
+        .span{
+            display: inline-block !important;
+        }
+        .span1{
+            width: 100% !important;
+        }
+        .span2{
+            display: none;
+        }
+    }
+ </style>
+</head>
+<body>
+	<div style="width: 100%;">
+		<div style="background-color: #e5e5e5;padding: 8px; margin: 1%;">
+
+            <!-- <div style="background-color: #fffffc;  padding: 1%;border-radius: 3px;font-weight: bold;margin-bottom: 1%;">
+                <span style="color: #7b7a92;font-weight: bold;font-size: 21px;">{{heading}}</span>
+            </div> -->
+            <div style="width: 100%; display: inline-flex;">
+                <div style="position: relative; width: 100%;background-color: #fffffc; padding: 8px;border-radius: 3px;text-align: left;color: #677473;">
+                    <div>
+                        <P>Dear &nbsp;{{candidate_name|upper}},<br><br>
+
+                            We hope this email finds you well. We are pleased to inform you that after reviewing your technical round interviews,
+                            we would like to invite you for a machine test interview.<br><br>
+                            The machine test interview is an important step in our hiring process,
+                            allowing us to assess your coding skills and problem-solving abilities.
+                            We believe it will provide a valuable opportunity for you to showcase your expertise in {{coding_tools}}.<br><br>
+                            Here are the details for the machine test interview:<br><br>
+
+                            Date: {{date}}<br>
+                            Time: {{time}}<br>
+                            Duration: {{estimateInterviewTime}} Hrs<br>
+                            Location: {{location}}<br>
+                            Instructions: We will provide the detailed instructions and the problem you need to solve during the machine test in a separate email.<br>
+                            Contact Person : {{lead_interviwer}}<br><br>
+
+                            If you have any questions or need further clarification regarding the machine test interview, please don't hesitate to reach out to us. We want to ensure that you have all the necessary information to prepare and perform your best.<br><br>
+                            Thank you for your interest in joining our team.<br>
+
+                            <br>Best regards,<br>
+                            <br>
+                            {{emp_name}}
+                            <br>
+                            {{designation}}
+                            <br>
+                            Email: {{empEmail}}
+                        </P>
+                    </div>
+                </div>
+            </div>
+		</div>
+	</div>
+</body>
+</html>

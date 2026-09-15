@@ -1,0 +1,56 @@
+version: '3.3'
+services:
+  xdeskbackend:
+    container_name: x-desk-backend
+    restart: always
+    build: .
+    volumes:
+      - .:/x_desk_backend
+      # - /projects/in_house/pTracker/application_uploads/confidential_docs:/dmdeskbackend/dm-desk-docs/confidential_docs
+      # - /projects/in_house/pTracker/application_uploads/confidential_docs/interview_candidate_profile:/dmdeskbackend/dm-desk-docs/confidential_docs/interview_candidate_profile
+      # - /projects/in_house/pTracker/application_uploads/reports/daily:/dmdeskbackend/dm-desk-docs/reports/daily
+      # - /projects/in_house/pTracker/application_uploads/reports/daily_punch_in:/dmdeskbackend/dm-desk-docs/reports/daily_punch_in
+      # - /projects/in_house/pTracker/application_uploads/reports/daily_work_hours:/dmdeskbackend/dm-desk-docs/reports/daily_work_hours
+      # - /projects/in_house/pTracker/application_uploads/reports/monthly:/dmdeskbackend/dm-desk-docs/reports/monthly
+      # - /projects/in_house/pTracker/application_uploads/reports/weekly:/dmdeskbackend/dm-desk-docs/reports/weekly
+    networks:
+      - app_network
+      #- web_network
+    depends_on:
+      - redis
+    command: python manage.py runserver 0.0.0.0:8009
+    ports:
+      - '8009:8009'
+      - '3000:3000'
+  redis:
+    image: redis:latest
+    container_name: xdesk-redis01
+    networks:
+      - app_network
+    ports:
+      - '6379:6379'
+  celery:
+    build: .
+    command: celery -A pTracker worker -l info -Q mailSender
+    volumes:
+      - .:/x_desk_backend
+    ports:
+      - 6900:6900
+    depends_on:
+      - xdeskbackend
+      - redis
+    networks:
+      - app_network
+  # celery-beat:
+  #   build: .
+  #   command: celery -A pTracker beat -l info
+  #   volumes:
+  #       - .:/dmdeskbackend
+  #   depends_on:
+  #       - dmdeskbackend
+  #       - redis
+networks:
+  app_network:
+    driver: bridge
+    #web_network:
+    #driver: bridge

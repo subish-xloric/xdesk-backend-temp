@@ -1,0 +1,102 @@
+{% extends "layouts/base.html" %}
+{% block title %}
+  Categories
+{% endblock title %}
+{% block styles %}
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs/dt-1.10.23/datatables.min.css"/>
+{% endblock styles %}
+{% block content %}
+<div class="container featured-area-default padding-30">
+  <div class="row">
+      <!-- ARTICLE OVERVIEW SECTION -->
+      <div class="col-md-8 padding-20">
+          <div class="row">
+              <!-- BREADCRUMBS -->
+              <div class="breadcrumb-container">
+                  <ol class="breadcrumb">
+                      <li>
+                          <a href="index.html">
+                              <i class="fa fa-home"></i>
+                          </a>
+                      </li>
+                      <li>Masters</li>
+                      <li class="active">Categories</li>
+                  </ol>
+              </div>
+              <!-- END BREADCRUMBS -->
+              <!-- ARTICLES -->
+              <div class="fb-heading">
+                 All Categories
+              </div>
+              <hr class="style-three">
+              {% if messages %} {% for x in messages %}
+              <div class="alert alert-{{ x.tags }}">
+                  {{x}}
+              </div>
+              {% endfor %}
+              {% endif %}
+              <a href="{% url 'admin_add_page_categories' %}" class="btn btn-success btn-sm">Add</a>
+              <br><br>
+              {% if categories %}
+              <div class="table-responsive">
+                  <table id="categories_list" class="table table-bordered table-striped">
+                      <thead>
+                          <th>Category</th>
+                          <th width="150">Action</th>
+                      </thead>
+                      <tbody>
+                      {% for cat in categories %}
+                        <tr>
+                            <td>{{cat.category}}</td>
+                            <td>
+                              <a href="{% url 'admin_edit_page_categories' slug=cat.id %}" class="btn btn-primary btn-xs">Edit</a>
+                              <a onclick="return confirm('Are you sure want to delete?.')" href="{% url 'admin_remove_page_categories' slug=cat.id %}" class="btn btn-danger btn-xs">Remove</a>
+                            </td>
+                        </tr>
+                      {% endfor %}
+                       </tbody>
+                  </table>
+
+              </div>
+
+              <!-- PAGINATION -->
+              <!-- <nav class="text-center">
+                  <div class="pagination">
+                      <span class="step-links">
+                          {% if categories.has_previous %}
+                          <a href="?page=1">&laquo; first</a>
+                          <a href="?page={{ categories.previous_page_number }}">previous</a>
+                          {% endif %}
+
+                          <span class="current">
+                              Page {{ categories.number }} of {{ categories.paginator.num_pages }}.
+                          </span>
+
+                          {% if categories.has_next %}
+                          <a href="?page={{ categories.next_page_number }}">next</a>
+                          <a href="?page={{ categories.paginator.num_pages }}">last &raquo;</a>
+                          {% endif %}
+                      </span>
+                  </div>
+              </nav> -->
+              <!-- END PAGINATION -->
+              {% else %}
+              <div class="jumbotron">
+                  No categories found !
+              </div>
+              {% endif %}
+          </div>
+      </div>
+      <!-- END ARTICLE OVERVIEW SECTION -->
+      {% include "common/sidebar.html" %}
+  </div>
+</div>
+{% endblock content %}
+{% block scripts %}
+<script type="text/javascript" src="https://cdn.datatables.net/v/bs/dt-1.10.23/datatables.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#categories_list').DataTable();
+    });
+</script>
+{% endblock scripts %}

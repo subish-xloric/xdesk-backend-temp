@@ -1,0 +1,509 @@
+{
+	"form_type": "Employee",
+	"employee": {
+		"section_header": "ANNUAL PERFORMANCE ASSESSMENT",
+		"name_of_the_employee": {
+			"label": "Name of the Employee",
+			"value": ""
+		},
+		"employee_id": "",
+		"designation": {
+			"label": "Designation",
+			"value": ""
+		},
+		"date_of_joining": {
+			"label": "Date of Joining",
+			"value": ""
+		},
+		"total_years_in_Service": {
+			"label": "Number of Years in Service (Total)",
+			"value": ""
+		},
+		"period_assessment": {
+			"label": "Period of Assessment",
+			"value": ""
+		},
+		"employee_code": ""
+	},
+	"appraiser": {
+		"name_of_the_employee": "",
+		"employee_id": ""
+	},
+	"reviewer": {
+		"name_of_the_employee": "",
+		"employee_id": ""
+	},
+	"guidlines": {
+		"section_header": "GUIDELINES",
+		"contents": {
+			"paragraph": "<p>This report is designed to help the Team Leaders to appraise each employee, his work performance and potential abilities. <br>It helps the Team Leaders to guide employees to develop and improve competencies. <br>This Appraisal Report will also provide to the Management information on each employees performance and skill development needs and in turn translate into a tool for rewards, financial or otherwise.</p> <br><p>To serve this important purpose, the report must be prepared in a careful and thorough manner. <br>Kindly go through the following points before filling up the appraisal forms</p>",
+			"guideline_point_list": [
+				"Please complete the forms on the basis of the work that the employee has been doing during the period under review.",
+				"<b> 70% weightage would be given for technical assessment and 30 % weightage for behavioural assessment.</b>",
+				" Assessment should be indicated by relevant points in the appropriate column.",
+				" Base your assessment on direct knowledge and employee’s performance on the job.",
+				" Have the rating reflect typical NORMAL performance. Avoid being influenced by recent instance of success or failure which is not typical.",
+				" Name and designation of the Reporting, Reviewing and countersigning authorities must be written clearly to avoid difficulties for future reference.",
+				" During appraisal, the rating and the overall rating should not be revealed to the employee.",
+				" Mention atleast 2 technical training & 2 Non technical training.",
+				"<span ><font color= 'red'>Please ensure that all the fields are filled and your signature is also recorded.</font color></span>",
+				" By clicking the Save for Later button, the form is only saved for you to continue filling it in a later session. The only way to submit the form to portal is by clicking on the Submit button after filling in the entire form.",
+				"<span ><font color= 'red'>Please note that you cannot Edit/Modify your form once you click SUBMIT button. Please ensure that all the particulars you have provided are correct.</font color></span>"
+			]
+		}
+	},
+	"self_assessment_form": {
+		"section_header": "SELF ASSESSMENT FORM",
+		"qustions": [{
+				"order": "1",
+				"qustion": "What are your major achievements in the last one year?",
+				"value": "",
+				"input_rule": {
+					"type": "text",
+					"min": "0",
+					"max": "100"
+				}
+			},
+			{
+				"order": "2",
+				"qustion": "What are the technical skills that you have learnt over the last year?",
+				"value": "",
+				"input_rule": {
+					"type": "text",
+					"min": "0",
+					"max": "100"
+				}
+			},
+			{
+				"order": "3",
+				"qustion": "What are your goals for the next one year?",
+				"value": "",
+				"input_rule": {
+					"type": "text",
+					"min": "0",
+					"max": "100"
+				}
+			},
+			{
+				"order": "4",
+				"qustion": "What are your developmental areas for the next assessment year?",
+				"value": "",
+				"input_rule": {
+					"type": "text",
+					"min": "0",
+					"max": "100"
+				}
+			},
+			{
+				"order": "5",
+				"qustion": "What are your views/suggestions regarding your supervisors & the organization?",
+				"value": "",
+				"input_rule": {
+					"type": "text",
+					"min": "0",
+					"max": "100"
+				}
+			},
+			{
+				"order": "6",
+				"qustion": "Concerns, if any",
+				"value": "",
+				"input_rule": {
+					"type": "text",
+					"min": "0",
+					"max": "100"
+				}
+			}
+		],
+		"appraisee_details": {
+			"label": "Name of the Appraisee",
+			"value": ""
+		},
+		"date": {
+			"label": "Date",
+			"value": ""
+		},
+		"signature": {
+			"label": "Signature",
+			"value": ""
+		},
+		"signed": {
+			"label": "signed",
+			"value": "false"
+		},
+        "designation":{
+            "label": "Designation",
+            "value": ""
+        }
+	},
+	"personal_appraisal": {
+		"section_header": "PERFORMANCE APPRAISAL CONFIDENTIAL",
+		"points_for_evaluation": "<h6>Please use the following points for evaluation.</h6><br><p>Outstanding - 5 &nbsp&nbsp Very Good - 4 &nbsp&nbsp Good - 3 &nbsp&nbsp Average - 2 &nbsp&nbsp Below Average - 1</p>",
+		"technical_assessment": {
+			"section_header": "A. TECHNICAL ASSESSMENT",
+			"table_header": [{
+				"label": "Sl.No.",
+				"width": "10%"
+			}, {
+				"label": "Technical Attributes",
+				"width": "54%"
+			}, {
+				"label": "Self",
+				"width": "12%"
+			}, {
+				"label": "Appraiser",
+				"width": "12%"
+			}, {
+				"label": "Reviewer",
+				"width": "12%"
+			}],
+			"section_rule": {
+				"type": "number",
+				"min": 1,
+				"max": 5
+			},
+			"technical_assessment_result": [{
+					"id": 1,
+					"technical_attributes": {
+						"head": "Quality of work output",
+						"sub_name": "(Neatness, thoroughness and accuracy)"
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": 2,
+					"technical_attributes": {
+						"head": "Quantity of work output",
+						"sub_name": "(Volume of satisfactory work completed; speed in completing assignments)"
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": "3",
+					"technical_attributes": {
+						"head": "Job knowledge & skills",
+						"sub_name": "(Knowledge and skills to perform assigned duties )"
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": "4",
+					"technical_attributes": {
+						"head": "Timely completion of work",
+						"sub_name": "(Commitment and attitude to achieve goals within time)"
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": "5",
+					"technical_attributes": {
+						"head": "Analytical Skills",
+						"sub_name": "(Uses analytical skill to achieve results)"
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": "6",
+					"technical_attributes": {
+						"head": "Adherence to Coding Standards",
+						"sub_name": "( Follows the coding standards)"
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": "7",
+					"technical_attributes": {
+						"head": "Planning of work",
+						"sub_name": "( Plans work ahead to avoid last minute rushes)"
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				}
+			],
+			"total_technical_attributes": {
+				"label": "TOTAL OF TECHNICAL ATTRIBUTES (A)",
+				"self_value": "",
+				"appraiser_value": "",
+				"reviewer_value": ""
+			},
+			"technical_attributes_sub_name": "*70% weightage for Techncial attributes",
+			"technical_assessment_in_percentage": {
+				"technical": {
+					"label": "Technical % (Total(A)/35)*10",
+					"value": "50%"
+				},
+				"weighted": {
+					"label": "Weighted % (Tech %*70%)",
+					"value": "50%"
+				}
+			}
+		},
+
+		"behavioural_assessment": {
+			"section_header": "B. BEHAVIOURAL ASSESSMENT",
+			"section_rule": {
+				"type": "number",
+				"min": "1",
+				"max": "5"
+			},
+			"behavioural_assessment_result": [{
+					"id": "8",
+					"technical_attributes": {
+						"head": "Discipline / Conduct",
+						"sub_name": "(Willingness and attitude to carry out instructions of superiors and obey company rules)"
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": "9",
+					"technical_attributes": {
+						"head": "Ability to work in a team",
+						"sub_name": " ( Co-operates with others; acts to foster team spirit and achievement of team goals)"
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": "10",
+					"technical_attributes": {
+						"head": "Attendance & punctuality ",
+						"sub_name": "(Regularity in attendance and punctual in time and availability at work spot.)"
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": "11",
+					"technical_attributes": {
+						"head": "Innovation/Contribution for improvements ",
+						"sub_name": "(Ability to contribute to improvements in work /to express suggestion; solve work related problems)"
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": "12",
+					"technical_attributes": {
+						"head": "Communication Skills ",
+						"sub_name": "(Ability to convey ideas, issues etc effectively and in a timely manner)"
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": "13",
+					"technical_attributes": {
+						"head": "Supervision ",
+						"sub_name": "(Ability to complete work without close supervision)"
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": "14",
+					"technical_attributes": {
+						"head": "Attitude ",
+						"sub_name": "(Does appraisee have a positive attitude towards work and life in general)"
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				},
+				{
+					"id": "15",
+					"technical_attributes": {
+						"head": "Learning & Self Development ",
+						"sub_name": "(Displays a spirit of learning new skills & technologies)"
+					},
+					"self_value": "",
+					"appraiser_value": "",
+					"reviewer_value": ""
+				}
+			],
+			"total_technical_attributes": {
+				"label": "TOTAL OF BEAHVIOURAL ASSESSMENT (B)",
+				"self_value": "",
+				"appraiser_value": "",
+				"reviewer_value": ""
+			},
+			"technical_attributes_sub_name": "*30% weightage for Behavioural attributes",
+			"behavioural_assessment_in_percentage": {
+				"behavioural": {
+					"label": "Behavioural % (Total (B)/40)*100",
+					"value": "50%"
+				},
+				"weighted": {
+					"label": "Weighted % (Beh %*30%)",
+					"value": "50%"
+				}
+			}
+		},
+		"overall_rating": {
+			"label": "OVERALL RATING",
+			"values": [{
+					"label": "TECHNICAL ASSESSMENT (70%)",
+					"value": ""
+				},
+				{
+					"label": "BEHAVIOURAL ASSESSMENT (30%)",
+					"value": ""
+				},
+				{
+					"label": "GRAND TOTAL",
+					"value": ""
+				},
+				{
+					"label": "RATING",
+					"value": ""
+				}
+
+			],
+			"attributes": [{
+				"id": 1,
+				"value": "Exceptional Contributor"
+			},
+			{
+				"id": 2,
+				"value": "Significant Contributor"
+			},
+			{
+				"id": 3,
+				"value": "Contributor"
+			},
+			{
+				"id": 4,
+				"value": "Partial Contributor"
+			}
+		]
+		},
+		"perfomance": {
+			"label":"PERFOMANCE",
+			"value": ""
+
+		},
+		"grades": [{
+				"label": "Exceptional Contributor",
+				"value": "100-81"
+			},
+			{
+				"label": "Significant Contributor",
+				"value": "66-80"
+			},
+			{
+				"label": "Contributor",
+				"value": "51-65"
+			},
+			{
+				"label": "Partial Contributor",
+				"value": "< 50"
+			}
+		]
+	},
+	"training_need_identification": {
+		"section_header": "TRAINING NEED IDENTIFICATION",
+		"content_a": {
+			"heading_1": {
+				"id": 1,
+				"label": "(A) Apraisee’s Major Strength"
+			},
+			"heading_2": {
+				"id": "2",
+				"label": "Areas for Improvement"
+			},
+			"major_strength": [],
+			"areas_for_improvement": []
+
+		},
+		"content_b": {
+			"heading": "B) TRAINING PROGRAMS (Please prioritize)",
+			"training_programs": {
+				"label": "Name of the Program",
+				"heading_1": {
+					"id": 1,
+					"value": "Technical"
+				},
+				"heading_2": {
+					"id": 2,
+					"value": "Non Technical"
+				},
+				"technical": [],
+				"non_technical": []
+			}
+		}
+	},
+	"justification_for_rating": {
+		"section_header": "Justification for Rating",
+		"value": ""
+	},
+	"recommendation_to_management": {
+		"section_header": "Recommendation to Management",
+		"value": ""
+	},
+	"appraiser_details": {
+		"employee_id": "",
+		"section_header": {
+			"label": "Name of the Appraiser",
+			"value": ""
+		},
+		"date": {
+			"label": "Date",
+			"value": ""
+		},
+		"signature": {
+			"label": "Signature",
+			"value": ""
+		},
+		"signed": {
+			"label": "signed",
+			"value": "false"
+		},
+        "designation":{
+            "label": "Designation",
+            "value": ""
+        }
+	},
+	"reviewer_details": {
+		"employee_id": "",
+		"section_header": {
+			"label": "Name of the Reviewer",
+			"value": ""
+		},
+		"date": {
+			"label": "Date",
+			"value": ""
+		},
+		"signature": {
+			"label": "Signature",
+			"value": ""
+		},
+		"signed": {
+			"label": "signed",
+			"value": "false"
+		},
+        "designation":{
+            "label": "Designation",
+            "value": ""
+        }
+	}
+
+}
