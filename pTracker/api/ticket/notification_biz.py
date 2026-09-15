@@ -85,7 +85,7 @@ class NotificationBL():
 
 
     def send_ticket_mail(self, message, emp_name, to_email, subject, cc_addresses=[]):
-        #TODO - Confirmation   ccaddress - team@digitalmesh.com
+        #TODO - Confirmation   ccaddress - team@mydomain.com
         mail_dto = {}
         mail_dto["subject"] = "{0} ".format(subject)
         mail_dto["from_address"] = settings.EMAIL_ADDRESS['do_not_reply']['name']

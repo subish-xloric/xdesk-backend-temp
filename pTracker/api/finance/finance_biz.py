@@ -659,7 +659,7 @@ class FinanceBL():
             mail_dto["from_address"] = settings.EMAIL_ADDRESS['account_em']['name']
             mail_dto["smtp_username"] = settings.EMAIL_ADDRESS['account_em']['mailID']
             mail_dto["smtp_password"] = settings.EMAIL_ADDRESS['account_em']['password']
-            mail_dto['reply_to_address'] = 'renjith@emsoftech.com'
+            mail_dto['reply_to_address'] = 'renjith@mydomain.com'
         send_email_notification.apply_async(
             [mail_dto, 1], queue=settings.CELERY_QUEUE['mail_sender'])
 

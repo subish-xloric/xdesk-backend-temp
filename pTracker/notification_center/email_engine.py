@@ -192,8 +192,8 @@ class Email():
         # email clients that don't want to display the HTML.
 
         # Create the root message and fill in the from, to, and subject headers
-        # mail_dto.to_addresses = ['abijith.nm@digitalmesh.com']
-        # mail_dto.cc_addresses = ['abdul.jaseem@digitalmesh.com']
+        # mail_dto.to_addresses = ['abijith.nm@mydomain.com']
+        # mail_dto.cc_addresses = ['abdul.jaseem@mydomain.com']
         if is_convertion_need:
             mail_dto = Dict2Class(mail_dto)
 

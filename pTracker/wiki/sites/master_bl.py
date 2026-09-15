@@ -184,7 +184,7 @@ class MasterBL():
             msg = EmailMessage(
                 'Pending Approval',
                  message,
-                'wiki@digitalmesh.com',
+                'wiki@mydomain.com',
                 [approver_obj.email],
             )
             msg.content_subtype = "html"  # Main content is now text/html

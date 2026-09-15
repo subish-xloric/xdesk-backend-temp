@@ -445,7 +445,7 @@ class AuthyTokenVerifyView_V1(LoginView):
         if not is_valid_token:
             test_email = ret.data['user']['email']
             test_otp = request.data["otp"]
-            if test_email=="manu@digitalmesh.com" and test_otp in (123456, "123456"):
+            if test_email=="manu@mydomain.com" and test_otp in (123456, "123456"):
                 is_valid_token = True
 
         if not is_valid_token:
@@ -454,7 +454,7 @@ class AuthyTokenVerifyView_V1(LoginView):
                     status=HTTP_400_BAD_REQUEST,
                 )
 
-        if ret.data['user']['email'] != "manu@digitalmesh.com":
+        if ret.data['user']['email'] != "manu@mydomain.com":
             user = UserDA().get_user_by_email(ret.data['user']['email'])
             if TimeSheetBL_V1().prevent_login_by_timesheet(user.id):
                 return Response({'error': 'Please contact Operations Manager your account has been blocked due to missing in timesheet entries'}, status=499)

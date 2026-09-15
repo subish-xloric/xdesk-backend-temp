@@ -472,7 +472,7 @@ class AdminBl():
             msg = EmailMessage(
                 f'{status} - {article.page_heading}',
                 message,
-                'wiki@digitalmesh.com',
+                'wiki@mydomain.com',
                 [created_by.email],
             )
             msg.content_subtype = "html"  # Main content is now text/html
@@ -502,7 +502,7 @@ class AdminBl():
             msg = EmailMessage(
                 f'{status} - {article.page_heading}',
                 message,
-                'wiki@digitalmesh.com',
+                'wiki@mydomain.com',
                 [approver.email],
             )
             msg.content_subtype = "html"  # Main content is now text/html

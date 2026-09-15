@@ -131,14 +131,14 @@ COMP_LEAVE_ACTION_LOG = {
     5: "Compensatory leave request edited by {0} at {1} "
 }
 
-TEAM_EMAIL = 'team@digitalmesh.com'
-EM_TEAM_EMAIL = "team@emsoftech.com"
+TEAM_EMAIL = 'team@mydomain.com'
+EM_TEAM_EMAIL = "team@mydomain.com"
 
-LEAVE_DEFAULT_NOTIFOCATION_EMAIL = 'leave@digitalmesh.com'
+LEAVE_DEFAULT_NOTIFOCATION_EMAIL = 'leave@mydomain.com'
 
-INTERVIEW_DEFAULT_MAIL = 'interview@digitalmesh.com'
+INTERVIEW_DEFAULT_MAIL = 'interview@mydomain.com'
 
-HR_EMAIL = 'radhi.menon@digitalmesh.com'
+HR_EMAIL = 'radhi.menon@mydomain.com'
 
 PROBATION_LOP_LEAVE = 10
 PROBATION_GENERAL_LEAVE = 5
@@ -174,7 +174,7 @@ ADMIN_DEPT = {
             "name":"Admin Department",
             "emp_name":"Manju KG",
             "res_emp_id" : '22',
-            'email' : 'manju.kg@digitalmesh.com',
+            'email' : 'manju.kg@mydomain.com',
             "checklist":[{"id":'1',"name":"Books/Journals/Magazines from library","value":0},{"id":'2',"name":"Lunch Coupons amount","value":0}],
             "signed" : 0,
             "signed_date" : "",
@@ -186,7 +186,7 @@ OPERATIONS_DEPT = {
             "name":"Manager Operations",
             "emp_name":"Ajithkumar S",
             "res_emp_id" : '7',
-            "email" : 'ajiths@digitalmesh.com',
+            "email" : 'ajiths@mydomain.com',
             "checklist":[{"id":'1',"name":"KT Completed","value":0}],
             "signed" : 0,
             "signed_date" : "",
@@ -198,7 +198,7 @@ QA_DEPT = {
             "name":"QA Department",
             "emp_name":"Jibin Joy",
             "res_emp_id" : '27',
-            "email" : 'jibin.joy@digitalmesh.com',
+            "email" : 'jibin.joy@mydomain.com',
             "checklist":[{"id":'1',"name":"QA Tasks Completed","value":0}],
             "signed" : 0,
             "signed_date" : "",
@@ -209,7 +209,7 @@ SAG_DEPT = {
             "dept_id": '5',
             "name":"SAG Department",
             "emp_name":"Ratheesh M R",
-            "email" : 'ratheesh@digitalmesh.com',
+            "email" : 'ratheesh@mydomain.com',
             "res_emp_id" : '8',
             "checklist":[
                 {"id":'1',"name":"Disable Domain account","value":0},
@@ -228,7 +228,7 @@ ACCOUNTS_DEPT = {
             "dept_id": '6',
             "name":"Accounts Department",
             "emp_name":"Renjith M B",
-            "email" : 'renjith@digitalmesh.com',
+            "email" : 'renjith@mydomain.com',
             "res_emp_id" : '4',
             "checklist":[{"id":'1',"name":"Documents regarding tax","value":0}],
             "signed" : 0,
@@ -241,7 +241,7 @@ HR_DEPT = {
             "name":"HR Department",
             "emp_name":"Radhi Menon",
             "res_emp_id" : '20',
-            "email" : 'radhi.menon@digitalmesh.com',
+            "email" : 'radhi.menon@mydomain.com',
             "checklist":[{"id":'1',"name":"Check List","value":0},{"id":'2',"name":"Acces Card","value":0},{"id":'3',"name":"Disable in DM Desk","value":0},{"id":'4',"name":"CSEZ Card","value":0},{"id":'5',"name":"Visting Cards","value":0},{"id":'6',"name":"Exit interview Completed","value":0}],
             "signed" : 0,
             "signed_date" : "",
@@ -322,7 +322,7 @@ PERSONAL_APPRAISAL_RATINGS = {
 
 APPRAISAL_EXCLUDED_EMPLOYESS = [2, 3, '2', '3']
 
-OFF_BOARDING_CC_MAILS = ["hr@digitalmesh.com", "ajith.s@digitalmesh.com"]
+OFF_BOARDING_CC_MAILS = ["hr@mydomain.com", "ajith.s@mydomain.com"]
 
 
 SEO_EMPLOYESS = [113,'113',152,'152', 209, '209',219,'219']
@@ -350,9 +350,9 @@ TERMINATION_ACTION_LOG = {
 
 OFFBOARDING_TYPE = {1: "Resigned", 2: "Relieved", 3: "Terminated"}
 
-EM_HR_MAIL = "hr@emsoftech.com"
+EM_HR_MAIL = "hr@mydomain.com"
 
-DM_HR_MAIL = "hr@digitalmesh.com"
+DM_HR_MAIL = "hr@mydomain.com"
 
 CANDIDATE_STATUS = {
     1: "Shortlisted for Interview",
@@ -474,10 +474,10 @@ ACCOUNT_MAP_LOG = {
 }
 
 CONSTANT_EMAIL =  {
-    'dm_account_renjith' : 'renjith@digitalmesh.com',
-    'em_hr_email': 'hr@emsoftech.com',
-    'dm_hr_email': 'hr@digitalmesh.com',
-    'reward_email': 'rewards@digitalmesh.com'
+    'dm_account_renjith' : 'renjith@mydomain.com',
+    'em_hr_email': 'hr@mydomain.com',
+    'dm_hr_email': 'hr@mydomain.com',
+    'reward_email': 'rewards@mydomain.com'
 }
 
 REWARD_STATUS = {
@@ -651,9 +651,9 @@ CODENAME_EMP = [
 ]
 
 
-EM_HR_MAIL = "hr@emsoftech.com"
+EM_HR_MAIL = "hr@mydomain.com"
 
-DM_HR_MAIL = "hr@digitalmesh.com"
+DM_HR_MAIL = "hr@mydomain.com"
 
 REWARD_TITLES = ['Think Fresh', 'Well Done']
 

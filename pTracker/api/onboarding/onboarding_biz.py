@@ -861,7 +861,7 @@ class OnboardingBL():
         mail_dto.subject = "Welcome to DM Desk !!!"
         mail_dto.from_address = settings.EMAIL_ADDRESS['do_not_reply']['name']
         mail_dto.body = message
-        mail_dto.to_addresses = [user.email, 'hr@digitalmesh.com']
+        mail_dto.to_addresses = [user.email, 'hr@mydomain.com']
         mail_dto.smtp_username = settings.EMAIL_ADDRESS['do_not_reply']['mailID']
         mail_dto.smtp_password = settings.EMAIL_ADDRESS['do_not_reply']['password']
         Email().send_html_mail(mail_dto)

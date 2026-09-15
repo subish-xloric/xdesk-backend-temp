@@ -33,7 +33,7 @@ def create_birthday_events(self):
         sub = "Job create_birthday_events failed"
         err = ExceptionHandler().get_exception()
         content = str(error) + " ." + str(err)
-        send_job_failed_notification(sub, content, 'subish@digitalmesh.com')
+        send_job_failed_notification(sub, content, 'subish@mydomain.com')
         Logs().error(err)
     return True
 

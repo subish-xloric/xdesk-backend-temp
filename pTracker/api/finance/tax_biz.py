@@ -173,7 +173,7 @@ class TaxBL():
 
                 # #TODO
                 # emp_mail = []
-                # emp_mail.append('akhil.jose@digitalmesh.com')
+                # emp_mail.append('akhil.jose@mydomain.com')
                 # #TODO
 
                 initiator_designation = self.__get_user_job_title(user_id)
@@ -596,7 +596,7 @@ class TaxBL():
                 email_msg = NotificationBL().generate_initiate_email_messages(email_content_dto)
 
                 #TODO
-                #emp_mail_list = ['subish@digitalmesh.com']
+                #emp_mail_list = ['subish@mydomain.com']
                 #TODO
 
                 NotificationBL().send_finance_mail(email_msg, emp_name, emp_mail_list, subject)
@@ -742,7 +742,7 @@ class TaxBL():
                         email_content_dto.emp_email = request.user.email
 
                         email_msg = NotificationBL().generate_initiate_employee_email_messages(email_content_dto)
-                        emp_mail = 'subish@digitalmesh.com' #TODO delete this
+                        emp_mail = 'subish@mydomain.com' #TODO delete this
                         NotificationBL().send_finance_mail(email_msg, emp_name, emp_mail, subject)
 
                 if not is_created:
@@ -2611,11 +2611,11 @@ class TaxBL():
         email_content_dto.emp_name = emp_name
         email_content_dto.last_date_of_declaration = "22/05/2024"
         email_content_dto.emp_designation = emp_job_title
-        email_content_dto.emp_email = "renjith@digitalmesh.com"
+        email_content_dto.emp_email = "renjith@mydomain.com"
         email_msg = NotificationBL().generate_initiate_email_messages(email_content_dto)
 
         #TODO
-        #emp_mail_list = ['abdul.jaseem@digitalmesh.com', 'subish@digitalmesh.com']
+        #emp_mail_list = ['abdul.jaseem@mydomain.com', 'subish@mydomain.com']
         #TODO
 
         NotificationBL().send_finance_mail(email_msg, emp_name, emp_mail_list, subject)

@@ -103,7 +103,7 @@ class TaxMailBL():
                         
                         # #TODO
                         # emp_mail = []
-                        # emp_mail.append('akhil.jose@digitalmesh.com')
+                        # emp_mail.append('akhil.jose@mydomain.com')
                         # #TODO
                         
                         initiator_designation = self.__get_user_job_title(user_id)
@@ -132,7 +132,7 @@ class TaxMailBL():
                         
                         # #TODO
                         # emp_mail = []
-                        # emp_mail.append('akhil.jose@digitalmesh.com')
+                        # emp_mail.append('akhil.jose@mydomain.com')
                         # #TODO
                         
                         initiator_designation = self.__get_user_job_title(user_id)
@@ -210,7 +210,7 @@ class TaxMailBL():
                         
                         # #TODO
                         # emp_mail = []
-                        # emp_mail.append('akhil.jose@digitalmesh.com')
+                        # emp_mail.append('akhil.jose@mydomain.com')
                         # #TODO
                         
                         initiator_designation = self.__get_user_job_title(user_id)
@@ -246,7 +246,7 @@ class TaxMailBL():
                         
                         # #TODO
                         # emp_mail = []
-                        # emp_mail.append('akhil.jose@digitalmesh.com')
+                        # emp_mail.append('akhil.jose@mydomain.com')
                         # #TODO
                         
                         initiator_designation = self.__get_user_job_title(user_id)

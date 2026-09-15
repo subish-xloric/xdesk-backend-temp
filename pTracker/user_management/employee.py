@@ -61,22 +61,22 @@ class Employee():
         return admin_employees
 
     def get_all_email_recipient(self, report_type, company_id=0):
-        emails = ['subish@digitalmesh.com',
-                  'renjith@digitalmesh.com', 'ajiths@digitalmesh.com', 'ratheesh@digitalmesh.com',
-                  'roshan@digitalmesh.com', 'ravijohn@digitalmesh.com', 'radhi.menon@digitalmesh.com',
-                  'riju.raghunathan@digitalmesh.com']
+        emails = ['subish@mydomain.com',
+                  'renjith@mydomain.com', 'ajiths@mydomain.com', 'ratheesh@mydomain.com',
+                  'roshan@mydomain.com', 'ravijohn@mydomain.com', 'radhi.menon@mydomain.com',
+                  'riju.raghunathan@mydomain.com']
         return emails
 
     def get_att_email_recipient(self, report_type, company_id=0):
-        emails = ['subish@digitalmesh.com',
-                  'renjith@digitalmesh.com', 'ajiths@digitalmesh.com', 'ratheesh@digitalmesh.com',
-                  'roshan@digitalmesh.com', 'ravijohn@digitalmesh.com', 'radhi.menon@digitalmesh.com']
+        emails = ['subish@mydomain.com',
+                  'renjith@mydomain.com', 'ajiths@mydomain.com', 'ratheesh@mydomain.com',
+                  'roshan@mydomain.com', 'ravijohn@mydomain.com', 'radhi.menon@mydomain.com']
         return emails
 
     def get_missing_time_sheet_email_recipient(self):
-        emails = ['ajiths@digitalmesh.com',
-                  'roshan@digitalmesh.com',
-                  'radhi.menon@digitalmesh.com',
-                  'subish@digitalmesh.com'
+        emails = ['ajiths@mydomain.com',
+                  'roshan@mydomain.com',
+                  'radhi.menon@mydomain.com',
+                  'subish@mydomain.com'
                   ]
         return emails

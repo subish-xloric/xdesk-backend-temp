@@ -168,8 +168,8 @@ class AssessmentBL():
                     mail_context['assessment_dates'] = assessment_dates
                     email_content = self.__generate_email_template(template_name, mail_context)
 
-                    bcc_addresses = ['subish@digitalmesh.com']  # TODO remove this
-                    # employee.email = 'subish@digitalmesh.com'  # TODO remove this
+                    bcc_addresses = ['subish@mydomain.com']  # TODO remove this
+                    # employee.email = 'subish@mydomain.com'  # TODO remove this
                     self.send_induction_email(subject, email_content, employee.email, bcc_address=bcc_addresses)
                 if res:
                     response["success"] = True
@@ -267,8 +267,8 @@ class AssessmentBL():
                     mail_context['assessment_dates'] = assessment_dates
                     email_content = self.__generate_email_template(template_name, mail_context)
 
-                    bcc_addresses = ['subish@digitalmesh.com']  # TODO remove this
-                    employee.email = 'subish@digitalmesh.com'  # TODO remove this
+                    bcc_addresses = ['subish@mydomain.com']  # TODO remove this
+                    employee.email = 'subish@mydomain.com'  # TODO remove this
                     self.send_induction_email(subject, email_content, employee.email, bcc_address=bcc_addresses)
                 if res:
                     response["success"] = True
@@ -392,8 +392,8 @@ class AssessmentBL():
                 mail_context['old_date'] = old_date
                 email_content = self.__generate_email_template(template_name, mail_context)
 
-                bcc_addresses = ['subish@digitalmesh.com']  # TODO remove this
-                # employee.email = 'subish@digitalmesh.com'  # TODO remove this
+                bcc_addresses = ['subish@mydomain.com']  # TODO remove this
+                # employee.email = 'subish@mydomain.com'  # TODO remove this
                 self.send_induction_email(subject, email_content, employee.email, bcc_address=bcc_addresses)
                 self.__create_log('reschedule', assessee_id, assessment_id, user_id)
                 response['success'] = True
@@ -593,8 +593,8 @@ class AssessmentBL():
                     mail_context['assessment_code'] = round
                     email_content = self.__generate_email_template(template_name, mail_context)
 
-                    bcc_addresses = ['subish@digitalmesh.com']  # TODO remove this
-                    # employee.email = 'subish@digitalmesh.com'  # TODO remove this
+                    bcc_addresses = ['subish@mydomain.com']  # TODO remove this
+                    # employee.email = 'subish@mydomain.com'  # TODO remove this
                     self.send_induction_email(subject, email_content, employee.email, bcc_address=bcc_addresses)
                     self.__create_log('update', assessee_id, assessment_id, user_id)
                     response['success'] = True
