@@ -1,5 +1,5 @@
 
-import uuid
+import secrets
 from types import SimpleNamespace
 
 from django.utils import timezone
@@ -40,7 +40,7 @@ class ResetpasswordBL():
         send_email_notification.apply_async([mail_dto, 1], queue=settings.CELERY_QUEUE['mail_sender'])
 
     def generate_reset_link(self, request):
-        response = {'error': None, 'uid': None, 'token': None, 'message': None}
+        response = {'error': None, 'message': None}
         try:
             email = request.data.get('email')
             user = UserDA().get_user_by_email(email)
@@ -52,7 +52,7 @@ class ResetpasswordBL():
                 temp_user = UserDA().get_reset_token(email)
                 if temp_user:
                     if temp_user.deleted or temp_user.expiry < timezone.now():
-                        token = uuid.uuid1()
+                        token = secrets.token_urlsafe(32)
                         data_obj = {'email': email, 'user_id': uidb64, 'req_code': token,
                             'expiry': timezone.now() + timezone.timedelta(minutes=settings.DEFAULT_EXPIRE_TIME)}
                         obj = UserDA().create_reset_password_token(data_obj)
@@ -60,7 +60,7 @@ class ResetpasswordBL():
                     else:
                         token = temp_user.req_code
                 else:
-                    token = uuid.uuid1()
+                    token = secrets.token_urlsafe(32)
                     data_obj = {'email': email, 'user_id': uidb64, 'req_code': token,
                         'expiry': timezone.now() + timezone.timedelta(minutes=settings.DEFAULT_EXPIRE_TIME)}
                     obj = UserDA().create_reset_password_token(data_obj)
@@ -75,8 +75,6 @@ class ResetpasswordBL():
                 message = loader.render_to_string('reset_mail_v1.html',context)
                 subject = "Reset Passsword !!!"
                 response['message'] = 'We have sent you a link to reset your password'
-                response['token'] =  token
-                response['uid'] = uidb64
                 self.send_password_reset_notification(message, to_email=user.email, subject=subject)
 
         except Exception as err:

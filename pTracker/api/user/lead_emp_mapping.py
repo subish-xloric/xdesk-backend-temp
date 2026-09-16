@@ -103,8 +103,7 @@ class LeadEmpMapping():
             "status" : 200
         }
         try:
-            is_access = self.__is_employee_lead_mapping_access(user_id)
-            is_access = True
+            is_access = self.__is_employee_lead_mapping_access(user_id)            
             if not is_access:
                 result['error'] = settings.ERROR_MSG['no_permission']
                 result['status'] = 403

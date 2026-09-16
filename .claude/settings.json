@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python manage.py makemigrations platform_access)",
+      "Bash(python3 -c \"import django; print\\(django.VERSION\\)\")",
+      "Bash(python3 manage.py makemigrations platform_access)",
+      "Bash(pip3 list *)",
+      "Bash(python3 manage.py makemigrations platform_access --skip-checks)",
+      "Bash(python3 manage.py migrate platform_access --skip-checks)",
+      "Bash(python3 -c ' *)",
+      "Bash(pkill -f \"manage.py runserver\")",
+      "Bash(apt-get install *)"
+    ]
+  }
+}

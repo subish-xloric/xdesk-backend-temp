@@ -40,6 +40,8 @@ urlpatterns = [
     path('api/rewards/',include('pTracker.api.rewards.urls')),
 
     path('api/resource/',include('pTracker.api.resource.urls')),
+
+    path('api/platform/',include('pTracker.api.platform.urls')),
     
     path('api/tax/',include('pTracker.api.finance.urls')),
     

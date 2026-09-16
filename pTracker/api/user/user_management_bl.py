@@ -3,6 +3,7 @@ from multiprocessing.sharedctypes import Value
 import pyotp
 import base64
 import os
+import secrets
 from io import BytesIO
 from types import SimpleNamespace
 from  datetime import datetime, timedelta
@@ -121,10 +122,11 @@ class UserManagementBL():
             dto.email = data.get('email')
             reporting_person = data.get('reported_to', 0)
             date_joined = data.get('date_joined', '')
-            dto.password = "12dev21"
             dto.group_id = settings.USER_ROLES['DEVELOPER']
             date_joined = Utility().convert_string_to_date_time(date_joined, "%Y-%m-%d")
-            dto.password = str(dto.first_name[:4]).upper() + date_joined.strftime("%Y%m%d")
+            # Random, unguessable temporary password (previously derived from
+            # name+join date, which are both easily discoverable/guessable).
+            dto.password = secrets.token_urlsafe(12)
             dto.date_joined = date_joined.strftime("%Y-%m-%d")
             initiate_induction = data.get('induction', False)
 

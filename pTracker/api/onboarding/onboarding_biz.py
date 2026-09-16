@@ -4,6 +4,7 @@ from datetime import datetime
 import uuid
 import os
 import base64
+import secrets
 from cryptography.fernet import Fernet
 
 from io import BytesIO
@@ -636,7 +637,9 @@ class OnboardingBL():
         dto.email = email
         date_joined = Utility().convert_string_to_date_time(date_joined, "%Y-%m-%d")
         dto.date_joined = date_joined.strftime("%Y-%m-%d")
-        dto.password = str(dto.first_name[:4]).upper() + date_joined.strftime("%Y%m%d")
+        # Random, unguessable temporary password (previously derived from
+        # name+join date, which are both easily discoverable/guessable).
+        dto.password = secrets.token_urlsafe(12)
         dto.group_id = settings.USER_ROLES['DEVELOPER']
 
         return dto

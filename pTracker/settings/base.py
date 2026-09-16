@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'pTracker.api.timesheet',
     'corsheaders',
     'pTracker.dataaccess.ptracker_access',
+    'pTracker.dataaccess.platform_access',
     'pTracker.wiki.sites',
     'pTracker.wiki.data_access.wiki_models',
     'widget_tweaks',
