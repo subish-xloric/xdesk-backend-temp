@@ -20,6 +20,7 @@ from pTracker.user_management.employee import Employee
 from pTracker.dataaccess.ptracker_access.attendance import AttendanceDA as pAttendanceDA
 from pTracker.dataaccess.ptracker_access.leave_da import LeaveDA
 from pTracker.api.user.user_management_bl_v1 import UserManagementBL_V1
+from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_TEAM
 
 
 def new_dto():
@@ -33,8 +34,8 @@ class AttendanceBL_V1():
         self.__log = Logs()
         self.__exception = ExceptionHandler()
 
-    def __get_team_members(self, role_id, user_id):
-        if role_id == 4:
+    def __get_team_members(self, scope, user_id):
+        if scope == SCOPE_TEAM:
             return UserDA().get_current_team_members_by_lead_id(user_id)
         else:
             return UserDA().get_all_active_users()
@@ -109,23 +110,23 @@ class AttendanceBL_V1():
             }
             requsests = {"leave_requests": 0, "wfh_requests": 0}
 
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (1, 2, 3, 4):
+            scope = data_scope(user_id, 'attendance')
+            if scope is None:
                 result['error'] = settings.ERROR_MSG.get('access_denied')
                 result['status'] = 403
                 return result
 
             filter_by_type = self.format_filter_by_type_for_team_stats(filter_by_type)
 
-            emps = self.__get_team_members(role_id, user_id)
-            if role_id in (1, 2, 3): #TODO verfiy
+            emps = self.__get_team_members(scope, user_id)
+            if scope == SCOPE_ALL: #TODO verfiy
                 emps = emps.exclude(id=user_id)
             if keyword:
                 for row,each in enumerate(emps):
                     user_name = each.first_name + ' ' + each.last_name
                     if user_name.upper().startswith(keyword.upper()) == False and\
                         user_name.upper().endswith(keyword.upper()) == False:
-                            if role_id == 4:
+                            if scope == SCOPE_TEAM:
                                 del emps[row]
                             else:
                                 emps = emps.exclude(id=each.id)
@@ -236,7 +237,7 @@ class AttendanceBL_V1():
                     #leave_emps.append(each_emp)
                 except Exception as err:
                     continue
-            if role_id in (1, 2, 3, 4):
+            if scope is not None:
                 request_count = UserManagementBL_V1().get_request_count(user_id, date=att_date)
                 if request_count:
                     if request_count.get("error"):

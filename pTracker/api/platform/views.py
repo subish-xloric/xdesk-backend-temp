@@ -9,6 +9,7 @@ from pTracker.api.platform.tenancy_biz import TenancyBL
 from pTracker.api.platform.role_biz import CapabilityBL
 from pTracker.api.platform.role_biz import RoleBL
 from pTracker.api.platform.membership_biz import MembershipBL
+from pTracker.api.platform.module_biz import ModuleBL
 
 
 class PlatformLoginView(APIView):
@@ -165,4 +166,35 @@ class MembershipDetailView(APIView):
 
     def put(self, request, membership_id):
         response = MembershipBL().update_membership(membership_id, request.data)
+        return Response(response, status=response.get('status', 200))
+
+
+class MembershipCapabilitiesView(APIView):
+    authentication_classes = [PlatformJWTAuthentication]
+    permission_classes = [IsAuthenticated, IsPlatformUser]
+
+    def put(self, request, membership_id):
+        response = MembershipBL().set_extra_capabilities(membership_id, request.data.get('capability_codes', []))
+        return Response(response, status=response.get('status', 200))
+
+
+class ModuleListView(APIView):
+    authentication_classes = [PlatformJWTAuthentication]
+    permission_classes = [IsAuthenticated, IsPlatformUser]
+
+    def get(self, request):
+        response = ModuleBL().list_modules()
+        return Response(response, status=response.get('status', 200))
+
+
+class CompanyModulesView(APIView):
+    authentication_classes = [PlatformJWTAuthentication]
+    permission_classes = [IsAuthenticated, IsPlatformUser]
+
+    def get(self, request, company_id):
+        response = ModuleBL().get_company_modules(company_id)
+        return Response(response, status=response.get('status', 200))
+
+    def put(self, request, company_id):
+        response = ModuleBL().set_company_modules(company_id, request.data.get('module_codes', []))
         return Response(response, status=response.get('status', 200))

@@ -9,7 +9,25 @@
       "Bash(python3 manage.py migrate platform_access --skip-checks)",
       "Bash(python3 -c ' *)",
       "Bash(pkill -f \"manage.py runserver\")",
-      "Bash(apt-get install *)"
+      "Bash(apt-get install *)",
+      "Bash(python3 manage.py bridge_legacy_companies --skip-checks)",
+      "Bash(python3 manage.py add_leave_company_branch_columns --skip-checks)",
+      "Bash(python3 -m py_compile pTracker/api/leave/leave_helper.py)",
+      "Bash(python3 manage.py seed_dm_group_org_structure --skip-checks)",
+      "Bash(xargs -I{} dirname {})",
+      "Bash(ls /projects/x-one/xDesk/xdesk-frontend)",
+      "Read(//projects/x-one/xDesk/xdesk-frontend/**)",
+      "Bash(cat /projects/x-one/xDesk/xdesk-frontend/package.json 2>/dev/null | head -50)",
+      "Bash(ls /projects/x-one/xDesk/xdesk-frontend/src/app)",
+      "Read(//projects/x-one/xDesk/xdesk-frontend/src/app/**)",
+      "Bash(find /projects/x-one/xDesk/xdesk-frontend/src -iname \"*auth*.ts\" -o -iname \"*user*.service.ts\" | grep -v spec | sort)",
+      "Read(//projects/x-one/xDesk/xdesk-frontend/src/**)",
+      "Bash(ls /projects/x-one/xDesk/xdesk-frontend/src/app/modules)",
+      "Read(//projects/x-one/xDesk/xdesk-frontend/src/app/modules/**)",
+      "Read(//projects/x-one/xDesk/xdesk-frontend/src/app/modules/auth/**)",
+      "Bash(grep -rln \"role_id\\\\|role_name\\\\|master_accountant\\\\|manage_assessment_menu\" /projects/x-one/xDesk/xdesk-frontend/src/app --include=*.ts | sort)",
+      "Read(//projects/x-one/xDesk/xdesk-frontend/src/app/common/guards/**)",
+      "Read(//projects/x-one/xDesk/xdesk-frontend/src/app/core/guards/**)"
     ]
   }
 }

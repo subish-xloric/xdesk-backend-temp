@@ -21,7 +21,7 @@ class CryptoHandler:
         salt = urandom(self.saltSize)
         arc4 = ARC4.new(salt + self.secretKey.encode('ascii','ignore'))
         plaintext = "%3d%s%s" % (len(plaintext), plaintext, urandom(256-len(plaintext)))
-        return "%s$%s" % (b64encode(salt).decode('ascii','ignore'), b64encode(arc4.encrypt(plaintext)).decode('ascii','ignore'))
+        return "%s$%s" % (b64encode(salt).decode('ascii','ignore'), b64encode(arc4.encrypt(plaintext.encode('ascii'))).decode('ascii','ignore'))
 
     def decrypt(self, ciphertext):
         """ Method to decrypt given input """

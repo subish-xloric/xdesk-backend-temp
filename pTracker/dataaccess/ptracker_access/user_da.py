@@ -449,17 +449,20 @@ class UserDA():
         return UserProfile.objects.all()
 
 
-    def get_all_supervisors_for_leave(self):
-        query = ''' SELECT DISTINCT auth_user.id, auth_user.first_name,auth_user.last_name
-                    FROM auth_user_groups
-                    join auth_user on auth_user.id=auth_user_groups.user_id
-                    where group_id != 5 and is_active=1 order by auth_user.first_name'''
-        conn = Connection("default")
-        return conn.execute(query)
+    def get_all_supervisors_for_leave(self, approver_ids):
+        """ (id, first_name, last_name) of the active users among approver_ids
+        (the holders of leave.approve in the active company). """
+        supervisors = User.objects.filter(id__in=approver_ids, is_active=True)\
+            .order_by('first_name').values_list('id', 'first_name', 'last_name')
+        return list(supervisors), None
 
     def get_user_organization(self,user_id):
         user_profile = UserProfile.objects.get(user_id = user_id)
         return user_profile.company_id
+
+    def get_user_branch(self,user_id):
+        user_profile = UserProfile.objects.get(user_id = user_id)
+        return user_profile.branch_id
     
     
     def get_user_data_by_emp_id(self,emp_id):

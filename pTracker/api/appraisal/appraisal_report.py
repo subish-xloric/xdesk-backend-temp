@@ -7,6 +7,7 @@ from django.http import HttpResponse
 # from django.conf import settings
 
 from pTracker.common.utility import Utility
+from pTracker.dataaccess.platform_access.tenancy_da import TenancyDA
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
 from pTracker.common.file_manager import FileManager
@@ -25,6 +26,7 @@ from openpyxl.styles import Font
 import json
 
 from pTracker import settings
+from pTracker.common.company_authorization import has_capability
 
 
 def new_dto():
@@ -46,12 +48,7 @@ class AppraisalReportBL():
         except:
             return None
     def __get_organization_by_org_id(self, organization_id):
-        organization = ''
-        if organization_id == 2:
-            organization = 'Digitalmesh'
-        else:
-            organization = "EM Softech"
-        return  organization
+        return TenancyDA().get_company_name(organization_id)
 
     def __get_active_emp_dict(self):
         emp_dict = {}
@@ -106,8 +103,7 @@ class AppraisalReportBL():
     def generate_appraisal_excel_report(self, user_id, year, organization, batch_id):
         result = {"error": '', 'status': 200, "data": [] }
         try:
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in [1, 2] :
+            if not has_capability(user_id, 'appraisal.manage') :
                 result['error'] = settings.ERROR_MSG['access_denied']
                 result['status'] = 403
                 return result
@@ -162,10 +158,7 @@ class AppraisalReportBL():
         if appraisal_forms:
             wb = openpyxl.Workbook()
             ws = wb.worksheets[0]
-            if company_name == 'Digitalmesh':
-                company_address = company_address = """Digital Mesh Softech India (P) Limited\nUnit 1: 43-A, E Block, 2nd Floor,\nCochin Special Economic Zone, Kakkanad, Kochi – 682 037, Kerala, India.\nTel: +91-484-4060200, Fax: +91-484-4060201"""
-            else:
-                company_address = """EM Softech LLP\nUnit 1:Plot No.43/ A, D Block, 2nd floor,\nCochin Special Economic Zone(CSEZ), Kakkanad, Kochi-682037, Kerala, India.\nTel:+91-484-2413280"""
+            company_address = TenancyDA().get_company_letterhead(organization)
             day_head = ['R']
             ws.merge_cells('A1:' + day_head[-1]+'1')
             ws.merge_cells('A3:' + day_head[-1]+'3')
@@ -294,8 +287,7 @@ class AppraisalReportBL():
     def get_appraisal_response_report(self, user_id, year,  batch_id , response_of):
         result = {"error": '', "status": 200, "data": [], "is_training_selected": False}
         try:
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in [1, 2] :
+            if not has_capability(user_id, 'appraisal.manage') :
                 result['error'] = settings.ERROR_MSG['access_denied']
                 result['status'] = 403
                 return result

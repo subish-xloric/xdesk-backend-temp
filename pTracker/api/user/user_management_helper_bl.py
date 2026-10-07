@@ -14,6 +14,7 @@ from django.conf import settings
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
 from pTracker.dataaccess.ptracker_access.onboarding_da import OnboardingDA
 from pTracker.dataaccess.ptracker_access.rewards_da import RewardsDA
+from pTracker.common.company_authorization import has_capability
 
 
 class UserManagementHelperBL():
@@ -554,7 +555,6 @@ class UserManagementHelperBL():
         result = {"error": ''}
         emp_id = None
         try:
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
             if version=='v2':
                 emp_id = UserDA().get_user_id_by_secret_key(data.get("emp_id", None))
                 data.update({'emp_id': emp_id})
@@ -564,7 +564,7 @@ class UserManagementHelperBL():
                     result['status'] = 403
                     return result
 
-            elif role_id not in [2]:
+            elif not has_capability(user_id, 'employee.manage'):
                 result['error'] = settings.ERROR_MSG['access_denied']
                 result['status'] = 403
                 return result

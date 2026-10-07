@@ -3,6 +3,8 @@ from types import SimpleNamespace
 from django.http import HttpResponse
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import data_scope, SCOPE_ALL
+from pTracker.common.company_context import get_active_company_id
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
 
@@ -34,9 +36,7 @@ class TicketReportBL():
         filter_criteria = {}
         try:
             user_id = request.user.id
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            
-            is_permitted_to_view_all_tickets = self.is_user_super_permitted(role_id)
+            is_permitted_to_view_all_tickets = self.is_user_super_permitted(user_id)
 
             for key, value in request.query_params.items():
                 if value and key not in ['page', 'per_page', 'is_assigned', 'is_reported']:
@@ -55,17 +55,19 @@ class TicketReportBL():
             all_users = UserDA().get_all_active_users()
             ticket_descriptions = TicketDA().get_all_ticket_description()
             project_ids = ProjectDA().get_all_project_ids_of_user(user_id)
+            company_project_ids = ProjectDA().get_all_project_ids_by_company(get_active_company_id())
             
             #For a user to view all tickets when a specific project is not selected in dropdown
             if int(project_id) in [None, 0]:
                 if is_permitted_to_view_all_tickets:
+                    filter_criteria['project_id__in'] = company_project_ids
                     user_tickets = TicketDA().get_all_tickets_filtered(filter_criteria)
                 else:
                     filter_criteria['project_id__in'] = project_ids
                     user_tickets = TicketDA().get_all_tickets_filtered(filter_criteria)
                 
             #For a user to view all tickets when a specific project is selected in dropdown
-            elif int(project_id) in project_ids or is_permitted_to_view_all_tickets:
+            elif int(project_id) in project_ids or (is_permitted_to_view_all_tickets and int(project_id) in company_project_ids):
                 user_tickets = TicketDA().get_all_tickets_filtered(filter_criteria)
             
             all_projects = {f"{project.project_id}":f"{project.name}" for project in all_projects }
@@ -93,8 +95,5 @@ class TicketReportBL():
         return response
     
     
-    def is_user_super_permitted(self, role_id):
-        is_user = False
-        if role_id in (1, '1', 2, '2', 3, '3'):
-            is_user = True
-        return is_user
+    def is_user_super_permitted(self, user_id):
+        return data_scope(user_id, 'ticket') == SCOPE_ALL

@@ -16,10 +16,12 @@ from django.core.files.base import ContentFile
 from django.core.files.images import get_image_dimensions
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_TEAM
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
 from pTracker.common.crypto_handler import CryptoHandler
 from pTracker.common.file_manager import FileManager
+from pTracker.api.user.access_biz import AccessBL
 
 from pTracker.notification_center.email_engine import Email
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
@@ -33,6 +35,10 @@ from pTracker.wiki.data_access.master.logs_da import LogsDA
 from pTracker.settings.constants import EMPLOYMENT_STATUS
 
 from rest_framework.response import Response
+from pTracker.common.company_authorization import has_capability
+from pTracker.common.company_authorization import users_with_capability
+from pTracker.common.company_context import get_active_company
+from pTracker.dataaccess.platform_access.tenancy_da import TenancyDA
 
 
 
@@ -93,8 +99,9 @@ class UserManagementBL_V1():
             res = {
                     "authToken": ret.get("token"),
                     "screenName": ret.get("user")["first_name"] + " " + ret.get("user")["last_name"],
-                    "identityToken": token
+                    "identityToken": token,
                 }
+            res.update(AccessBL().get_login_access(ret.get("user")["pk"]))
             return Response(res)
         except Exception as err:
             response = {}
@@ -192,7 +199,7 @@ class UserManagementBL_V1():
 
             result['emp_id'] = result.get('id')
             company_id= result.get('company_id')
-            result['company_name'] = settings.ORGANIZATION[company_id]
+            result['company_name'] = TenancyDA().get_company_name(company_id)
 
             job_title_id = result.get('job_title')
             job_title_obj = UserDA().get_job_title_by_id(job_title_id)
@@ -216,10 +223,10 @@ class UserManagementBL_V1():
         response = {"status": 200}
         try:
             res = []
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id in (1, 2, 3):
+            scope = data_scope(user_id, 'leave')
+            if scope == SCOPE_ALL:
                 team_members = UserDA().get_all_active_users()
-            elif role_id == 4:
+            elif scope == SCOPE_TEAM:
                 team_members = UserDA().get_current_team_members_by_lead_id(user_id)
             else:
                 response['error'] = "Access Denied"
@@ -249,8 +256,7 @@ class UserManagementBL_V1():
             team_members_list = []
             leave_count = 0
             wfh_count = 0
-            role_id, role = UserDA().get_user_role_by_id(user_id)
-            if role_id in (1,2,3):
+            if data_scope(user_id, 'leave') == SCOPE_ALL:
                 team_members = UserDA().get_all_active_users()
                 team_members = team_members.exclude(id=user_id)
             else:
@@ -389,7 +395,8 @@ class UserManagementBL_V1():
                     temp["id"] = each.leave_type_id
                     temp["leave_type"] = each.leave_type_name
                     response["leave_type"].append(temp)
-            supervisors, err = UserDA().get_all_supervisors_for_leave()
+            supervisors, err = UserDA().get_all_supervisors_for_leave(
+                users_with_capability('leave.approve'))
             # supervisors
             if supervisors:
                 temp_list = []
@@ -401,7 +408,8 @@ class UserManagementBL_V1():
             project_list = []
             project_dict = {}
 
-            projects = ProjectDA().get_all_projects()
+            active = get_active_company()
+            projects = ProjectDA().get_all_projects_by_company(active.company_id) if active else None
             if projects:
                 for project in projects:
                     project_dict[project.project_id] = project
@@ -477,8 +485,7 @@ class UserManagementBL_V1():
         result['leave_requests'] = pending_leave_request_count
         result['wfh_requests'] = pending_wfh_count
 
-        role_id, role = UserDA().get_user_role_by_id(user_id)
-        if role_id == 2:
+        if has_capability(user_id, 'employee.approve_profile_changes'):
                 result['profile_requests'] = self.get_profile_info_awaits_approval_count()
         else:
             result['profile_requests'] = 0
@@ -491,8 +498,7 @@ class UserManagementBL_V1():
             team_members_list = []
             leave_count = 0
             wfh_count = 0
-            role_id, role = UserDA().get_user_role_by_id(user_id)
-            if role_id in (1, 2, 3):
+            if data_scope(user_id, 'leave') == SCOPE_ALL:
                 team_members = UserDA().get_all_active_users()
                 team_members = team_members.exclude(id=user_id)
             else:
@@ -525,7 +531,7 @@ class UserManagementBL_V1():
             response['leave_requests'] = direct_reprting_requests['leave_requests']
             response['wfh_requests'] = direct_reprting_requests['wfh_requests']
 
-            if role_id == 2:
+            if has_capability(user_id, 'employee.approve_profile_changes'):
                 response['profile_requests'] = self.get_profile_info_awaits_approval_count()
             else:
                 response['profile_requests'] = 0
@@ -564,8 +570,7 @@ class UserManagementBL_V1():
                 result["error"] = "User does not exist ."
                 result['status'] = 499
                 return result
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            is_permitted = self.is_permmitted_to_edit(user_id,emp_id,role_id)
+            is_permitted = self.is_permmitted_to_edit(user_id, emp_id)
             if not is_permitted:
                 result["error"] = settings.ERROR_MSG.get('access_denied')
                 result['status'] = 403
@@ -576,7 +581,7 @@ class UserManagementBL_V1():
 
                 if is_image_valid:
 
-                    if role_id == 2:
+                    if has_capability(user_id, 'employee.manage'):
                         profile_image_name = self.update_user_profile_image(image, employee.username)
                         user_profile_update_data = {}
                         user_profile_update_data['profile_photo'] = profile_image_name
@@ -616,12 +621,12 @@ class UserManagementBL_V1():
         return result
 
 
-    def is_permmitted_to_edit(self, user_id, emp_id, role_id):
+    def is_permmitted_to_edit(self, user_id, emp_id):
         permitted = False
         if int(user_id) == int(emp_id):
             permitted = True
             return permitted
-        if role_id == 2:
+        if has_capability(user_id, 'employee.manage'):
             permitted = True
             return permitted
         return permitted

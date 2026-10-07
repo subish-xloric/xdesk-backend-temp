@@ -21,8 +21,8 @@ PUNCH_IN_CONFIG = {
 
 
 COMPANY = {}
-COMPANY['DM'] = {'ID': 2}
-COMPANY['EM'] = {'ID': 3}
+COMPANY['DM'] = {'ID': 4}
+COMPANY['EM'] = {'ID': 5}
 
 UPLOAD_PATH = {}
 UPLOAD_PATH['PUNCH_IN_REPORT'] = "/var/www/dm_ptracker/reports/daily_punch_in/"
@@ -95,7 +95,6 @@ ERROR_MSG = {
     "no_permission": "Sorry, You Don't Have Permission To Perform This Action!!!"
     }
 
-ORGANIZATION = {2:'DigitalMesh', 3: 'EM Softtech'}
 
 WFH_REQUEST_STATUS = {1: "Requested", 2: "Approved", 3: "Cancelled", 4: "Rejected"}
 
@@ -405,7 +404,6 @@ MACHINE_TEST_SKILLS = [
 
 ]
 
-COMPANY_NAME_FOR_INTERVIEW_MAIL = "Digital Mesh Softech India P Limited"
 
 FINANCE_STATUS = {
     1 : "Pending",
@@ -658,12 +656,3 @@ DM_HR_MAIL = "hr@mydomain.com"
 REWARD_TITLES = ['Think Fresh', 'Well Done']
 
 
-EM_ADDRESS = """EM Softech LLP<br>
-            Unit 1:Plot No.43/ A, D Block, 2nd floor,<br>
-            Cochin Special Economic Zone(CSEZ), Kakkanad, Kochi-682037, Kerala, India.<br>
-            Tel:+91-484-2413280"""
-
-DM_ADDRESS = """Digital Mesh Softech India (P) Limited <br>
-            Unit 1: 43-A, E Block, 2nd Floor,<br>
-            Cochin Special Economic Zone, Kakkanad, Kochi - 682 037, Kerala, India.<br>
-            Tel: +91-484-4060200, Fax: +91-484-4060201"""

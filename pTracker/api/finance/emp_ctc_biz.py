@@ -9,6 +9,7 @@ from cryptography.fernet import Fernet
 from django.conf import Settings, settings
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import has_capability
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
 from pTracker.common.file_manager import FileManager
@@ -64,11 +65,7 @@ class EmployeeCtcBL():
                 response["status"] = 499
                 return response
 
-            role_id, name = UserDA().get_user_role_by_id(user_id)
-            if role_id in (3,2,1):
-                is_manager = True
-            else:
-                is_manager = False
+            is_manager = has_capability(user_id, 'payroll.manage_ctc')
 
             fin_year_desc = fin_year.description
 
@@ -246,11 +243,7 @@ class EmployeeCtcBL():
                 response['status'] = 403
                 return response
 
-            role_id, name = UserDA().get_user_role_by_id(user_id)
-            if role_id == 3:
-                is_manager = True
-            else:
-                is_manager = False
+            is_manager = has_capability(user_id, 'payroll.manage_ctc')
 
             categories = TaxDA().get_ctc_master()
             categories_earnings = categories.filter(type='Earning')
@@ -421,11 +414,7 @@ class EmployeeCtcBL():
                 return response
 
             #user_id = request.user.id
-            role_id, name = UserDA().get_user_role_by_id(user_id)
-            if role_id == 3:
-                is_manager = True
-            else:
-                is_manager = False
+            is_manager = has_capability(user_id, 'payroll.manage_ctc')
 
             current_fyd = FinanaceDA().get_financial_year_by_date(datetime.now())
             #assessment_years = FinanaceDA().get_all_financial_years()

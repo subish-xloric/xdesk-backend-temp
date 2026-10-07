@@ -14,9 +14,12 @@ from pTracker.notification_center.email_engine import Email
 from pTracker.dataaccess.ptracker_access.leave_da import LeaveDA
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
 from pTracker.user_management.holiday_da import HolidayDA
+from pTracker.common.company_authorization import has_capability
+from pTracker.common.company_authorization import users_with_capability
 
 
 from pTracker.api.leave.leave_notification_biz import LeaveNotificationBL
+from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_TEAM
 # from pTracker.dataaccess.ptracker_access.leave_da import LeaveRequestLog
 
 def new_dto():
@@ -245,8 +248,7 @@ class LeaveHelperBL():
         response = {'error': None, 'message': None}
         try:
             cc_list = []
-            role_id, role_name = UserDA().get_user_role_by_id(user.id)
-            if role_id not in (1, 2, 3, '1', '2', '3'):
+            if not has_capability(user.id, 'leave.manage_all'):
                 response["error"] = settings.ERROR_MSG.get('access_denied')
                 return response
             comment = data.get('comment', None)
@@ -283,11 +285,11 @@ class LeaveHelperBL():
         try:
             start_date = date.today().replace(day=1)
             end_date = start_date + timedelta(days=settings.UPCOMING_MONTH)
-            role_id, role_name = user_da.get_user_role_by_id(user_id)
-            if role_id in (1, 2, 3):
+            scope = data_scope(user_id, 'leave')
+            if scope == SCOPE_ALL:
                 response['leave'] = []
                 team_member_list = user_da.get_all_active_users()
-            elif role_id == 4:
+            elif scope == SCOPE_TEAM:
                 team_member_list = user_da.get_current_team_members_by_lead_id(
                     user_id)
             else:
@@ -359,7 +361,8 @@ class LeaveHelperBL():
                     all_leave_types.append({"id": each.leave_type_id,
                                             "leave_type": each.leave_type_name})
                 response['leave_type'] = all_leave_types
-            supervisors, aaa = UserDA().get_all_supervisors_for_leave()
+            supervisors, aaa = UserDA().get_all_supervisors_for_leave(
+                users_with_capability('leave.approve'))
             # supervisors
             if supervisors:
                 temp_list = []

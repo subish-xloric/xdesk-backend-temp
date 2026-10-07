@@ -13,4 +13,5 @@ CELERY_IMPORTS_TUPLE = (
     "pTracker.cronjobs.collect_missing_data",
     "pTracker.cronjobs.interview_notifications",
     "pTracker.cronjobs.tv_notification",
+    "pTracker.cronjobs.attendance_v2_daily",
 )

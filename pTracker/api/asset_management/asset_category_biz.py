@@ -1,4 +1,5 @@
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import has_capability
 from pTracker.dataaccess.ptracker_access.asset_da import AssetDA
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
 
@@ -28,9 +29,7 @@ class AssetCategoryBL():
 
             #TODO permissions to be set user based
             userID = user.id
-            roleID, roleName = objUser.get_user_role_by_id(userID)
-
-            if roleID not in (1, "1", 2, "2"):
+            if not has_capability(userID, 'asset.manage_categories'):
                 response['error'] = "You have no permission to create or update asset category details"
                 return response
 
@@ -82,9 +81,7 @@ class AssetCategoryBL():
         try:
             #TODO permissions to be set user based
             userID = user.id
-            roleID, roleName = objUser.get_user_role_by_id(userID)
-
-            if roleID not in (1, "1", 2, "2"):
+            if not has_capability(userID, 'asset.manage_categories'):
                 response['error'] = "You have no permission to delete asset category"
                 return response
 
@@ -126,9 +123,7 @@ class AssetCategoryBL():
         try:
             #TODO permissions to be set user based
             userID = user.id
-            roleID, roleName = objUser.get_user_role_by_id(userID)
-
-            if roleID not in (1, "1", 2, "2"):
+            if not has_capability(userID, 'asset.manage_categories'):
                 response['error'] = "You have no permission to view the asset category list"
                 return response
             asset_category = objAsset.get_asset_category()
@@ -171,9 +166,7 @@ class AssetCategoryBL():
         try:
             #TODO permissions to be set user based
             userID = user.id
-            roleID, roleName = objUser.get_user_role_by_id(userID)
-
-            if roleID not in (1, "1", 2, "2"):
+            if not has_capability(userID, 'asset.manage_categories'):
                 response['error'] = "You have no permission to view the asset category list"
                 return response
             asset_category = objAsset.get_asset_category()
@@ -211,9 +204,7 @@ class AssetCategoryBL():
             #TODO permissions to be set user based
             userID = user.id
             parentID = data.get('parent_categoryID', 0)
-            roleID, roleName = objUser.get_user_role_by_id(userID)
-
-            if roleID not in (1, "1", 2 ,"2"):
+            if not has_capability(userID, 'asset.manage_categories'):
                 response['error'] = "You have no permission to view sub asset category list"
                 return response
 

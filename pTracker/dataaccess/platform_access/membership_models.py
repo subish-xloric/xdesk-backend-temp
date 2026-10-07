@@ -4,6 +4,7 @@ from django.db import models
 from pTracker.dataaccess.platform_access.tenancy_models import Company
 from pTracker.dataaccess.platform_access.tenancy_models import Branch
 from pTracker.dataaccess.platform_access.role_models import Role
+from pTracker.dataaccess.platform_access.capability_models import Capability
 """ The following tables are created here
 Membership
 
@@ -11,6 +12,11 @@ Links an existing employee (auth_user) to a Company (and optionally a
 specific Branch) with a company-scoped Role. One employee can hold
 several Memberships - e.g. a different role per branch, or a
 company-wide role alongside a branch-specific one.
+
+extra_capabilities grants capabilities to this one membership on top of
+whatever its Role already grants (additive only, like auth_user_user_
+permissions, but scoped to this specific user+company+branch+role
+combination instead of being global).
 """
 
 class Membership(models.Model):
@@ -29,6 +35,8 @@ class Membership(models.Model):
     branch = models.ForeignKey(Branch, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='memberships')
     role = models.ForeignKey(Role, on_delete=models.PROTECT, related_name='memberships')
+    extra_capabilities = models.ManyToManyField(Capability, blank=True, related_name='extra_on_memberships',
+        db_table='platform_membership_extra_capabilities')
     is_primary = models.BooleanField(default=False)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_ACTIVE)
     created_at = models.DateTimeField(auto_now_add=True)

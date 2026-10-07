@@ -25,6 +25,7 @@ from pTracker.api.leave.leave_notification_biz import LeaveNotificationBL
 from pTracker.settings import constants
 from pTracker.notification_center.email_engine import Email
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import data_scope, has_capability, SCOPE_ALL, SCOPE_TEAM
 
 
 def new_dto():
@@ -506,11 +507,11 @@ class LeaveBL():
         result = {'error': None, 'status': [], 'team_members': []}
         try:
             if user_id:
-                role_id, role_name = UserDA().get_user_role_by_id(user_id)
-                if role_id not in (1, 2, 3, 4, "1", "2", "3", "4"):
+                scope = data_scope(user_id, 'leave')
+                if scope is None:
                     result['error'] = settings.ERROR_MSG.get('access_denied')
                     return result
-                if role_id in (1, 2, 3):
+                if scope == SCOPE_ALL:
                     members_list = UserDA().get_all_active_users()
                 else:
                     members_list = UserDA().get_current_team_members_by_lead_id(user_id)
@@ -535,9 +536,9 @@ class LeaveBL():
             temp = {}
             user_dic = {}
 
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
+            scope = data_scope(user_id, 'leave')
             # check permission
-            if role_id not in (1, 2, 3, 4, "1", "2", "3", "4"):
+            if scope is None:
                 result["error"] = settings.ERROR_MSG.get('access_denied')
                 return result
 
@@ -572,7 +573,7 @@ class LeaveBL():
                     leave_data = LeaveDA().get_all_leave_requests_by_period(period)
                     if is_mobile and leave_data:
                         leave_data = leave_data.order_by('-start_date')
-                    if role_id in (1, 2, 3):
+                    if scope == SCOPE_ALL:
                         team_members = UserDA().get_all_active_users()
                     else:
                         team_members = UserDA().get_current_team_members_by_lead_id(user_id)
@@ -669,10 +670,10 @@ class LeaveBL():
         try:
             user_id = user.id
             permitted =  False
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id in (1, 2, 3, 4):
+            scope = data_scope(user_id, 'leave')
+            if scope is not None:
                 response['is_display'] = 1
-                if role_id == 4:
+                if scope == SCOPE_TEAM:
                     response['is_display'] = 0
                 permitted =  True
             if not permitted:
@@ -684,7 +685,7 @@ class LeaveBL():
                 members_list = UserDA().get_current_team_members_by_lead_id(user_id)
                 members_list.append(UserDA().get_user_by_id(user_id))
             else:
-                if role_id == 4:
+                if scope == SCOPE_TEAM:
                     # get team members
                     members_list = UserDA().get_current_team_members_by_lead_id(user_id)
                     members_list.append(user)
@@ -721,8 +722,8 @@ class LeaveBL():
         response = { 'error': None, 'reports': [] }
         try:
             permitted = False
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id in (1, 2, 3, 4):
+            scope = data_scope(user_id, 'leave')
+            if scope is not None:
                 permitted =  True
             if not permitted:
                 response['error'] = settings.ERROR_MSG.get('access_denied')
@@ -831,8 +832,8 @@ class LeaveBL():
             "team_members":[]
         }
         try:
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id in (1,2,3):
+            scope = data_scope(user_id, 'leave')
+            if scope == SCOPE_ALL:
                 members = UserDA().get_all_active_users()
             else:
                 members= UserDA().get_current_team_members_by_lead_id(user_id)
@@ -891,9 +892,8 @@ class LeaveBL():
             length_hours = settings.LEAVE_HOURS['Fullday']
             user_id = user.id
             user_name = user.first_name + " " + user.last_name
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
             access_denied = 1
-            if role_id == 2 or user_id == 7: #Added Ajith as per his request
+            if has_capability(user_id, 'leave.manage_all'):
                 access_denied = 0
                 
             if access_denied:

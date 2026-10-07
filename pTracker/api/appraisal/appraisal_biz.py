@@ -23,6 +23,7 @@ from pTracker.dataaccess.ptracker_access.appraisal_da import AppraisalDA
 from pTracker.cronjobs.generate_appraisal_form import generate_appraisal_forms
 from pTracker.api.appraisal.appraisal_notification_biz import AppraisalNotificationBL
 from pTracker.dataaccess.ptracker_access.appraisal_models import AppraisalBatches
+from pTracker.common.company_authorization import has_capability
 #from pTracker.dataaccess.ptracker_access.appraisal_da import AppraisalDA
 
 
@@ -111,8 +112,7 @@ class AppraisalBL():
         }
         result_list = []
         try:
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (2, '2',):
+            if not has_capability(user_id, 'appraisal.manage'):
                 result['error'] = settings.ERROR_MSG['access_denied']
                 result['status'] = 403
                 return result
@@ -203,8 +203,7 @@ class AppraisalBL():
             "data": ''
         }
         try:
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (2, '2',):
+            if not has_capability(user_id, 'appraisal.manage'):
                 result['error'] = settings.ERROR_MSG['access_denied']
                 result['status'] = 403
                 return result
@@ -260,9 +259,8 @@ class AppraisalBL():
                 result['error'] = "Invalid appraisal token provided."
                 return result
 
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
 
-            if role_id in (1,2):
+            if has_capability(user_id, 'appraisal.manage'):
                 is_permitted = True
                 is_view_enabled = True
             else:
@@ -386,8 +384,7 @@ class AppraisalBL():
             if not updating_user:
                 result['error'] = settings.ERROR_MSG['access_denied']
                 return result
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            expiry_date, expiry_status = self.appraisal_form_access_expiry_check(user_id, role_id, appraisal_form)
+            expiry_date, expiry_status = self.appraisal_form_access_expiry_check(user_id, appraisal_form)
             if expiry_status:
                 result['error'] = f"Your acess to this appraisal form expired on %s " %(expiry_date.strftime("%d/%m/%Y"))
                 result['permission'] = False
@@ -574,8 +571,8 @@ class AppraisalBL():
 
 
             organization = self.__get_clean_integer(organization)
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            forms = AppraisalDA().get_all_my_appraisal_forms_by_appraisal_period(user_id, appraisal_period.period_id, role_id)
+            forms = AppraisalDA().get_all_my_appraisal_forms_by_appraisal_period(
+                user_id, appraisal_period.period_id, see_all=has_capability(user_id, 'appraisal.manage'))
             profile_dict =  self.__user_profile_dict()
             emp_dict = self.__get_all_emp_dict()
             all_appraisal_log = AppraisalDA().get_all_appraisal_log()
@@ -593,14 +590,14 @@ class AppraisalBL():
                     company_id = 0
                     publish_access = False
 
-                    if role_id in (1,2):
+                    if has_capability(user_id, 'appraisal.manage'):
                         publish_access = True
                     elif each.appraiser_id==user_id or each.reviewer_id==user_id:
                         publish_access = True
 
                     if each.employee_id in lead_ids:
                         publish_access = False
-                        if role_id in (1, '1', 2, '2', 3, '3'):
+                        if has_capability(user_id, 'appraisal.view'):
                             publish_access = True
 
                     user_profile = profile_dict.get(each.employee_id, None)
@@ -621,7 +618,7 @@ class AppraisalBL():
                         temp['status'] = each.status
                         temp['appraisal_token'] = each.appraisal_token
                         temp['rating'] = "N.A"
-                        if role_id in (1,2) and each.status in (4,6):
+                        if has_capability(user_id, 'appraisal.manage') and each.status in (4,6):
                             if each.rating is not None and each.rating !=0 :
                                 temp['rating'] = settings.PERSONAL_APPRAISAL_RATINGS[each.rating]
                             else:
@@ -705,8 +702,7 @@ class AppraisalBL():
 
             organization = self.__get_clean_integer(organization)
 
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id != 2:
+            if not has_capability(user_id, 'appraisal.manage'):
                 result['error'] = settings.ERROR_MSG['access_denied']
                 result['status'] = 403
                 return result
@@ -768,7 +764,7 @@ class AppraisalBL():
                 .format(err, self.__log.error(self.__exception.get_exception()))
         return result
 
-    def appraisal_form_access_expiry_check(self, user_id, role_id, appraisal_form):
+    def appraisal_form_access_expiry_check(self, user_id, appraisal_form):
 
         expiry_status = False
         employee_exp_date = appraisal_form.employee_expiry_date
@@ -776,7 +772,7 @@ class AppraisalBL():
         reviewer_exp_date = appraisal_form.reviewer_expiry_date
         expiry_date = None
 
-        if role_id in [1, '1', 2, '2']:
+        if has_capability(user_id, 'appraisal.manage'):
             return expiry_date, expiry_status
 
         elif appraisal_form.employee_id == user_id:
@@ -809,8 +805,7 @@ class AppraisalBL():
 
     def __is_download_performance_assesment_letter(self, login_user_id, login_emp_code, filename):
         is_permitted = False
-        role_id, role_name = UserDA().get_user_role_by_id(login_user_id)
-        if role_id in (1,2,3):
+        if has_capability(login_user_id, 'appraisal.view'):
             return True
         emp_code = filename.split('_')[0]
         emp_obj = UserDA().get_user_by_emp_id(emp_code)
@@ -867,8 +862,7 @@ class AppraisalBL():
 
 
     def __is_permission_to_publish_performance_letter(self, login_user_id, filename):
-        role_id, role_name = UserDA().get_user_role_by_id(login_user_id)
-        if role_id in (1,2):
+        if has_capability(login_user_id, 'appraisal.manage'):
             return True
         emp_code = filename.split('_')[0]
         emp_obj = UserDA().get_user_by_emp_id(emp_code)

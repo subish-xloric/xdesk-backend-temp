@@ -14,6 +14,7 @@ from datetime import date,datetime
 from pTracker.api.leave.leave_helper import LeaveHelperBL
 from pTracker.common.utility import Utility
 from pTracker.api.leave.leave_notification_biz import LeaveNotificationBL
+from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_TEAM
 
 def new_dto():
     dto = SimpleNamespace()
@@ -85,11 +86,8 @@ class WorkFromHomeBL():
         finally:
             return result
 
-    def __is_access_to_team_wfh_request(self, user_id, role_id):
-        is_access = False
-        if role_id in (1, 2, 3, 4, "1", "2", "3", "4"):
-            is_access = True
-        return is_access
+    def __is_access_to_team_wfh_request(self, scope):
+        return scope is not None
 
 
     def get_all_my_team_wfh_requests(self, user_id, emp_dict):
@@ -97,11 +95,11 @@ class WorkFromHomeBL():
         wfh_request_list = []
         user_da = UserDA()
         try:
-            role_id, role_name = user_da.get_user_role_by_id(user_id)
-            if not self.__is_access_to_team_wfh_request(user_id, role_id):
+            scope = data_scope(user_id, 'attendance')
+            if not self.__is_access_to_team_wfh_request(scope):
                 return result
 
-            if role_id == 4:
+            if scope == SCOPE_TEAM:
                 team_member_list = user_da.get_current_team_members_by_lead_id(user_id)
             else:
                 team_member_list = user_da.get_all_active_users()
@@ -460,11 +458,11 @@ class WorkFromHomeBL():
         wfh_request_list = []
         user_da = UserDA()
         try:
-            role_id, role_name = user_da.get_user_role_by_id(user_id)
-            if not self.__is_access_to_team_wfh_request(user_id, role_id):
+            scope = data_scope(user_id, 'attendance')
+            if not self.__is_access_to_team_wfh_request(scope):
                 return result
 
-            if role_id == 4:
+            if scope == SCOPE_TEAM:
                 team_member_list = user_da.get_current_team_members_by_lead_id(
                     user_id)
             else:

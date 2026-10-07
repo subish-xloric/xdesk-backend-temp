@@ -19,6 +19,7 @@ from pTracker.user_management.employee import Employee
 from pTracker.dataaccess.ptracker_access.attendance import AttendanceDA as pAttendanceDA
 from pTracker.dataaccess.ptracker_access.leave_da import LeaveDA
 from pTracker.api.timesheet.timesheet_report_biz import TimesheetReportBL
+from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_TEAM
 
 
 def new_dto():
@@ -464,12 +465,12 @@ class AttendanceBL():
             team_avg_hours = 0
             team_avg_punctual_time = 0
             team_count = 0
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id in (1, 2, 3):
+            scope = data_scope(user_id, 'attendance')
+            if scope == SCOPE_ALL:
                 response['team_avg_hours'] = 'N.A'
                 response['team_avg_punctual_time'] = 'N.A'
                 return response
-            if role_id == 4:
+            if scope == SCOPE_TEAM:
                 team_member_list = UserDA().get_current_team_members_by_lead_id(user_id)
             else:
                 team_member_list = UserDA().get_current_team_members_by_emp_id(user_id)
@@ -657,8 +658,8 @@ class AttendanceBL():
 
     def get_wfh_employees(self, user_id, work_date):
         wfh_emps = []
-        role_id, role_name = UserDA().get_user_role_by_id(user_id)
-        if role_id not in (1, 2, 3):
+        scope = data_scope(user_id, 'attendance')
+        if scope != SCOPE_ALL:
             return [{"error": "You have no permission to view this page !!!"}]
 
         att_log = AttendanceDA().get_wfh_employees(work_date)
@@ -770,8 +771,8 @@ class AttendanceBL():
         no_of_leave = 0
         no_of_not_punch = 0
         try:
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id in (1, 2, 3, 4):
+            scope = data_scope(user_id, 'attendance')
+            if scope is not None:
                 response['is_display'] = 1
 
             emps = UserDA().get_all_active_users()
@@ -864,12 +865,12 @@ class AttendanceBL():
         detail_items_list = []
 
         try:
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (1, 2, 3, 4):
+            scope = data_scope(user_id, 'attendance')
+            if scope is None:
                 result['error'] = settings.ERROR_MSG.get('access_denied')
                 return result
 
-            if is_mobile and role_id == 4:
+            if is_mobile and scope == SCOPE_TEAM:
                 emps = UserDA().get_current_team_members_by_lead_id(user_id)
             else:
                 emps = UserDA().get_all_active_users()
@@ -889,7 +890,7 @@ class AttendanceBL():
                         total_employees = total_employees - 1
                     except :
                         pass
-            if is_mobile and role_id==4:
+            if is_mobile and scope == SCOPE_TEAM:
                 if active_users_emp_code:
                     active_users_emp_code = active_users_emp_code
             else:
@@ -932,7 +933,7 @@ class AttendanceBL():
             status = [status_requested_id, status_approved_id])
 
             for each_emp in active_users_emp_code:
-                if is_mobile and role_id==4:
+                if is_mobile and scope == SCOPE_TEAM:
                     for ec in emps:
                         if ec.username==each_emp:
                             emp=ec
@@ -1036,8 +1037,8 @@ class AttendanceBL():
             obj_end_date = datetime.strptime(end_date, "%Y-%m-%d")
             if obj_end_date.month == datetime.now().month:
                 obj_end_date = datetime.now()
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (1, 2, 3,):
+            scope = data_scope(user_id, 'attendance')
+            if scope != SCOPE_ALL:
                 result['error'] = settings.ERROR_MSG.get('access_denied')
                 return result
 

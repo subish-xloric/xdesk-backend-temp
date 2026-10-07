@@ -18,6 +18,7 @@ from pTracker.dataaccess.ptracker_access.leave_da import LeaveDA
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
 from pTracker.dataaccess.ptracker_access.holiday_da import HolidayDA
 from pTracker.settings import constants
+from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_TEAM
 
 
 def new_dto():
@@ -57,8 +58,8 @@ class LeaveReportsBL():
             status_requested_id = settings.LEAVE_REQUEST_STATUS['Requested']
             status_approved_id = settings.LEAVE_REQUEST_STATUS['Approved']
 
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (1, 2, 3, 4, "1", "2", "3", "4"):
+            scope = data_scope(user_id, 'leave')
+            if scope is None:
                 result["error"] = settings.ERROR_MSG.get('access_denied')
                 return result
 
@@ -83,7 +84,7 @@ class LeaveReportsBL():
             #     active_users = helper.get_all_user_dict_by_lead_id(user_id)
             if lead_id:
                 user_id = lead_id
-                role_id = 4
+                scope = SCOPE_TEAM
             active_users = helper.get_all_user_dict()
             leave_types = helper.get_leave_type_dict()
 
@@ -92,7 +93,7 @@ class LeaveReportsBL():
                 for leave in leaves:
                     leave_emp_id_list.append(leave.employee_id)
             leave_emp_id_list = list(set(leave_emp_id_list))
-            if role_id == 4:
+            if scope == SCOPE_TEAM:
                 emp_temp_data = UserDA().get_current_team_members_by_lead_id(user_id)
                 emp_temp_id = []
                 temp_user = UserDA().get_user_by_id(user_id)
@@ -203,8 +204,8 @@ class LeaveReportsBL():
         leave_period_id = 0
 
         try:
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (1, 2, 3, "1", "2", "3"):
+            scope = data_scope(user_id, 'leave')
+            if scope != SCOPE_ALL:
                 response["error"] = settings.ERROR_MSG.get('access_denied')
                 return response
 
@@ -297,7 +298,7 @@ class LeaveReportsBL():
             status_approved_id = settings.LEAVE_REQUEST_STATUS['Approved']
             team_members = [user_id]
 
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
+            scope = data_scope(user_id, 'leave')
 
             year_start = date(year, 1, 1)
             #year_end = date(date.today().year, 12, 31)
@@ -312,9 +313,9 @@ class LeaveReportsBL():
                 result["error"] = "Invalid Leave Period."
                 return result
 
-            if role_id in (1, 2, 3):
+            if scope == SCOPE_ALL:
                 users = UserDA().get_current_team_members_by_lead_id(0)
-            elif role_id == 4:
+            elif scope == SCOPE_TEAM:
                 users = UserDA().get_current_team_members_by_lead_id(user_id)
             else:#tttttttttt
                 temp_user = UserDA().get_user_by_id(user_id)
@@ -323,7 +324,7 @@ class LeaveReportsBL():
             for user in users:
                 team_members.append(user.id)
 
-            if role_id == 5 :
+            if scope is None :
                 leaves = leave_da.get_employee_leave_by_date(start_date, end_date, user_id)
             else:
                 if emp_id:
@@ -384,15 +385,15 @@ class LeaveReportsBL():
             today_stats = 0
             month_stats = 0
             status_requested_id = settings.LEAVE_REQUEST_STATUS['Requested']
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
+            scope = data_scope(user_id, 'leave')
             start_day = date.today() #date(date.today().year, 1, 31)#ttttttttt
             end_day = date(start_day.year, 12, 31)
             this_week_end  = Utility().get_next_n_working_days(7)
 
-            if role_id == 4:
+            if scope == SCOPE_TEAM:
                 team_members = UserDA().get_current_team_members_by_lead_id(user_id)
                 team_members.append(UserDA().get_user_by_id(user_id))
-            elif role_id ==5 :
+            elif scope is None :
                 team_members = UserDA().get_current_team_members_by_emp_id(user_id)
                 team_members.append(UserDA().get_user_by_id(user_id))
             else:
@@ -405,7 +406,7 @@ class LeaveReportsBL():
             this_week = self.__process_leave_count_by_date_range(date.today(), this_week_end[-1], team_members)
             result["graph_data"] = {'today':today_stats, 'month':month_stats, 'this_week':this_week}
 
-            if role_id in (1, 2, 3, 4):
+            if scope is not None:
 
                 lead_mappings = UserDA().get_all_employee_lead_mapping()
                 leave_request = LeaveDA().get_all_leave_requests()
@@ -424,7 +425,7 @@ class LeaveReportsBL():
                     total_pending = leave_request.filter(status=1).count()
                     sub_list = [{'name':value[0], 'value':value[1]} for value in Counter(temp_list).items()]
 
-                if role_id in (1, 2, 3):
+                if scope == SCOPE_ALL:
                     result["is_display"] = 1
                 result["total_pending"] = {'total_pending':total_pending,'sub_list':sub_list}
                 result["comp_count"] = self.__get_pending_compensatory_request(team_members)
@@ -468,8 +469,8 @@ class LeaveReportsBL():
     def get_pending_leaves(self, user_id, limit = 3):
         response = {'error': None, 'pending_leaves':[]}
         try:
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id != 5:
+            scope = data_scope(user_id, 'leave')
+            if scope is not None:
                 return response
             temp ={}
             today = date.today()

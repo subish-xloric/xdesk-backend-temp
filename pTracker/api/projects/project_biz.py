@@ -6,6 +6,8 @@ from types import SimpleNamespace
 from django.db.models import base
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import has_capability
+from pTracker.common.company_context import get_active_company_id
 from pTracker.dataaccess.ptracker_access.project_da import  ProjectDA
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
 
@@ -39,7 +41,7 @@ class ProjectBL():
         obj_project = ProjectDA()
         project_dict = {}
 
-        projects = obj_project.get_all_projects()
+        projects = obj_project.get_all_projects_by_company(get_active_company_id())
         if projects:
             for project in projects:
                 project_dict[project.project_id] = project
@@ -62,8 +64,7 @@ class ProjectBL():
     def get_all_active_modules_by_project(self, project_id, user_id):
         module_list = []
         obj_project = ProjectDA()
-        role_id, role_name = UserDA().get_user_role_by_id(user_id)
-        if role_id in (1, 2, 3):
+        if has_capability(user_id, 'project.view_all'):
             is_access = True
         else:
             is_access = obj_project.is_project_accessible(project_id, user_id)
@@ -88,8 +89,6 @@ class ProjectBL():
         obj_project = ProjectDA()
         try:
             data = request.data
-            #role_id = request.role_id
-            role_id, role_name = UserDA().get_user_role_by_id(request.user.id)
             is_update = False
             module_id = data.get('module_id', 0)
             if module_id:
@@ -98,7 +97,7 @@ class ProjectBL():
             project_id = data.get('project_id', 0)
             created_by = request.user.id
             if not obj_project.is_project_lead(project_id, created_by):
-                if role_id > 3:
+                if not has_capability(request.user.id, 'project.manage'):
                     result["error"] = "You have no permission to add project module."
                     return [result]
 
@@ -132,7 +131,6 @@ class ProjectBL():
         result = {"error": "", "success": ""}
         obj_project = ProjectDA()
         try:
-            role_id, role_name = UserDA().get_user_role_by_id(request.user.id)
             obj_module = obj_project.get_project_module(module_id)
             if not obj_module:
                 result["error"] = "Invalid project module."
@@ -140,7 +138,7 @@ class ProjectBL():
             project_id = obj_module.project_id
             deleted_by = request.user.id
             if not obj_project.is_project_lead(project_id, deleted_by):
-                if role_id > 3:
+                if not has_capability(request.user.id, 'project.manage'):
                     result["error"] = "You have no permission to delete this project module."
                     return [result]
             obj_project.delete_project_module(module_id, deleted_by)
@@ -155,7 +153,7 @@ class ProjectBL():
         project_list = []
         obj_project = ProjectDA()
 
-        projects = obj_project.get_all_projects()
+        projects = obj_project.get_all_projects_by_company(get_active_company_id())
         if projects:
             for project in projects:
                 project_list.append({

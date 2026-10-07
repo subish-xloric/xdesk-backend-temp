@@ -27,12 +27,14 @@ from pTracker.api.user.views import BiometricLoginView
 from pTracker.api.user.views import SaveEmployeeProfileImage_v1
 from pTracker.api.user.views import VersionExpiredView
 from pTracker.api.user.views import VersionExpiredLoginView
+from pTracker.api.user.views import UserAccessView
 
 urlpatterns = [
 
    url(r'login/', CustomLoginView_v1.as_view(), name='custom_login_v1'),
    url(r'2fa/token-verify/', AuthyTokenVerifyView_V1.as_view(), name='2fa_token_verify_v1'),
    url(r'logout/', CustomLogoutView_v1.as_view(), name='custom_logout_v1'),
+   path('me/access/', UserAccessView.as_view(), name='user_access_v1'),
 
    path('get-employee-profile/<int:emp_id>/', EmployeeDetailsView_V1.as_view(), name='get_employee_detail_profile_v1'),
    path('get-team-members/', GetTeameMemebers_V1.as_view(), name='get_team_members_v1'),

@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from django.conf import settings
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_TEAM
 from pTracker.common.logs import Logs
 from pTracker.common.exception_handler import ExceptionHandler
 
@@ -58,10 +59,8 @@ class CareerOpeningBL():
         allowed_characters = ['&','(',')',',','.','-','_']
         try:
             userID = user.id
-            roleID, roleName = objUser.get_user_role_by_id(userID)
 
-
-            if roleID not in (2, "2"):
+            if data_scope(userID, 'interview') != SCOPE_ALL:
                 response['error'] = settings.ERROR_MSG['access_denied']
                 response['status'] = 403
                 return response
@@ -217,8 +216,7 @@ class CareerOpeningBL():
             userID = request.user.id
             filteredYear = year
             filterStatus = int(status)
-            roleID, roleName = objUser.get_user_role_by_id(userID)
-            
+
             is_dropdown = request.GET.get('is_dropdown')
 
             if filteredYear == date.today().year:
@@ -226,7 +224,7 @@ class CareerOpeningBL():
             else:
                 career_result = objCareer.get_career_opening_by_year(filteredYear,filterStatus)
                 
-            if career_result and roleID == 4:
+            if career_result and data_scope(userID, 'interview') == SCOPE_TEAM:
                 career_result = career_result.filter(lead_interviewer = userID)
 
             for eachItems in career_result:
@@ -307,8 +305,7 @@ class CareerOpeningBL():
             opening_id = data.get('openingID', 0)
             comment = data.get('comment', '')
 
-            roleID, roleName = objUser.get_user_role_by_id(userID)
-            if roleID not in (2, "2"):
+            if data_scope(userID, 'interview') != SCOPE_ALL:
                 response['error'] = settings.ERROR_MSG['access_denied']
                 response['status'] = 403
                 return response
@@ -360,8 +357,7 @@ class CareerOpeningBL():
         ccaddress = []
         try:
             userID = user.id
-            roleID, roleName = UserDA().get_user_role_by_id(userID)
-            if roleID not in (2, "2"):
+            if data_scope(userID, 'interview') != SCOPE_ALL:
                 response['error'] = settings.ERROR_MSG['access_denied']
                 response['status'] = 403
                 return response

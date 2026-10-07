@@ -22,6 +22,7 @@ from django.template import loader
 
 
 from pTracker.common.utility import Utility
+from pTracker.dataaccess.platform_access.tenancy_da import TenancyDA
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
 
@@ -31,6 +32,7 @@ from pTracker.dataaccess.ptracker_access.induction_da import InductionDA
 from pTracker.settings import constants
 
 from pTracker.cronjobs.email_sender import send_email_notification
+from pTracker.common.company_authorization import has_capability
 
 
 
@@ -63,8 +65,7 @@ class InductionBL():
         bcc_addresses = []
         try:
             user_id = request.user.id
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (2, '2',):
+            if not has_capability(user_id, 'induction.manage'):
                 response["error"] = settings.ERROR_MSG.get("access_denied")
                 response["status"] = 403
                 return response
@@ -119,7 +120,7 @@ class InductionBL():
                         designation = ''
 
                     template_name = 'induction_initaited.html'
-                    organization = 'Digital Mesh' if employee_profile.company_id==2 else 'EM Softech'
+                    organization = TenancyDA().get_company_name(employee_profile.company_id)
                     subject = f"Welcome to {organization} Family - Induction Program Information"
                     mail_context = {}
                     mail_context['heading'] = subject
@@ -184,7 +185,7 @@ class InductionBL():
                     except:
                         designation = ''
                     template_name = 'induction_initaited.html'
-                    organization = 'Digital Mesh' if employee_profile.company_id==2 else 'EM Softech'
+                    organization = TenancyDA().get_company_name(employee_profile.company_id)
                     subject = f"Welcome to {organization} Family - Induction Program Information"
                     mail_context = {}
                     mail_context['heading'] = subject
@@ -290,12 +291,11 @@ class InductionBL():
         induction_user = 0
         try:
             user_id = request.user.id
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
             inductions = InductionDA().get_induction_by_induction_id(induction_id)
             if inductions:
                 induction_user = inductions.emp_id
 
-            if role_id not in (1,2,3,4,'1','2','3','4'):
+            if not has_capability(user_id, 'induction.view'):
                 if not user_id ==induction_user:
                     response["error"] = settings.ERROR_MSG.get("no_permission")
                     response["status"] = 403
@@ -345,8 +345,7 @@ class InductionBL():
             user_id = request.user.id
             emp_id = int(request.GET.get('emp_id'))
             induction_id = request.GET.get('induction_id')
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (2, '2',):
+            if not has_capability(user_id, 'induction.manage'):
                 response["error"] = settings.ERROR_MSG.get("no_permission")
                 response["status"] = 403
                 return response
@@ -499,14 +498,13 @@ class InductionBL():
             status = request_data.get('status') #4- cancel #2- completed
             induction_id = request_data.get('induction_id')
 
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
             if status in ('4', 4):
-                if role_id not in (2, '2',):
+                if not has_capability(user_id, 'induction.manage'):
                     response["error"] = settings.ERROR_MSG.get("no_permission")
                     response["status"] = 403
                     return response
             else:
-                if role_id not in (1,2,3,4,'1','2','3','4'):
+                if not has_capability(user_id, 'induction.view'):
                     response["error"] = settings.ERROR_MSG.get("no_permission")
                     response["status"] = 403
                     return response
@@ -559,8 +557,7 @@ class InductionBL():
         try:
             user_id = request.user.id
             user_name = request.user.first_name + " " + request.user.last_name
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (2, '2',):
+            if not has_capability(user_id, 'induction.manage'):
                 response["error"] = settings.ERROR_MSG.get("no_permission")
                 response["status"] = 403
                 return response
@@ -597,7 +594,7 @@ class InductionBL():
                 template_name = "induction_reminder_before_due.html"
                 subject = "Urgent: Completion of Induction Program Required - Deadline Approaching"
 
-            organization = 'Digital Mesh' if employee_profile.company_id==2 else 'EM Softech'
+            organization = TenancyDA().get_company_name(employee_profile.company_id)
             mail_context = {}
             mail_context['heading'] = subject
             mail_context['emp_name'] = employee.first_name+' '+employee.last_name
@@ -622,8 +619,7 @@ class InductionBL():
         user_ids = []
         try:
             user_id = request.user.id
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (2, '2',):
+            if not has_capability(user_id, 'induction.manage'):
                 response["error"] = settings.ERROR_MSG.get("access_denied")
                 response["status"] = 403
                 return response

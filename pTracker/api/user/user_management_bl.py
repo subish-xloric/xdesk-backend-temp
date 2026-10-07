@@ -17,6 +17,9 @@ from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 
 from pTracker.common.utility import Utility
+from pTracker.dataaccess.platform_access.tenancy_da import TenancyDA
+from pTracker.common.company_context import get_active_company
+from pTracker.common.company_authorization import has_capability
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
 from pTracker.common.file_manager import FileManager
@@ -31,6 +34,7 @@ from pTracker.api.induction.induction_biz import InductionBL
 from pTracker.wiki.data_access.master.logs_da import LogsDA
 from pTracker.settings.constants import EMPLOYMENT_STATUS
 from pTracker.dataaccess.ptracker_access.user_models import UserProfileProvisional
+from pTracker.common.company_authorization import has_capability
 
 
 def new_dto():
@@ -45,18 +49,10 @@ class UserManagementBL():
         self.__file_manager = FileManager()
 
     def __is_create_new_user_access(self, user_id):
-        is_access = False
-        role_id, role_name = UserDA().get_user_role_by_id(user_id)
-        if role_id  in (1, 2, 3, "1", "2", "3"):
-            is_access = True
-        return is_access
+        return has_capability(user_id, 'employee.manage')
 
     def __can_resend_qr_code(self, user_id):
-        is_access = False
-        role_id, role_name = UserDA().get_user_role_by_id(user_id)
-        if role_id  in (2, "2"):
-            is_access = True
-        return is_access
+        return has_capability(user_id, 'employee.manage')
 
     def send_welcome_email_to_employee(self, user):
         employe_name = str(user.first_name) + ' ' + str(user.last_name)
@@ -519,8 +515,9 @@ class UserManagementBL():
                 return result
 
             temp_list = []
-            for k, v in settings.ORGANIZATION.items():
-                temp_list.append({"id": k, "name": v})
+            active = get_active_company()
+            if active:
+                temp_list.append({"id": active.company_id, "name": active.company_name})
             result['organizations'] = temp_list
 
             temp_list = []
@@ -613,8 +610,7 @@ class UserManagementBL():
                 result["error"] = "User does not exist ."
                 result['status'] = 499
                 return result
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            is_permitted = self.is_permmitted_to_edit(user_id,emp_id,role_id)
+            is_permitted = self.is_permmitted_to_edit(user_id, emp_id)
             if not is_permitted:
                 result["error"] = settings.ERROR_MSG.get('access_denied')
                 result['status'] = 403
@@ -622,7 +618,7 @@ class UserManagementBL():
 
             edited_fields = profile_changes.keys()
 
-            if role_id == 2:
+            if has_capability(user_id, 'employee.manage'):
                 UserManagementBL_V1().update_user_profile_changes(profile_changes)
 
             elif int(user_id) == int(emp_id):
@@ -767,12 +763,12 @@ class UserManagementBL():
             emp_dict[user.id] = user
         return emp_dict
 
-    def is_permmitted_to_edit(self, user_id, emp_id, role_id):
+    def is_permmitted_to_edit(self, user_id, emp_id):
         permitted = False
         if int(user_id) == int(emp_id):
             permitted = True
             return permitted
-        elif int(role_id) == 2:
+        elif has_capability(user_id, 'employee.manage'):
             permitted = True
             return permitted
         return permitted
@@ -787,12 +783,7 @@ class UserManagementBL():
         return exist
 
     def __get_organization_by_org_id(self, organization_id):
-        organization = ''
-        if organization_id == 2:
-            organization = 'Digitalmesh'
-        else:
-            organization = "EM Softech"
-        return  organization
+        return TenancyDA().get_company_name(organization_id)
 
     def __get_profile_change_status(self, status):
         if status == 1:
@@ -871,8 +862,7 @@ class UserManagementBL():
         result = {"error": '', "team_members": [], "status": 200}
         try:
             change_list = []
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id != 2:
+            if not has_capability(user_id, 'employee.approve_profile_changes'):
                 result["error"] = settings.ERROR_MSG.get('access_denied')
                 result['status'] = 403
                 return result
@@ -963,8 +953,7 @@ class UserManagementBL():
             if (action.upper() == "CANCELLED" and emp_id == user_id):
                 pass
             else:
-                role_id, role_name = UserDA().get_user_role_by_id(user_id)
-                if role_id != 2:
+                if not has_capability(user_id, 'employee.approve_profile_changes'):
                     result["error"] = settings.ERROR_MSG.get('access_denied')
                     result['status'] = 403
                     return result
@@ -1089,8 +1078,7 @@ class UserManagementBL():
 
     def is_permitted_to_view_pending_profile_changes(self, user_id, pending_change_obj):
         permitted = False
-        role_id, role_name = UserDA().get_user_role_by_id(user_id)
-        if role_id == 2:
+        if has_capability(user_id, 'employee.approve_profile_changes'):
             permitted = True
             return permitted
         if pending_change_obj[0].emp_id == user_id:

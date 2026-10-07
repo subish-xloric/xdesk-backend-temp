@@ -28,6 +28,8 @@ import uuid
 import base64
 
 from pTracker.cronjobs.offboarding_final_process import offboard_final_process
+from pTracker.common.company_authorization import has_capability
+from pTracker.dataaccess.platform_access.tenancy_da import TenancyDA
 
 
 def new_dto():
@@ -113,8 +115,7 @@ class OffBoardBL():
         result = None
         try:
             email_content_dto = new_dto()
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (2, '2'):
+            if not has_capability(user_id, 'offboard.manage'):
                 response['error'] = settings.ERROR_MSG['access_denied']
                 return response
 
@@ -179,7 +180,7 @@ class OffBoardBL():
 
                         email_content_dto.HR_name = emp_name #settings.HR_NAME
                         email_content_dto.employee_name = request_emp_name
-                        email_content_dto.organization = settings.ORGANIZATION[emp_profile.company_id]
+                        email_content_dto.organization = TenancyDA().get_company_name(emp_profile.company_id)
                         email_content_dto.job_title = job_title.job_title
 
                     if status == 2:
@@ -202,8 +203,7 @@ class OffBoardBL():
 
             user_dic = {}
             emp_code_dic ={}
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (2, '2'):
+            if not has_capability(user_id, 'offboard.manage'):
                 response['error'] = settings.ERROR_MSG['access_denied']
                 return response
 
@@ -286,8 +286,7 @@ class OffBoardBL():
                   }
         email_content_dto = new_dto()
         try:
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (2, '2'):
+            if not has_capability(user_id, 'offboard.manage'):
                 result['error'] = settings.ERROR_MSG['access_denied']
                 return result
 
@@ -441,8 +440,7 @@ class OffBoardBL():
                 employee_id = off_boarding_request.emp_id
 
                 user = UserDA().get_user_by_id(user_id)
-                role_id, role_name = UserDA().get_user_role_by_id(user_id)
-                if role_id == 2:
+                if has_capability(user_id, 'offboard.terminate_employee'):
                 # if str(user_id) == settings.HR_EMP_ID:
                     self.offboarding_end_process(employee_id, off_boarding_request.id)
                     #update_data = {"status": settings.OFF_BOARD_REQUEST_STATUS['Completed']}
@@ -466,8 +464,7 @@ class OffBoardBL():
                   "message": ''
                   }
         try:
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (2, '2'):
+            if not has_capability(user_id, 'offboard.manage'):
                 result['error'] = settings.ERROR_MSG['access_denied']
                 return result
             doc_type = request.data['doc_type']
@@ -509,8 +506,7 @@ class OffBoardBL():
                   }
         doc_list = []
         try:
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (2, '2'):
+            if not has_capability(user_id, 'offboard.manage'):
                 result['error'] = settings.ERROR_MSG['access_denied']
                 return result
             documents = OffBoardDA().get_relieving_docs_by_off_boarding_id(off_boarding_id)
@@ -542,8 +538,7 @@ class OffBoardBL():
             "message": ''
         }
         try:
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (2, '2'):
+            if not has_capability(user_id, 'offboard.manage'):
                 result['error'] = settings.ERROR_MSG['access_denied']
                 return result
             OffBoardDA().delete_relieving_document(document_id)
@@ -607,12 +602,9 @@ class OffBoardBL():
         emp_name = employee.first_name + ' ' + employee.last_name
         user_profile = UserDA().get_user_profile_by_id(employee.id)
         job_title = UserDA().get_job_title_by_id(user_profile.job_title)
-        if user_profile.company_id == 2:
-            data['paragraph'] = settings.EXIT_INTERVIEW_NOTE.format(
-                "Digital Mesh Softech India Pvt. Ltd")
-        if user_profile.company_id == 3:
-            data['paragraph'] = settings.EXIT_INTERVIEW_NOTE.format(
-                "EM Softech LLP")
+        company = TenancyDA().get_company_by_id(user_profile.company_id)
+        if company:
+            data['paragraph'] = settings.EXIT_INTERVIEW_NOTE.format(company.legal_name)
         data['contents']['employee']['employee_name']['value'] = emp_name
         data['contents']['employee']['employee_id']['value'] = employee.id
         data['contents']['employee']['designation']['value'] = job_title.job_title
@@ -674,8 +666,7 @@ class OffBoardBL():
             ).get_exit_interviewform_by_exit_interview_code(exit_intrvw_code)
             if exit_interview_form:
                 if exit_interview_form.emp_id != user_id:
-                    role_id, role_name = UserDA().get_user_role_by_id(user_id)
-                    if role_id not in (1, '1', 2, '2'):
+                    if not has_capability(user_id, 'offboard.manage'):
                         result['error'] = settings.ERROR_MSG['access_denied']
                         result['permission'] = False
                         return result
@@ -701,8 +692,7 @@ class OffBoardBL():
             ).get_exit_interviewform_by_exit_interview_code(exit_code)
             if exit_interview_form:
                 if exit_interview_form.emp_id != user_id:
-                    role_id, role_name = UserDA().get_user_role_by_id(user_id)
-                    if role_id not in (1, '1', 2, '2'):
+                    if not has_capability(user_id, 'offboard.manage'):
                         result['error'] = settings.ERROR_MSG['access_denied']
                         return result
                 update_data = {}
@@ -786,8 +776,7 @@ class OffBoardBL():
         notify_list = []
         subject = ''
         try:
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (1, '1', 2, '2'):
+            if not has_capability(user_id, 'offboard.manage'):
                 result['error'] = settings.ERROR_MSG['access_denied']
                 result['permission'] = False
                 return result
@@ -800,7 +789,7 @@ class OffBoardBL():
             disable_now = data.get('disable_now', False)
             offboarding_type = data.get('action', None)
             organization = UserDA().get_user_organization(emp_id)
-            company_name = settings.ORGANIZATION[organization]
+            company_name = TenancyDA().get_company_name(organization)
 
             username = user.first_name + ' ' + user.last_name
 

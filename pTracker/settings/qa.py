@@ -70,18 +70,18 @@ BASE_URL = 'http://localhost:4200/#/'
 
 OFFBOARD_DOCUMENT_URL = MEDIA_ROOT+'offboarding_documents'
 
-DEFAULT_SITE_MEDIA_URL = "http://dmdeskadminqa.digitalmesh.com/media/employee_profile_photo/"
+DEFAULT_SITE_MEDIA_URL = "http://dmdeskadminqa.mydomain.com/media/employee_profile_photo/"
 
 #EMP_PROFILE_IMAGE_URL = DEFAULT_SITE_MEDIA_URL+ 'employee_profile_photo/' TODO
 
-DEFUALT_API_URL = "http://dmdeskadminqa.digitalmesh.com/"
+DEFUALT_API_URL = "http://dmdeskadminqa.mydomain.com/"
 
 
 DM_DESK_MEDIA_URL = DEFUALT_API_URL+ "media/"
 
 HOLIDAY_IMAGE_URL = DM_DESK_MEDIA_URL + "/holiday_images/"
 
-# CONFIDENTIAL_MEDIA= "http://dmdeskadminqa.digitalmesh.com/media/confidential_docs/"
+# CONFIDENTIAL_MEDIA= "http://dmdeskadminqa.mydomain.com/media/confidential_docs/"
 
 PROFILE_IMAGE_PROVISIONAL = DM_DESK_MEDIA_URL + 'confidential_docs/profile_image_provisional'
 

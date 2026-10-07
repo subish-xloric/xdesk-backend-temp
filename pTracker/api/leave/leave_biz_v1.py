@@ -14,6 +14,7 @@ from pTracker.dataaccess.ptracker_access.user_da import UserDA
 from pTracker.api.leave.leave_biz import LeaveBL
 from pTracker.api.leave.leave_helper import LeaveHelperBL
 from pTracker.user_management.holiday_da import HolidayDA
+from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_TEAM
 
 
 
@@ -277,11 +278,11 @@ class LeaveBL_V1():
         response ={"error":'', "general":{}, "lop": {}, "official": {}, "compOff": {}, "maternity": {},"status": 200}
         try:
             permitted = False
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
+            scope = data_scope(user_id, 'leave')
             is_team_member = UserDA().is_team_member(emp_id, user_id)
             if user_id == emp_id:
                 permitted = True
-            elif role_id in (1, 2, 3):
+            elif scope == SCOPE_ALL:
                 permitted =  True
             elif is_team_member:
                 permitted =  True

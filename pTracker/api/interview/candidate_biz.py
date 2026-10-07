@@ -13,7 +13,10 @@ from django.template import loader
 from django.http import HttpResponse
 
 from pTracker.common.logs import Logs
+from pTracker.common.company_context import get_active_company_id
+from pTracker.dataaccess.platform_access.tenancy_da import TenancyDA
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import data_scope, has_capability, SCOPE_ALL, SCOPE_TEAM
 from pTracker.common.file_manager import FileManager
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
 from pTracker.common.exception_handler import ExceptionHandler
@@ -62,10 +65,9 @@ class CandidateBL():
         referel_code_dict = {}
         try:
             userID = user.id
-            role_id, role_name = objUser.get_user_role_by_id(userID)
-            is_permitted = self.__utility.is_permitted(userID, 'can_view_candidate')
+            scope = data_scope(userID, 'interview')
             #Candidate view permission
-            if not self.__can_view_candidate(role_id, is_permitted):
+            if not self.__can_view_candidate(userID, scope):
                 response['error'] = settings.ERROR_MSG['access_denied']
                 response['status'] = 403
                 return response
@@ -88,7 +90,7 @@ class CandidateBL():
             leads_career_openings = None
             career_opening_ids_of_lead = []
 
-            if role_id == 4:
+            if scope == SCOPE_TEAM:
                 response['action_menu_view_only'] = 1
                 leads_career_openings = InterviewDA().get_leads_career_opening(userID)
                 for openings in leads_career_openings:
@@ -96,7 +98,7 @@ class CandidateBL():
 
             active_interview_dict = self.get_active_interview_dict()
             for candidate in candidates:
-                if role_id == 4 and candidate.career_opening_id not in career_opening_ids_of_lead:
+                if scope == SCOPE_TEAM and candidate.career_opening_id not in career_opening_ids_of_lead:
                     continue
 
                 candidateStatusText = settings.CANDIDATE_STATUS.get(candidate.candidate_status, '-')
@@ -161,9 +163,7 @@ class CandidateBL():
         try:
             user_id = user.id
             #TODO - Create funtion for permission check , now using the function from interview_biz file
-            role_id, role_name = objUser.get_user_role_by_id(user_id)
-            is_permitted = self.__utility.is_permitted(user_id, 'can_create_candidate')
-            if not self.__can_create_candidate(role_id, is_permitted):
+            if not self.__can_create_candidate(user_id):
                 response['error'] = settings.ERROR_MSG['access_denied']
                 response['status'] = 403
                 return response
@@ -299,9 +299,7 @@ class CandidateBL():
             comment = data.get('comment', '')
 
             user_id = user.id
-            role_id, role_name = objUser.get_user_role_by_id(user_id)
-            is_permitted = self.__utility.is_permitted(user_id, 'can_modify_candidate')
-            if not self.__can_create_candidate(role_id, is_permitted):
+            if not self.__can_create_candidate(user_id):
                 response['error'] = settings.ERROR_MSG['access_denied']
                 response['status'] = 403
                 return response
@@ -355,9 +353,7 @@ class CandidateBL():
         response = {'error' : '', 'success' : '', 'status' : 200}
         try:
             user_id = user.id
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            is_permitted = self.__utility.is_permitted(user_id, 'can_modify_candidate')
-            if not self.__can_create_candidate(role_id, is_permitted):
+            if not self.__can_create_candidate(user_id):
                 response['error'] = settings.ERROR_MSG['access_denied']
                 response['status'] = 403
                 return response
@@ -422,9 +418,7 @@ class CandidateBL():
             comment = data.get('comment', '')
 
             user_id = user.id
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            is_permitted = self.__utility.is_permitted(user_id, 'can_modify_candidate')
-            if not self.__can_create_candidate(role_id, is_permitted):
+            if not self.__can_create_candidate(user_id):
                 response['error'] = settings.ERROR_MSG['access_denied']
                 response['status'] = 403
                 return response
@@ -600,36 +594,26 @@ class CandidateBL():
     #         return response
 
     #TODO create permission function for candidate
-    def __can_view_candidate(self, role_id, is_permitted):
-        if role_id in (2,"2",1,"1","3",3, 4, "4"):
+    def __can_view_candidate(self, user_id, scope=None):
+        if scope is None:
+            scope = data_scope(user_id, 'interview')
+        if scope is not None:
             return True
-        if is_permitted:
-            return True
-        return False
+        return has_capability(user_id, 'interview.view_candidates')
 
-    def __can_create_candidate(self, role_id, is_permitted):
-        if role_id in (2,"2"):
-            return True
-        if is_permitted:
-            return True
-        return False
+    def __can_create_candidate(self, user_id):
+        return has_capability(user_id, 'interview.manage_candidates')
 
-    def __can_modify_interview(self, role_id, is_permitted):
-        if role_id in (2,"2"):
-            return True
-        if is_permitted:
-            return True
-        return False
+    def __can_modify_interview(self, user_id):
+        return has_capability(user_id, 'interview.manage_interviews')
 
     def candidate_action_validation(self, request, candidate_id, action):
         response = {'error' : '', 'valid': True, 'status' : 200}
         try:
             action = str(action).strip().replace(" ","").lower()
             user_id = request.user.id
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
             if action == 'create':
-                is_permitted = self.__utility.is_permitted(user_id, 'can_create_candidate')
-                if not self.__can_create_candidate(role_id, is_permitted):
+                if not self.__can_create_candidate(user_id):
                     response['error'] = settings.ERROR_MSG['access_denied']
                     response['status'] = 403
                     response['valid'] = False
@@ -644,8 +628,7 @@ class CandidateBL():
                 career_opening_id = candidate.career_opening_id
                 candidate_status = int(candidate.candidate_status)
                 if action=='schedule':
-                    is_permitted = self.__utility.is_permitted(user_id, 'can_create_interview')
-                    if not self.__can_modify_interview(role_id, is_permitted):
+                    if not self.__can_modify_interview(user_id):
                         response['error'] = settings.ERROR_MSG['access_denied']
                         response['status'] = 403
                         response['valid'] = False
@@ -669,7 +652,7 @@ class CandidateBL():
                         return response
 
                 elif action=='rejected':
-                    if not self.__can_create_candidate(role_id, False):
+                    if not self.__can_create_candidate(user_id):
                         response['error'] = settings.ERROR_MSG['access_denied']
                         response['status'] = 403
                         return response
@@ -680,8 +663,7 @@ class CandidateBL():
                         return response
 
                 elif action=='delete':
-                    is_permitted = self.__utility.is_permitted(user_id, 'can_modify_candidate')
-                    if not self.__can_create_candidate(role_id, False):
+                    if not self.__can_create_candidate(user_id):
                         response['error'] = settings.ERROR_MSG['access_denied']
                         response['status'] = 403
                         return response
@@ -692,13 +674,13 @@ class CandidateBL():
                         return response
 
                 elif action=='edit':
-                    if not self.__can_modify_interview(role_id, False):
+                    if not self.__can_modify_interview(user_id):
                         response['error'] = settings.ERROR_MSG['access_denied']
                         response['status'] = 403
                         return response
 
                 elif action=='releaseoffer':
-                    if not self.__can_create_candidate(role_id, False):
+                    if not self.__can_create_candidate(user_id):
                         response['error'] = settings.ERROR_MSG['access_denied']
                         response['status'] = 403
                         response['valid'] = False
@@ -717,7 +699,7 @@ class CandidateBL():
                 elif action=='viewscorecard':
                     is_permitted = False
                     career_opening = InterviewDA().get_career_opening_by_id(career_opening_id)
-                    if role_id in (1,2,3,"1","2","3"):
+                    if data_scope(user_id, 'interview') == SCOPE_ALL:
                         is_permitted = True
                     elif career_opening and career_opening.lead_interviewer == int(user_id):
                         is_permitted = True
@@ -771,7 +753,8 @@ class CandidateBL():
             email_dto.emp_designation = self.__get_user_job_title(user.id)
             email_dto.emp_email = user.email
             email_dto.url = f"{settings.BASE_URL}candidate-information-sheet/{unique_id}"
-            email_dto.heading = f"Congratulations! You've been shortlisted for an interview at Digital Mesh Softech India P Limited"
+            company_name = TenancyDA().get_company_legal_name(get_active_company_id())
+            email_dto.heading = f"Congratulations! You've been shortlisted for an interview at {company_name}"
             email_msg = self.genarate_candidate_informationsheet_mail(email_dto)
             self.send_candidate_information_sheet_email_notification(email_msg,to_mail,email_dto.heading,bcc_adress)
         except Exception as error:

@@ -10,8 +10,11 @@ from pTracker.dataaccess.platform_access.platform_user_models import PlatformUse
 from pTracker.dataaccess.platform_access.capability_models import Capability
 from pTracker.dataaccess.platform_access.role_models import Role
 from pTracker.dataaccess.platform_access.membership_models import Membership
+from pTracker.dataaccess.platform_access.module_models import Module
+from pTracker.dataaccess.platform_access.module_models import CompanyModule
 
 __all__ = [
     'Tenant', 'Company', 'Branch', 'PlatformUser',
     'Capability', 'Role', 'Membership',
+    'Module', 'CompanyModule',
 ]

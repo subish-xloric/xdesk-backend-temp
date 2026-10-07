@@ -16,6 +16,7 @@ from django.db.models import Q
 
 from pTracker.common.logs import Logs
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import data_scope, has_capability, SCOPE_ALL, SCOPE_TEAM
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.file_manager import FileManager
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
@@ -36,7 +37,7 @@ class RewardsBL():
         self.__utility = Utility()
         self.__file_manager = FileManager()
 
-    def find_reward_approvers(self, emp_id, reward_type_id, role_id):
+    def find_reward_approvers(self, emp_id, reward_type_id):
         result = []
         if int(reward_type_id)==1:#wow card
             result = [int(settings.HR_DEPT['res_emp_id']), int(settings.OPERATIONS_DEPT['res_emp_id'])]
@@ -108,12 +109,12 @@ class RewardsBL():
         status = False
         try:
             #rewarder = reward_obj.receiving_emp_id
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
+            scope = data_scope(user_id, 'rewards')
             if user_id==reward_obj.nominated_by:
                 status = True
-            elif role_id in (1, 2, 3):
+            elif scope == SCOPE_ALL:
                 status = True
-            elif role_id==4:
+            elif scope == SCOPE_TEAM:
                 team_member = UserDA().get_current_team_members_by_lead_id(user_id)
                 team_member_ids = [x.id for x in team_member]
                 if reward_obj.nominated_by in team_member_ids:
@@ -129,8 +130,7 @@ class RewardsBL():
     def __is_allowed_to_view_report(self, user_id):
         status = False
         try:
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id in (1, 2, 3):
+            if has_capability(user_id, 'rewards.view_reports'):
                 status = True
 
         except Exception as err:
@@ -168,9 +168,7 @@ class RewardsBL():
             short_description = data.get("shortDescription")
             justification_description = data.get("justificationDescription")
 
-            role_id, roleName = UserDA().get_user_role_by_id(user_id)
-
-            if role_id in (1, 2, 3):
+            if data_scope(user_id, 'rewards') == SCOPE_ALL:
                 return self.create_reward_nomination_v1(request, user_id)
 
             if not self.__is_valid_reward_type(reward_type_id):
@@ -178,7 +176,7 @@ class RewardsBL():
                 response["status"] = 499
                 return response
 
-            if reward_type_id == 1 and role_id > 4: #WOW Card
+            if reward_type_id == 1 and data_scope(user_id, 'rewards') is None: #WOW Card
                 response["error"] = 'You do not have permission to submit a nomination for Wow Card.'
                 response["status"] = 499
                 return response
@@ -209,7 +207,7 @@ class RewardsBL():
                 response["status"] = 499
                 return response
 
-            approvers_list = self.find_reward_approvers(nominated_by, reward_type_id, role_id)
+            approvers_list = self.find_reward_approvers(nominated_by, reward_type_id)
             if not approvers_list:
                 response["error"] = "Unable to proceed since we haven't been able to find an approver for this reward."
                 response["status"] = 499
@@ -302,14 +300,12 @@ class RewardsBL():
             short_description = data.get("shortDescription")
             justification_description = data.get("justificationDescription")
 
-            role_id, roleName = UserDA().get_user_role_by_id(user_id)
-
             if not self.__is_valid_reward_type(reward_type_id):
                 response["error"] = 'Invalid Nomination Type.'
                 response["status"] = 499
                 return response
 
-            if reward_type_id == 1 and role_id > 4: #WOW Card
+            if reward_type_id == 1 and data_scope(user_id, 'rewards') is None: #WOW Card
                 response["error"] = 'You do not have permission to submit a nomination for Wow Card.'
                 response["status"] = 499
                 return response
@@ -660,14 +656,14 @@ class RewardsBL():
         all_rewards = []
         try:
             user_id = request.user.id
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
+            scope = data_scope(user_id, 'rewards')
             active_users = UserDA().get_all_users()
             for each in active_users:
                 user_dict[each.id] = each.first_name+' '+each.last_name
 
-            if role_id in (1, 2, 3):
+            if scope == SCOPE_ALL:
                 all_rewards = RewardsDA().get_all_rewards()
-            elif role_id==4:
+            elif scope == SCOPE_TEAM:
                 #team_members = UserDA().get_current_team_members_by_lead_id(user_id)
                 #team_member_ids = [x.id for x in team_members]
                 # team_member_ids =[]

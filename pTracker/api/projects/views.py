@@ -7,6 +7,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 from pTracker.api.projects.project_biz import ProjectBL
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
+from pTracker.common.company_authorization import has_capability
 from pTracker.api.projects.project_biz_v1 import ProjectBL_V1
 
 from pTracker.api.projects.project_biz_v2 import ProjectCreateBL
@@ -26,8 +27,7 @@ class ProjectView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        role_id, role_name = UserDA().get_user_role_by_id(request.user.id)
-        if role_id in (1, 2, 3):
+        if has_capability(request.user.id, 'project.view_all'):
             projects = ProjectBL().get_all_projects()
         else:
             projects = ProjectBL().get_all_projects_by_user(request.user.id)
@@ -111,8 +111,7 @@ class ProjectView_V1(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        role_id, role_name = UserDA().get_user_role_by_id(request.user.id)
-        if role_id in (1, 2, 3):
+        if has_capability(request.user.id, 'project.view_all'):
             projects = ProjectBL().get_all_projects()
         else:
             projects = ProjectBL().get_all_projects_by_user(request.user.id)

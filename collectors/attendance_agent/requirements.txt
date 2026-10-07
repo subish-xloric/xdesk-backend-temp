@@ -1,0 +1,5 @@
+requests>=2.31
+# eSSL (MSSQL) source
+pyodbc>=5.0
+# ZKTeco source (optional)
+# pyzk>=0.9

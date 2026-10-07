@@ -8,6 +8,7 @@ from django.conf import settings
 from django.template import loader
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import data_scope, has_capability, SCOPE_ALL, SCOPE_TEAM
 from pTracker.dataaccess.ptracker_access.interview_da import InterviewDA
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
 from pTracker.api.user.lead_emp_mapping import  LeadEmpMapping
@@ -179,10 +180,8 @@ class InterviewBL():
         response = {'error' : '', 'success' : '', 'status' : 200}
         try:
             user_id = user.id
-            role_id, roleName = objUser.get_user_role_by_id(user_id)
-            is_permitted = self.__utility.is_permitted(user_id, 'can_create_interview')
             #Interview create permission
-            if not self.__can_create_interview(role_id, is_permitted):
+            if not self.__can_create_interview(user_id):
                 response['error'] = settings.ERROR_MSG['access_denied']
                 response['status'] = 403
                 return response
@@ -372,12 +371,10 @@ class InterviewBL():
                     interviewers.append(int(each))
 
 
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            is_permitted = self.__utility.is_permitted(user_id, 'can_modify_interview')
-            if role_id in (4,'4'):
+            if data_scope(user_id, 'interview') == SCOPE_TEAM:
                 member_ids = self.__get_team_members_ids(user_id)
 
-            if not self.__can_modify_interview(role_id, is_permitted,user_id, interviewers, member_ids):
+            if not self.__can_modify_interview(user_id, interviewers, member_ids):
                 response['error'] = settings.ERROR_MSG['access_denied']
                 response['status'] = 403
                 return response
@@ -456,9 +453,7 @@ class InterviewBL():
 
         try:
             user_id= user.id
-            role_id, role_name = objUser.get_user_role_by_id(user_id)
-            is_permitted = self.__utility.is_permitted(user_id, 'can_view_interview')
-            if role_id in (4,'4'):
+            if data_scope(user_id, 'interview') == SCOPE_TEAM:
                 member_ids = self.__get_team_members_ids(user_id)
 
             start_date = request.GET.get('start_date')
@@ -499,7 +494,7 @@ class InterviewBL():
                     interviewers.append(int(each))
 
                 #This is view permission settings
-                is_view = self.__is_view_interview(role_id, is_permitted, user_id, interviewers, member_ids)
+                is_view = self.__is_view_interview(user_id, interviewers, member_ids)
                 if not is_view:
                     continue
 
@@ -597,12 +592,10 @@ class InterviewBL():
                 for each in temp_interviewers:
                     interviewers.append(int(each))
 
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            is_permitted = self.__utility.is_permitted(user_id, 'can_modify_interview')
-            if role_id in [4,'4']:
+            if data_scope(user_id, 'interview') == SCOPE_TEAM:
                 member_ids = self.__get_team_members_ids(user_id)
 
-            if not self.__can_modify_interview(role_id, is_permitted,user_id, interviewers, member_ids):
+            if not self.__can_modify_interview(user_id, interviewers, member_ids):
                 response['error'] = settings.ERROR_MSG['access_denied']
                 response['status'] = 403
                 return response
@@ -709,12 +702,10 @@ class InterviewBL():
                 for each in temp_interviewers:
                     interviewers.append(int(each))
 
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            is_permitted = self.__utility.is_permitted(user_id, 'can_modify_interview')
-            if role_id in [4,'4']:
+            if data_scope(user_id, 'interview') == SCOPE_TEAM:
                 member_ids = self.__get_team_members_ids(user_id)
 
-            if not self.__can_modify_interview(role_id, is_permitted,user_id, interviewers, member_ids):
+            if not self.__can_modify_interview(user_id, interviewers, member_ids):
                 response['error'] = settings.ERROR_MSG['access_denied']
                 response['status'] = 403
                 return response
@@ -950,21 +941,10 @@ class InterviewBL():
                 member_ids.append(int(team_member.id))
         return member_ids
 
-    def __is_view_interview(self, role_id, is_permitted, user_id, interviewers, team_ids=[]):
-        if role_id in (1,2,3,"1","2","3"):
+    def __is_view_interview(self, user_id, interviewers, team_ids=[]):
+        if data_scope(user_id, 'interview') == SCOPE_ALL:
             return True
-        if is_permitted:
-            return True
-        if user_id in interviewers:
-            return True
-        if set(interviewers) & set(team_ids):
-            return True
-        return False
-
-    def __can_modify_interview(self, role_id, is_permitted, user_id, interviewers, team_ids=[]):
-        if role_id in (2,"2"):
-            return True
-        if is_permitted:
+        if has_capability(user_id, 'interview.view_candidates'):
             return True
         if user_id in interviewers:
             return True
@@ -972,12 +952,17 @@ class InterviewBL():
             return True
         return False
 
-    def __can_create_interview(self, role_id, is_permitted):
-        if role_id in (2,"2"):
+    def __can_modify_interview(self, user_id, interviewers, team_ids=[]):
+        if has_capability(user_id, 'interview.manage_interviews'):
             return True
-        if is_permitted:
+        if user_id in interviewers:
+            return True
+        if set(interviewers) & set(team_ids):
             return True
         return False
+
+    def __can_create_interview(self, user_id):
+        return has_capability(user_id, 'interview.manage_interviews')
 
 
     def __get_candidate_profile_url(self, file_name):
@@ -1004,7 +989,6 @@ class InterviewBL():
             action = str(action).strip().replace(" ","").lower()
             interview = InterviewDA().get_interview(interview_id)
             user_id = request.user.id
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
 
             if not interview:
                 response['error'] = 'Invalid interview.'
@@ -1074,7 +1058,6 @@ class InterviewBL():
         try:
 
             user_id = user.id
-            role_id, roleName = UserDA().get_user_role_by_id(user_id)
 
             #Collect input from form
             interview_id = data.get('interview_id',0)
@@ -1088,7 +1071,7 @@ class InterviewBL():
                 for each in temp_interviewers:
                     interviewers.append(int(each))
 
-            if not self.__is_comment_interview(role_id, user_id, interviewers):  #nnn include interviewer
+            if not self.__is_comment_interview(user_id, interviewers):  #nnn include interviewer
                 response['error'] = settings.ERROR_MSG['access_denied']
                 response['status'] = 403
                 return response
@@ -1118,9 +1101,7 @@ class InterviewBL():
 
         try:
             user_id= user.id
-            role_id, role_name = objUser.get_user_role_by_id(user_id)
-            is_permitted = self.__utility.is_permitted(user_id, 'can_view_interview')
-            if role_id in (4,'4'):
+            if data_scope(user_id, 'interview') == SCOPE_TEAM:
                 member_ids = self.__get_team_members_ids(user_id)
 
 
@@ -1134,7 +1115,7 @@ class InterviewBL():
             interviewers = []
             for each in temp_interviewers:
                 interviewers.append(int(each))
-            is_view = self.__is_view_interview(role_id, is_permitted, user_id, interviewers, member_ids)
+            is_view = self.__is_view_interview(user_id, interviewers, member_ids)
 
             if not is_view:
                 response['error'] = "Sorry, No Permission to comment on this interview."
@@ -1180,8 +1161,8 @@ class InterviewBL():
         return html_email
 
 
-    def __is_comment_interview(self, role_id, user_id, interviewers):
-        if role_id in (1, 2, "1", "2"):
+    def __is_comment_interview(self, user_id, interviewers):
+        if data_scope(user_id, 'interview') == SCOPE_ALL:
             return True
         if user_id in interviewers:
             return True

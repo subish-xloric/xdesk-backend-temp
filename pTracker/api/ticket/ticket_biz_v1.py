@@ -19,6 +19,7 @@ from django.conf import Settings, settings
 from django.db.models import Q
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import data_scope, SCOPE_ALL
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
 
@@ -69,7 +70,6 @@ class TicketBL_V1():
         try:
             ticket_id = int(ticket_id)
             user_id = request.user.id
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
 
             ticket_head = TicketDA().get_ticket_head_by_ticket_id(ticket_id)
             if not ticket_head:
@@ -80,7 +80,7 @@ class TicketBL_V1():
             project_id = ticket_head.project_id
 
             is_part_of_project = self.is_project_accessible(user_id, project_id)
-            is_manager = self.is_manager(role_id)
+            is_manager = self.is_manager(user_id)
             if not is_manager and not is_part_of_project:
                 response["error"] = settings.ERROR_MSG.get("access_denied")
                 response["status"] = 403
@@ -227,8 +227,5 @@ class TicketBL_V1():
     def is_project_accessible(self, user_id, project_id):
         return ProjectDA().is_project_accessible(project_id, user_id)
 
-    def is_manager(self, role_id):
-        is_user = False
-        if role_id in (1, '1', 2, '2', 3, '3'):
-            is_user = True
-        return is_user
+    def is_manager(self, user_id):
+        return data_scope(user_id, 'ticket') == SCOPE_ALL

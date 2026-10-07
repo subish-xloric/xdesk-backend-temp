@@ -28,6 +28,7 @@ from pTracker.dataaccess.ptracker_access.onboarding_da import OnboardingDA
 from pTracker.api.onboarding.onboarding_notification import OnBoardingNotificationBL
 from pTracker.dataaccess.ptracker_access.project_da import ProjectDA
 from pTracker.dataaccess.ptracker_access.leave_da import LeaveDA
+from pTracker.common.company_authorization import has_capability
 
 
 def new_dto():
@@ -92,8 +93,7 @@ class OnboardingBL():
         try:
             is_alredy_exist = False
             candidate_data_dict = {}
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in [2] :
+            if not has_capability(user_id, 'onboarding.manage') :
                 result['error'] = settings.ERROR_MSG['access_denied']
                 result['status'] = 403
                 return result
@@ -166,8 +166,7 @@ class OnboardingBL():
     def get_all_onboarding_candidates(self, user_id):
         result = {"error": '',"data": []}
         try:
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in [2] :
+            if not has_capability(user_id, 'onboarding.manage') :
                 result['error'] = settings.ERROR_MSG['access_denied']
                 result['status'] = 403
                 return result
@@ -199,8 +198,7 @@ class OnboardingBL():
         result = {}
         try:
             candidate_data_dict = {}
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in [2] :
+            if not has_capability(user_id, 'onboarding.manage') :
                 result['error'] = settings.ERROR_MSG['access_denied']
                 result['status'] = 403
                 return result
@@ -381,8 +379,7 @@ class OnboardingBL():
                 result['permission'] = False
                 return result
 
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in [2] :
+            if not has_capability(user_id, 'onboarding.manage') :
                 result['error'] = settings.ERROR_MSG['access_denied']
                 result['status'] = 403
                 result['permission'] = False
@@ -417,8 +414,7 @@ class OnboardingBL():
     def update_onboarding_candidate_status(self, user_id, request):
         result = {"error": ''}
         try:
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in [2] :
+            if not has_capability(user_id, 'onboarding.manage') :
                 result['error'] = settings.ERROR_MSG['access_denied']
                 result['status'] = 403
                 return result
@@ -510,8 +506,7 @@ class OnboardingBL():
     def load_onboarding_candidate_as_user(self, user_id, request):
         result = {"error": ''}
         try:
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in [2] :
+            if not has_capability(user_id, 'onboarding.manage') :
                 result['error'] = settings.ERROR_MSG['access_denied']
                 result['status'] = 403
                 return result

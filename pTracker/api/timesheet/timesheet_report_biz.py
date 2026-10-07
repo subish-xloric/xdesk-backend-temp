@@ -7,6 +7,8 @@ from calendar import monthrange
 from django.http.response import HttpResponse
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_TEAM
+from pTracker.common.company_context import get_active_company_id
 from pTracker.common.logs import Logs
 from pTracker.dataaccess.ptracker_access.timesheet_da import  TimeSheetDA
 from pTracker.dataaccess.ptracker_access.project_da import  ProjectDA
@@ -113,10 +115,10 @@ class TimesheetReportBL():
             total_dates = self.__get_date_range(obj_start, obj_end)
             number_of_days = len(total_dates)
 
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id in (1, 2, 3):
+            scope = data_scope(user_id, 'timesheet')
+            if scope == SCOPE_ALL:
                 emp_ids = []
-            elif role_id == 4:
+            elif scope == SCOPE_TEAM:
                 emp_ids = [user_id]
                 all_employees = [user_id]
                 team_member_list = UserDA().get_current_team_members_by_lead_id(user_id)
@@ -501,16 +503,16 @@ class TimesheetReportBL():
             activity_dict = self.__get_activity_dict()
             project_dict = self.__get_project_dict()
 
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
+            scope = data_scope(user_id, 'timesheet')
 
             if project_id:
                 if ProjectDA().is_project_accessible(project_id, user_id):
                     project_ids.append(project_id)
-                elif role_id in (1, 2, 3):
+                elif scope == SCOPE_ALL:
                     project_ids.append(project_id)
             else:
-                if role_id in (1, 2, 3):
-                    user_projects = ProjectDA().get_all_projects()
+                if scope == SCOPE_ALL:
+                    user_projects = ProjectDA().get_all_projects_by_company(get_active_company_id())
                     for project in user_projects:
                         project_ids.append(project.project_id)
                 else:
@@ -522,7 +524,7 @@ class TimesheetReportBL():
             for each_module in modules:
                 module_dict[each_module.module_id] = each_module.name
 
-            if role_id in (1, 2, 3):
+            if scope == SCOPE_ALL:
                 users = UserDA().get_current_team_members_by_lead_id(0)
             else:
                 users = UserDA().get_current_team_members_by_lead_id(user_id)
@@ -534,8 +536,7 @@ class TimesheetReportBL():
             emp_ids.append(user_id)
             user_dict[user_id] = user_name
 
-            #role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id in (1, 2, 3):
+            if scope == SCOPE_ALL:
                 time_sheets = TimeSheetDA().get_all_daily_time_sheet(start_date)
             else:
                 time_sheets = TimeSheetDA().get_daily_time_sheet_by_users(start_date, emp_ids)
@@ -630,10 +631,10 @@ class TimesheetReportBL():
             total_dates = self.__get_date_range(start_date, end_date)
             number_of_days = len(total_dates)
 
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id in (1, 2, 3):
+            scope = data_scope(user_id, 'timesheet')
+            if scope == SCOPE_ALL:
                 emp_ids = all_employees
-            elif role_id == 4:
+            elif scope == SCOPE_TEAM:
                 emp_ids = [user_id]
                 all_employees = [user_id]
                 team_member_list = UserDA().get_current_team_members_by_lead_id(user_id)

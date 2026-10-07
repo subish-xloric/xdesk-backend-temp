@@ -1,4 +1,5 @@
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import has_capability
 from pTracker.dataaccess.ptracker_access.asset_da import AssetDA
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
 
@@ -14,8 +15,7 @@ class VendorBL():
         vendor_data = {}
         response = {"error" : "" , "success" : ""}
         try:
-            roleID , roleName = objUser.get_user_role_by_id(userID)
-            if roleID not in(1 ,"1" , 2 , "2"):
+            if not has_capability(userID, 'asset.manage_vendors'):
                 response['error'] = "You have no permission to create or update the Vendor Details"
                 return response
 
@@ -62,8 +62,7 @@ class VendorBL():
         data = []
         try:
             userID = user.id
-            roleID , roleName = objUser.get_user_role_by_id(userID)
-            if roleID not in (1,"1",2,"2"):
+            if not has_capability(userID, 'asset.manage_vendors'):
                 response['error'] = "You have no permission to view Vendor details"
                 return response
             result = objAsset.get_vendor_details()
@@ -98,10 +97,9 @@ class VendorBL():
         response={"error" : "", "success" : ""}
         try:
             userID = user.id
-            roleID , roleName = objUser.get_user_role_by_id(userID)
             vendorID = vendorID
             is_vendor = objAsset.get_vendor_details(vendorID)
-            if roleID not in (1,"1",2,"2"):
+            if not has_capability(userID, 'asset.manage_vendors'):
                 response['error'] =  "You have no permission to delete Vendor details"
                 return response
             if not is_vendor:

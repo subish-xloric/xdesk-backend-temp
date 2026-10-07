@@ -17,6 +17,7 @@ from django.template import loader
 from pTracker.common.logs import Logs
 from pTracker.common.file_manager import FileManager
 from pTracker.common.utility import Utility
+from pTracker.common.company_context import get_active_company
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
 from pTracker.dataaccess.ptracker_access.finance_da import FinanaceDA
@@ -101,8 +102,9 @@ class FinanceBL():
         response = {"organizations": [], "Lastyears": []}
         user_da = UserDA()
         try:
-            for k, v in settings.ORGANIZATION.items():
-                response['organizations'].append({"id": k, "name": v})
+            active = get_active_company()
+            if active:
+                response['organizations'].append({"id": active.company_id, "name": active.company_name})
             lastYears = FinanaceDA().get_last_years()
             for each in lastYears:
                 current_day = datetime.now().date()
@@ -150,6 +152,12 @@ class FinanceBL():
             comment = request.data.get('comment')
             organization = request.data.get('organization')
             financial_year_id = request.data.get('financialYearId')
+
+            active = get_active_company()
+            if active is None or str(organization) != str(active.company_id):
+                response["error"] = 'Invalid organization selected'
+                response['status'] = 403
+                return response
 
 
             files = self.extract_zip_file(file)
@@ -202,7 +210,6 @@ class FinanceBL():
                         continue
 
                     if file_obj:
-                        org_name = settings.ORGANIZATION[int(organization)]
                         file_name = f"{emp_code}_payslip_{processedFor[0]}_{processedFor[1]}.pdf"
                         folder_path = self.__get_payslip_folder(organization, processedFor[1], self.get_month_number(processedFor[0]))
                         file_path = folder_path + file_name
@@ -442,7 +449,6 @@ class FinanceBL():
             year = filename.split('_')[3].split('.')[0]
 
             employee_profile = UserDA().get_user_profile_by_id(employee.id)
-            org_name = settings.ORGANIZATION[employee_profile.company_id]
             folder_path = self.__get_payslip_folder(employee_profile.company_id, year, self.get_month_number(month))
             filename = folder_path + filename
 
@@ -692,9 +698,8 @@ class FinanceBL():
         return password
 
     def __get_payslip_folder(self, org_id, year, month_id):
-        org_name = settings.ORGANIZATION[int(org_id)]
         month_name = settings.MONTHS[int(month_id)]
-        folder_path = f"{settings.CONFIDENTIAL_DOCS}employee_payslip/{org_name}/{year}/{month_name}/"
+        folder_path = f"{settings.CONFIDENTIAL_DOCS}employee_payslip/{int(org_id)}/{year}/{month_name}/"
         return folder_path
 
     def __get_payslip_dummy_folder(self, payslip_folder):
@@ -719,7 +724,6 @@ class FinanceBL():
             month = filename.split('_')[2]
             year = filename.split('_')[3].split('.')[0]
             employee_profile = UserDA().get_user_profile_by_id(employee.id)
-            org_name = settings.ORGANIZATION[employee_profile.company_id]
             folder_path = self.__get_payslip_folder(employee_profile.company_id, year, self.get_month_number(month))
             dummy_path = self.__get_payslip_dummy_folder(folder_path)
             filename = dummy_path + filename

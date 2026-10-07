@@ -17,6 +17,9 @@ from cryptography.fernet import Fernet
 
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
 from pTracker.dataaccess.ptracker_access.holiday_da import HolidayDA
+from pTracker.dataaccess.platform_access.tenancy_da import TenancyDA
+from pTracker.common.company_authorization import has_capability
+from pTracker.common.permission_map import PERMISSION_TO_CAPABILITY
 
 
 
@@ -133,17 +136,13 @@ class Utility():
 
     def is_permitted(self, user_id, permission_code):
         """
-        This is a common function don't modify or delete
+        Legacy entry point used across the biz layer. Answered by the company-scoped
+        capability system (see permission_map.py); unmapped codenames are denied.
         """
-        permitted = False
-        permission = UserDA().get_group_permission(user_id, permission_code)
-        if permission:
-            permitted = True
-        else:
-            permission = UserDA().get_user_permission(user_id, permission_code)
-            if permission:
-                permitted = True
-        return permitted
+        capability = PERMISSION_TO_CAPABILITY.get(permission_code)
+        if capability is None:
+            return False
+        return has_capability(user_id, capability)
 
     def get_week_days(self,start,end):
         weekdays=[]
@@ -197,7 +196,7 @@ class Utility():
 
     def get_organization_logo_as_image(self, organization_id):
         logo_images = BytesIO()
-        if organization_id == 2:
+        if organization_id == settings.COMPANY['DM']['ID']:
             logo = Image.open(os.path.join(settings.MEDIA_ROOT, f'logo/DMlogo.png'))
             logo.save(logo_images, format='png')
         else:
@@ -235,12 +234,7 @@ class Utility():
         return min, max
 
     def get_organization_name(self, organization_id):
-        company_name = ''
-        if organization_id == 2:
-            company_name = "Digitalmesh"
-        else:
-            company_name = "EM Softech"
-        return company_name
+        return TenancyDA().get_company_name(organization_id)
 
     def get_designation_of_employee(self, emp_id):
         try:

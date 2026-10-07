@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 import os
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from corsheaders.defaults import default_headers
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -37,6 +38,7 @@ REST_AUTH = {
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_HEADERS = (*default_headers, 'x-company-id')
 
 
 # Application definition
@@ -59,6 +61,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'pTracker.dataaccess.ptracker_access',
     'pTracker.dataaccess.platform_access',
+    'pTracker.dataaccess.attendance_v2_access',
     'pTracker.wiki.sites',
     'pTracker.wiki.data_access.wiki_models',
     'widget_tweaks',
@@ -73,6 +76,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'pTracker.common.module_gate_middleware.ModuleGateMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -176,6 +180,15 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'AUTH_HEADER_TYPES': ('JWT',),
     'SIGNING_KEY': SECRET_KEY,
+    'AUTH_TOKEN_CLASSES': ('pTracker.common.token_revocation.RevocableAccessToken',),
+}
+
+# Shared cache (Redis) - holds revoked JWT ids, must be shared across workers.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': os.getenv('REDIS_CACHE_URL', 'redis://redis:6379/1'),
+    }
 }
 
 #send emails

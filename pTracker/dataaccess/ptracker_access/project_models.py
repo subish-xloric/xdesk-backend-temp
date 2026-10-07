@@ -21,7 +21,7 @@ class Project(models.Model):
     project_id = models.AutoField(primary_key=True, db_column='project_id')
     account_id = models.IntegerField(null=True, blank=True, db_column='account_id')
     project_type_id = models.IntegerField(null=True, blank=True, db_column='project_type_id')
-    company_id = models.IntegerField(null=True, blank=True, db_column='company_id', default=2)
+    company_id = models.IntegerField(null=True, blank=True, db_column='company_id')
     name = models.CharField(max_length=150, db_column='name')
     description = models.CharField(max_length=500, db_column='description', blank=True)
     is_deleted = models.IntegerField(default=0, db_column='is_deleted')

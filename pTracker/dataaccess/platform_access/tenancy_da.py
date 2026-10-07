@@ -42,6 +42,26 @@ class TenancyDA():
     def get_company_by_id(self, company_id):
         return Company.objects.filter(pk=company_id).first()
 
+    def get_company_name(self, company_id):
+        company = Company.objects.filter(pk=company_id).only('short_name').first()
+        return company.short_name if company else ''
+
+    def get_company_legal_name(self, company_id):
+        company = Company.objects.filter(pk=company_id).only('legal_name').first()
+        return company.legal_name if company else ''
+
+    def get_company_letterhead(self, company_id):
+        """ Legal name followed by the registered address, one line each. """
+        company = Company.objects.filter(pk=company_id).first()
+        if not company:
+            return ''
+        return '\n'.join(part for part in (company.legal_name, company.registered_address) if part)
+
+    def get_company_by_legacy_id(self, legacy_company_id):
+        if legacy_company_id is None:
+            return None
+        return Company.objects.filter(legacy_company_id=legacy_company_id).first()
+
     def update_company(self, company_id, **fields):
         Company.objects.filter(pk=company_id).update(**fields)
         return self.get_company_by_id(company_id)

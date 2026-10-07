@@ -3,7 +3,7 @@ from .base import *
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['dmdeskadmin.digitalmesh.com', 'wiki.digitalmesh.com']
+ALLOWED_HOSTS = ['dmdeskadmin.mydomain.com', 'wiki.mydomain.com']
 
 FERNET_KEY = str(os.getenv('FERNET_KEY'))
 
@@ -63,14 +63,14 @@ MEDIA_ROOT = '/var/www/dm_ptracker/backend_app/media/'
 # MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
 
-BASE_URL = "https://dmdesk.digitalmesh.com/#/"
+BASE_URL = "https://dmdesk.mydomain.com/#/"
 
 OFFBOARD_DOCUMENT_URL = MEDIA_ROOT+'offboarding_documents'
 
-DEFAULT_SITE_MEDIA_URL = "https://wiki.digitalmesh.com/media/employee_profile_photo/"
+DEFAULT_SITE_MEDIA_URL = "https://wiki.mydomain.com/media/employee_profile_photo/"
 
 
-DEFUALT_API_URL = "https://wiki.digitalmesh.com/"
+DEFUALT_API_URL = "https://wiki.mydomain.com/"
 
 
 DM_DESK_MEDIA_URL = DEFUALT_API_URL + "media/"

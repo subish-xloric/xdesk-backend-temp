@@ -9,6 +9,8 @@ from django.template import loader
 
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_context import get_active_company_id
+from pTracker.dataaccess.platform_access.tenancy_da import TenancyDA
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
 
@@ -106,7 +108,7 @@ class NotificationBL():
             email_dto = new_dto()
             date_time = interview.date_and_time.strftime('at %I:%M %p on %d/%m/%Y')
             email_dto.subject = f"Interview Meeting Link for {candidate_name} {date_time}"
-            email_dto.company_name = settings.COMPANY_NAME_FOR_INTERVIEW_MAIL
+            email_dto.company_name = TenancyDA().get_company_legal_name(get_active_company_id())
             email_dto.designation = self.__get_user_job_title(user_id)
             email_dto.content = subject
             email_dto.heading = f"Interview Meeting Link for {candidate_name} {date_time}"

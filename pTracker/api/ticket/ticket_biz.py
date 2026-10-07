@@ -20,6 +20,9 @@ from django.db import transaction
 from django.db.models import Sum
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_TEAM
+from pTracker.common.company_context import get_active_company
+from pTracker.common.company_context import get_active_company_id
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
 
@@ -66,8 +69,7 @@ class TicketBL():
         }
         try:
             user_id = request.user.id
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            is_permitted_to_view_all_tickets = self.is_manager(role_id)
+            is_permitted_to_view_all_tickets = self.is_manager(user_id)
             attachment = TicketDA().get_ticket_attachment_by_attachment_id(attachment_id)
             ticket_id = attachment.ticket_id
             ticket = TicketDA().get_ticket_by_ticket_id(ticket_id)
@@ -108,12 +110,11 @@ class TicketBL():
         sag_project_ids = settings.COMMON_PROJECTS
         try:
             user_id = request.user.id
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-
-            is_manager = self.is_manager(role_id)
+            scope = self.ticket_scope(user_id)
+            is_manager = scope == SCOPE_ALL
 
             if is_manager:
-                project_ids = ProjectDA().get_all_project_ids()
+                project_ids = ProjectDA().get_all_project_ids_by_company(get_active_company_id())
             else:
                 project_ids = ProjectDA().get_all_project_ids_of_user(user_id)
 
@@ -147,9 +148,9 @@ class TicketBL():
             is_sag_team_member = True if user_id in sag_team_members else False
             is_sag_team_lead = True if user_id in sag_team_leads else False
 
-            #checking whether the user is lead (and not a sag team member or sag team lead as sag team member also have role_id as 4)
-            #If the user is team lead then his team members user_ids are appended to a list, so that team members tickets can also be listed on leads account
-            if role_id == 4 and (not is_sag_team_lead and not is_sag_team_member):
+            #checking whether the user has team-scope ticket visibility (and not a sag team member or sag team lead)
+            #If the user is a team lead then his team members user_ids are appended to a list, so that team members tickets can also be listed on leads account
+            if scope == SCOPE_TEAM and (not is_sag_team_lead and not is_sag_team_member):
                 user_ids = UserDA().get_current_team_members_by_lead_id(user_id)
                 user_ids = list(map(lambda user: user.id, user_ids))
                 user_ids.append(user_id)
@@ -161,7 +162,7 @@ class TicketBL():
 
                 #Checking whether user is a developer or a lead, and project is a sag project
                 if (project_id in sag_project_ids and not is_manager) and (not is_sag_team_member and not is_sag_team_lead):
-                    if role_id == 4:
+                    if scope == SCOPE_TEAM:
                         ticket = TicketDA().get_latest_updated_user_created_tickets_from_project_id(project_id, user_ids)
                     else:
                         ticket = TicketDA().get_latest_updated_user_created_tickets_from_project_id(project_id, [user_id])
@@ -245,9 +246,8 @@ class TicketBL():
         try:
             is_unanswered = False
             user_id = request.user.id
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-
-            is_permitted_to_view_all_tickets = self.is_manager(role_id)
+            scope = self.ticket_scope(user_id)
+            is_permitted_to_view_all_tickets = scope == SCOPE_ALL
 
             project_id = request.query_params.get('project_id') if request.query_params.get('project_id') else 0
 
@@ -313,8 +313,7 @@ class TicketBL():
                 filter_criteria['created_by'] = user_id
 
             if assignee:
-                assignee_role_id, assignee_role_name = UserDA().get_user_role_by_id(assignee)
-                is_assignee_manager = self.is_manager(assignee_role_id)
+                is_assignee_manager = self.is_manager(assignee)
                 is_assignee_part_of_project = self.is_project_accessible(assignee, project_id)
                 if is_assignee_part_of_project or is_assignee_manager:
                     filter_criteria['assigned_to'] = assignee
@@ -325,8 +324,7 @@ class TicketBL():
                     return response
 
             if reporter:
-                reporter_role_id, reporter_role_name = UserDA().get_user_role_by_id(reporter)
-                is_reporter_manager = self.is_manager(reporter_role_id)
+                is_reporter_manager = self.is_manager(reporter)
                 is_reporter_part_of_project = self.is_project_accessible(reporter, project_id)
                 if is_reporter_part_of_project or is_reporter_manager:
                     filter_criteria['created_by'] = reporter
@@ -420,7 +418,8 @@ class TicketBL():
 
 
             #For a user to view all tickets when a specific project is selected in dropdown
-            if int(project_id) in project_ids or is_permitted_to_view_all_tickets:
+            company_project_ids = ProjectDA().get_all_project_ids_by_company(get_active_company_id())
+            if int(project_id) in project_ids or (is_permitted_to_view_all_tickets and int(project_id) in company_project_ids):
                 user_tickets = TicketDA().get_all_tickets_filtered_v1(filter_criteria,is_unanswered, sort_field)
 
                 if int(filter_criteria['project_id']) in sag_project_ids and not is_permitted_to_view_all_tickets:
@@ -446,15 +445,15 @@ class TicketBL():
                     is_sag_team_member = True if user_id in sag_team_members else False
                     is_sag_team_lead = True if user_id in sag_team_leads else False
 
-                    #If user is a lead, then all of his team members are added to a list (as Sag team member have role_id as 4 and Sag lead has role_id as 3, so avoiding them)
-                    if role_id == 4 and (not is_sag_team_lead and not is_sag_team_member):
+                    #If user has team-scope ticket visibility, then all of his team members are added to a list
+                    if scope == SCOPE_TEAM and (not is_sag_team_lead and not is_sag_team_member):
                         user_ids = UserDA().get_current_team_members_by_lead_id(user_id)
                         user_ids = list(map(lambda user: user.id, user_ids))
                         user_ids.append(user_id)
 
-                    #Logic for Non-Sag members -> for lead, all the sag tickets created by him and his team members will be listed, for a developer, tickets created by him only will be listed
+                    #Logic for Non-Sag members -> for a team-scope lead, all the sag tickets created by him and his team members will be listed, for a developer, tickets created by him only will be listed
                     if not is_sag_team_member and not is_sag_team_lead:
-                        if role_id == 4:
+                        if scope == SCOPE_TEAM:
                             user_tickets = user_tickets.filter(project_id=project_id, created_by__in=user_ids).order_by(sort_field)
                         else:
                             user_tickets = user_tickets.filter(project_id=project_id, created_by=user_id).order_by(sort_field)
@@ -626,7 +625,6 @@ class TicketBL():
                 manager_users_ids = [user[2] for user in manager_users[0]]
                 project_users = [ user_info for user_id, user_info in active_users.items() if user_id in project_employees_ids or user_id in manager_users_ids ]
                 response['project_users'] = project_users
-                role_id, role_name = UserDA().get_user_role_by_id(user_id)
                 project_tickets = self.__helper.get_parent_dropdown([project_id],ticket_id,settings.TICKET_STATUS_OPEN)
                 
                 #for project repo
@@ -638,7 +636,7 @@ class TicketBL():
                 response["project_repo"] = project_repo_names
                 response["project_modules"] = project_modules
                 response["project_tickets"] = project_tickets
-                response['watchers'], response['assigned_users'] = self.__helper.get_watchers_and_assigned_users(user_id=user_id, role_id=role_id, project_id=project_id, ticket_id=ticket_id)
+                response['watchers'], response['assigned_users'] = self.__helper.get_watchers_and_assigned_users(user_id=user_id, project_id=project_id, ticket_id=ticket_id)
                 response["project_status"] = project_status
                 response["priority"] = priority_choices
                 response["ticket_type"] = ticket_type
@@ -658,12 +656,11 @@ class TicketBL():
         response = {"status": 200, "projects": [], "error":None}
         try:
             user_id = request.user.id
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            is_manager = self.is_manager(role_id)
+            is_manager = self.is_manager(user_id)
             if is_manager:
-                user_projects = ProjectDA().get_all_projects()
+                user_projects = ProjectDA().get_all_projects_by_company(get_active_company_id())
             else:
-                user_projects = ProjectDA().get_all_user_projects(user_id)
+                user_projects = ProjectDA().get_all_user_projects(user_id).filter(company_id=get_active_company_id())
 
             if user_projects:
                 user_projects = user_projects.order_by("name")
@@ -696,7 +693,6 @@ class TicketBL():
             request_data = request.data
 
             user_id = request.user.id
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
 
             #Set Project Details
             project_id = int(request_data.get('project_id', 0))
@@ -708,7 +704,7 @@ class TicketBL():
             project_name = project.name
 
             is_part_of_project = self.is_project_accessible(user_id, project_id)
-            is_manager = self.is_manager(role_id)
+            is_manager = self.is_manager(user_id)
             if not is_manager and not is_part_of_project:
                 response["error"] = settings.ERROR_MSG.get("access_denied")
                 response["status"] = 403
@@ -975,7 +971,6 @@ class TicketBL():
         try:
             ticket_id = int(ticket_id)
             user_id = request.user.id
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
 
             ticket_head = TicketDA().get_ticket_head_by_ticket_id(ticket_id)
             if not ticket_head:
@@ -986,7 +981,7 @@ class TicketBL():
             project_id = ticket_head.project_id
 
             is_part_of_project = self.is_project_accessible(user_id, project_id)
-            is_manager = self.is_manager(role_id)
+            is_manager = self.is_manager(user_id)
             if not is_manager and not is_part_of_project:
                 response["error"] = settings.ERROR_MSG.get("access_denied")
                 response["status"] = 403
@@ -1024,7 +1019,6 @@ class TicketBL():
         try:
             ticket_id = int(ticket_id)
             user_id = request.user.id
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
 
             ticket_head = TicketDA().get_ticket_head_by_ticket_id(ticket_id)
             if not ticket_head:
@@ -1035,7 +1029,7 @@ class TicketBL():
             project_id = ticket_head.project_id
 
             is_part_of_project = self.is_project_accessible(user_id, project_id)
-            is_manager = self.is_manager(role_id)
+            is_manager = self.is_manager(user_id)
             if not is_manager and not is_part_of_project:
                 response["error"] = settings.ERROR_MSG.get("access_denied")
                 response["status"] = 403
@@ -1246,8 +1240,7 @@ class TicketBL():
                 return response
 
             user_id = request.user.id
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            is_manager = self.is_manager(role_id)
+            is_manager = self.is_manager(user_id)
             project_id = ticket_header.project_id #request_data.get('project_id')
 
             is_part_of_project = self.is_project_accessible(user_id, project_id)
@@ -1840,7 +1833,6 @@ class TicketBL():
             user_id = request.user.id
             project_id = int(project_id)
             project = ProjectDA().get_project_by_id(project_id)
-            # role_id, role_name = UserDA().get_user_role_by_id(user_id)
             if not project:
                 response["error"] = "You have attempted to access an invalid project. Please contact your lead/manager for assistance."
                 response['status'] = 499
@@ -1873,9 +1865,8 @@ class TicketBL():
 
         try:
             user_id = request.user.id
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
             is_part_of_project = self.is_project_accessible(user_id, project_id)
-            is_manager = self.is_manager(role_id)
+            is_manager = self.is_manager(user_id)
             if not is_manager and not is_part_of_project:
                 response["error"] = settings.ERROR_MSG.get("access_denied")
                 response["status"] = 403
@@ -1960,8 +1951,13 @@ class TicketBL():
         return is_watcher
 
 
-    def is_manager(self, role_id):
-        is_manager = False
-        if role_id in (1, '1', 2, '2', 3, '3'):
-            is_manager = True
-        return is_manager
+    def ticket_scope(self, user_id):
+        """ user_id's ticket data scope in the request's active company: SCOPE_ALL,
+        SCOPE_TEAM or None. Works for any user, not just the caller - callers here
+        also check an assignee's or reporter's scope, not just their own. """
+        active = get_active_company()
+        company_id = active.company_id if active else None
+        return data_scope(user_id, 'ticket', company_id)
+
+    def is_manager(self, user_id):
+        return self.ticket_scope(user_id) == SCOPE_ALL

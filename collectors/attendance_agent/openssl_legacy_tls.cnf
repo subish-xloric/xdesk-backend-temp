@@ -1,0 +1,15 @@
+# OpenSSL settings for the eSSL collector process only (loaded via OPENSSL_CONF
+# in essl_agent.py). The eSSL server is SQL Server 2014 RTM, which only speaks
+# TLS 1.0; OpenSSL 3 refuses that by default ("unsupported protocol").
+# Remove this once the SQL Server is patched to support TLS 1.2.
+openssl_conf = openssl_init
+
+[openssl_init]
+ssl_conf = ssl_sect
+
+[ssl_sect]
+system_default = system_default_sect
+
+[system_default_sect]
+MinProtocol = TLSv1
+CipherString = DEFAULT@SECLEVEL=0

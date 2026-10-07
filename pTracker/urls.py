@@ -26,6 +26,8 @@ urlpatterns = [
     path('api/auth/', include('dj_rest_auth.urls')),
     path('api/project/', include('pTracker.api.projects.urls')),
     path('api/timesheet/', include('pTracker.api.timesheet.urls')),
+    # Attendance V2 must come before the legacy prefix it sits under.
+    path('api/attendance/v2/', include('pTracker.api.attendance_v2.urls')),
     path('api/attendance/', include('pTracker.api.attendance.urls')),
     path('api/user/', include('pTracker.api.user.urls1')),
     path('api/leave/', include('pTracker.api.leave.urls')),

@@ -11,7 +11,7 @@ DATABASES = {
         'USER': str(os.getenv('DB_USER')),
         'PASSWORD': str(os.getenv('DB_PWD')),
         'HOST': str(os.getenv('DB_HOST')),
-        'PORT': '3378',
+        'PORT': '3306',
     },
 
     'essl_db': {
@@ -77,7 +77,7 @@ DEFUALT_API_URL = "/home/digitalmesh/test/offboarding_documents/"
 
 DM_DESK_MEDIA_URL = DEFUALT_API_URL
 
-HOLIDAY_IMAGE_URL = "https://wiki.digitalmesh.com/media/holiday_images/"
+HOLIDAY_IMAGE_URL = "https://wiki.mydomain.com/media/holiday_images/"
 
 # CONFIDENTIAL_MEDIA = "/home/digitalmesh/test/offboarding_documents/confidential_docs/"
 

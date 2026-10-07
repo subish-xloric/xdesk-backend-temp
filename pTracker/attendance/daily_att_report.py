@@ -16,6 +16,7 @@ from openpyxl.styles import Color, Fill
 from openpyxl.styles import Font
 
 from pTracker.dataaccess.db import Connection
+from pTracker.dataaccess.platform_access.tenancy_da import TenancyDA
 from pTracker.common.utility import Utility
 from pTracker.user_management.employee import Employee
 from pTracker.dataaccess.ptracker_access.attendance import AttendanceDA
@@ -66,10 +67,7 @@ class DailyAttendanceReportBL():
                 wb = openpyxl.Workbook()
                 ws = wb.worksheets[0]
                 ws.merge_cells('A1:H1')
-                if company_name == "DM":
-                    company_address = """Digital Mesh Softech India (P) Limited\nUnit 1: 43-A, E Block, 2nd Floor,\nCochin Special Economic Zone, Kakkanad, Kochi – 682 037, Kerala, India.\nTel: +91-484-4060200, Fax: +91-484-4060201"""
-                else:
-                    company_address = """EM Softech LLP\nUnit 1:Plot No.43/ A, D Block, 2nd floor,\nCochin Special Economic Zone(CSEZ), Kakkanad, Kochi-682037, Kerala, India.\nTel:+91-484-2413280"""
+                company_address = TenancyDA().get_company_letterhead(settings.COMPANY[company_name]['ID'])
 
                 ws['A1'].value = company_address
                 ws['A1'].font = bold

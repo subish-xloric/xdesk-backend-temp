@@ -10,6 +10,8 @@ from django.db.models import base
 from django.db import  transaction
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import has_capability
+from pTracker.common.company_context import get_active_company
 from pTracker.dataaccess.ptracker_access.project_da import  ProjectDA
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
 
@@ -38,8 +40,12 @@ class ProjectCreateBL():
             user_id = request.user.id
             is_permitted = True
 
-            companies = settings.ORGANIZATION
-            
+            company = get_active_company()
+            if company is None:
+                response["error"] = settings.ERROR_MSG.get("access_denied")
+                response["status"] = 403
+                return response
+
             # role_id, role_name = UserDA().get_user_role_by_id(user_id)
             # is_manager = self.is_manager(role_id)
 
@@ -65,9 +71,9 @@ class ProjectCreateBL():
                         'account_name': each_account.name,
                     })
             
-            response['company_list'] = [ {'org_id': org_id, 'org_name': org_name} for org_id, org_name in settings.ORGANIZATION.items()]
+            response['company_list'] = [{'org_id': company.company_id, 'org_name': company.company_name}]
             response['project_account_list'] = project_account_list
-            projects = ProjectDA().get_all_projects()
+            projects = ProjectDA().get_all_projects_by_company(company.company_id)
             if projects:
                 for project in projects:
                     project_dict = {
@@ -77,7 +83,7 @@ class ProjectCreateBL():
                         "project_account_name":project_account_dict.get(project.account_id,"-")['account_name'],
                         "project_account_id":project.account_id,
                         "project_desc":project.description,
-                        "company_name":companies.get(project.company_id, ''),
+                        "company_name":company.company_name,
                         "company_id":project.company_id,
                         "billable":project.is_billable,
                         # "start_date":project.start_date if project.start_date else "",
@@ -107,37 +113,20 @@ class ProjectCreateBL():
             user_id = request.user.id
             is_permitted = True
             
-            #TODO is_manager need to be added
-            
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            is_manager = self.is_manager(role_id)
+            is_manager = self.is_manager(user_id)
 
-            # if not is_manager:
-            #     response["error"] = settings.ERROR_MSG.get("access_denied")
-            #     response["status"] = 403
-            #     return response
-            
-            # if is_manager:
-            #     projects = ProjectDA().get_all_projects()
-            # else:
-            #     projects = ProjectDA().get_all_user_projects(user_id)
-
-            if role_id > 4 or not is_manager:
+            if not is_manager:
                 response["error"] = settings.ERROR_MSG.get("access_denied")
                 response["status"] = 403
                 return response
-            
-            try:
-                company_id = int(request_data.get('company'))
 
-                if company_id not in settings.ORGANIZATION.keys():
-                    response['error'] = 'Invalid company selected'
-                    response["status"] = 499
-                    return response
-            except:
-                response['error'] = 'Invalid company selected'
-                response["status"] = 499
+            # Projects always belong to the company the request acts for.
+            company = get_active_company()
+            if company is None:
+                response["error"] = settings.ERROR_MSG.get("access_denied")
+                response["status"] = 403
                 return response
+            company_id = company.company_id
 
             try:
                 project_account = int(request_data.get('project_account'))
@@ -244,10 +233,7 @@ class ProjectCreateBL():
             user_id = request.user.id
             is_permitted = True
             
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            is_manager = self.is_manager(role_id)
-            
-            #TODO is_manager need to be added
+            is_manager = self.is_manager(user_id)
 
             # if not is_manager:
             #     response["error"] = settings.ERROR_MSG.get("access_denied")
@@ -282,25 +268,19 @@ class ProjectCreateBL():
                 response["error"] = 'Invalid project id is passed'
                 response["status"] = 403
                 return response
-            
+
+            if not self.is_in_active_company(project_obj):
+                response["error"] = 'Invalid project id is passed'
+                response["status"] = 403
+                return response
+            company_id = project_obj.company_id
+
             is_part_of_project = ProjectDA().is_project_accessible(user_id, project_id)
             if not is_part_of_project and not is_manager:
                 response["error"] = settings.ERROR_MSG.get("access_denied")
                 response["status"] = 403
                 return response
-            
-            try:
-                company_id = int(request_data.get('company'))
 
-                if company_id not in settings.ORGANIZATION.keys():
-                    response['error'] = 'Invalid company selected'
-                    response["status"] = 499
-                    return response
-            except:
-                response['error'] = 'Invalid company selected'
-                response["status"] = 499
-                return response
-            
             name = request_data.get('name')
             name_error, name = self.string_validator(name, 'Project Name')
             if name_error:
@@ -412,8 +392,7 @@ class ProjectCreateBL():
             user_id = request.user.id
             is_permitted = True
             
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            is_manager = self.is_manager(role_id)
+            is_manager = self.is_manager(user_id)
 
             try:
                 project_obj = ProjectDA().get_project_by_id(project_id)
@@ -422,7 +401,12 @@ class ProjectCreateBL():
                 response["error"] = 'Invalid project id is passed'
                 response["status"] = 403
                 return response
-            
+
+            if not self.is_in_active_company(project_obj):
+                response["error"] = 'Invalid project id is passed'
+                response["status"] = 403
+                return response
+
             #TODO is_manager need to be added
 
             # if not is_manager:
@@ -480,20 +464,7 @@ class ProjectCreateBL():
         try:
             user_id = request.user.id
             is_permitted = True
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            is_manager = self.is_manager(role_id)
-            #TODO is_manager need to be added
 
-            # if not is_manager:
-            #     response["error"] = settings.ERROR_MSG.get("access_denied")
-            #     response["status"] = 403
-            #     return response
-            
-            # if is_manager:
-            #     projects = ProjectDA().get_all_projects()
-            # else:
-            #     projects = ProjectDA().get_all_user_projects(user_id)
-            
             project_account_dict = {}
             project_accounts = ProjectDA().get_all_project_accounts()
             if project_accounts:
@@ -514,11 +485,12 @@ class ProjectCreateBL():
         return response
     
     
-    def is_manager(self, role_id):
-        is_manager = False
-        if role_id in (1, '1', 2, '2', 3, '3'):
-            is_manager = True
-        return is_manager
+    def is_manager(self, user_id):
+        return has_capability(user_id, 'project.manage')
+
+    def is_in_active_company(self, project):
+        company = get_active_company()
+        return company is not None and project.company_id == company.company_id
     
     
     def validate_progress_dates(self,created_date=None, start_date=None, end_date=None):

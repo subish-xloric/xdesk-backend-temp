@@ -34,6 +34,9 @@ class Company(models.Model):
         related_name='subsidiaries')
     legal_name = models.CharField(max_length=250)
     short_name = models.CharField(max_length=100)
+    legacy_company_id = models.IntegerField(null=True, blank=True, unique=True,
+        help_text="Bridges to the pre-existing settings.COMPANY/ORGANIZATION integer id "
+                   "(user_profile.company_id) during the module-by-module rollout.")
     registered_address = models.TextField(blank=True, null=True)
     contact_email = models.EmailField(blank=True, null=True)
     is_active = models.BooleanField(default=True)

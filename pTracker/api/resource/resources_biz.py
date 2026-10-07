@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from django.db.models import base
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import has_capability
 from pTracker.dataaccess.ptracker_access.project_da import  ProjectDA
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
 
@@ -104,8 +105,7 @@ class ResourceBL():
         result = {"error": None, "accounts": []}
         account_list = []
         try:
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (1, '1',2, '2',3, '3'):
+            if not has_capability(user_id, 'resource.manage_allocation'):
                 result['error'] = settings.ERROR_MSG['access_denied']
                 return result
 

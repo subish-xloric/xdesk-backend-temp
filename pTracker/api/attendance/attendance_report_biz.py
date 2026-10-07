@@ -15,10 +15,12 @@ from openpyxl.styles import Font
 
 from django.conf import settings
 from django.http import HttpResponse
+from django.utils.html import escape
 
 from pTracker.api import attendance
 from pTracker.dataaccess.db import Connection
 from pTracker.common.utility import Utility
+from pTracker.dataaccess.platform_access.tenancy_da import TenancyDA
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
 from pTracker.dataaccess.ptracker_access.project_da import  ProjectDA
@@ -50,7 +52,11 @@ class AttendanceReportBL():
         self.__log = Logs()
         self.__exception = ExceptionHandler()
         self.__utility = Utility()
-    
+
+    def __html_letterhead(self, company_id):
+        letterhead = TenancyDA().get_company_letterhead(company_id)
+        return '<br>\n'.join(escape(line) for line in letterhead.splitlines())
+
     def __is_weekend(self, date):
         return date.weekday() in [6]  # Saturday is 5, Sunday is 6
 
@@ -77,11 +83,10 @@ class AttendanceReportBL():
             if self.__is_holiday(str_date_obj) or self.__is_weekend(str_date_obj):
                 return result
 
+            result["company_address"] = self.__html_letterhead(int(organization))
             if int(organization) == settings.COMPANY['DM']['ID']:
-                result["company_address"] = settings.DM_ADDRESS
                 organization = 'DM'
             else:
-                result["company_address"] = settings.EM_ADDRESS
                 organization = 'EM'
 
             punch_data = self.__get_punch_data(str_date, organization)
@@ -220,10 +225,7 @@ class AttendanceReportBL():
                 result['error'] = settings.ERROR_MSG['access_denied']
                 return result
 
-            if organization == settings.COMPANY['DM']['ID']:
-                result["company_address"] = settings.DM_ADDRESS
-            else:
-                result["company_address"] = settings.EM_ADDRESS
+            result["company_address"] = self.__html_letterhead(organization)
 
 
             start_date = datetime(year, month, 1)
@@ -396,7 +398,7 @@ class AttendanceReportBL():
                     emp_att_list.append(dto)
                     del dto
 
-            result = self.format_excel_report(emp_att_list, month, year, company_name, holidays)
+            result = self.format_excel_report(emp_att_list, month, year, company_name, holidays, int(organization))
 
         except Exception as err:
             result["error"] = settings.ERROR_MSG['application_error'] \
@@ -405,7 +407,7 @@ class AttendanceReportBL():
 
 
 
-    def format_excel_report(self, log_list, month, year, company_name, holidays):
+    def format_excel_report(self, log_list, month, year, company_name, holidays, company_id):
 
         try:
             output = BytesIO()
@@ -462,10 +464,7 @@ class AttendanceReportBL():
                 ws = wb.worksheets[0]
 
 
-                if company_name == 'Digitalmesh':
-                    company_address = """Digital Mesh Softech India (P) Limited\nUnit 1: 43-A, E Block, 2nd Floor,\nCochin Special Economic Zone, Kakkanad, Kochi – 682 037, Kerala, India.\nTel: +91-484-4060200, Fax: +91-484-4060201"""
-                else:
-                    company_address = """EM Softech LLP\nUnit 1:Plot No.43/ A, D Block, 2nd floor,\nCochin Special Economic Zone(CSEZ), Kakkanad, Kochi-682037, Kerala, India.\nTel:+91-484-2413280"""
+                company_address = TenancyDA().get_company_letterhead(company_id)
 
                 ws.merge_cells('A1:' + day_head[-1]+'1')
                 ws.merge_cells('A3:' + day_head[-1]+'3')

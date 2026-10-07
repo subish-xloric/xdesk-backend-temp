@@ -11,6 +11,7 @@ from pTracker.common.utility import Utility
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.dataaccess.ptracker_access.leave_da import LeaveDA
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
+from pTracker.common.company_authorization import has_capability
 
 
 
@@ -29,8 +30,7 @@ class LeaveBulkBL():
 
     def __is_access(self, user_id):
         is_access = False
-        role_id, role_name = UserDA().get_user_role_by_id(user_id)
-        if role_id in (2, "2"):
+        if has_capability(user_id, 'leave.manage_all'):
             is_access = True
         return is_access
 
@@ -137,9 +137,8 @@ class LeaveBulkBL():
             helper = LeaveHelperBL()
             leave_da = LeaveDA()
             obj_start = Utility().convert_string_to_date_time(str(year) + "-01-01", "%Y-%m-%d")
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
             # check permission
-            if not role_id in (2, "2"):
+            if not has_capability(user_id, 'leave.manage_all'):
                 response['error'] = settings.ERROR_MSG.get('no_permission')
                 return response
             active_users = UserDA().get_all_active_users()
@@ -193,9 +192,8 @@ class LeaveBulkBL():
                 }
         try:
             leave_data = data
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
             # check permission
-            if role_id not in (2, "2"):
+            if not has_capability(user_id, 'leave.manage_all'):
                 result['error'] = settings.ERROR_MSG.get('no_permission')
                 return result
             for each in leave_data:

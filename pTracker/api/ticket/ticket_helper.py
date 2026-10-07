@@ -17,6 +17,8 @@ from datetime import datetime
 from cryptography.fernet import Fernet
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import data_scope
+from pTracker.common.company_context import get_active_company
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
 from pTracker.dataaccess.ptracker_access.ticket_da import TicketDA
@@ -601,7 +603,9 @@ class TicketHelperBL():
             return response
 
 
-    def get_watchers_and_assigned_users(self, user_id, role_id, project_id,ticket_id=0):
+    def get_watchers_and_assigned_users(self, user_id, project_id, ticket_id=0):
+        active = get_active_company()
+        company_id = active.company_id if active else None
 
         assigned_users = []
         watchers = []
@@ -652,15 +656,13 @@ class TicketHelperBL():
             if ticket_id and project_id in common_projects:
                 ticket = TicketDA().get_ticket_by_ticket_id(ticket_id)
                 ticket_creator = ticket.created_by
-                ticket_creator_role_id, ticket_creator_name = UserDA().get_user_role_by_id(ticket_creator)
-
-                if ticket_creator_role_id not in [1,2,3,4]:
+                if data_scope(ticket_creator, 'ticket', company_id) is None:
                     ticket_creator_lead = UserDA().get_lead_id_by_user(ticket_creator)
                     current_user_lead_ids.append(ticket_creator_lead)
                 current_user_lead_ids.append(ticket_creator)
 
             #Added Develper and his lead
-            if role_id not in [1,2,3,4]:
+            if data_scope(user_id, 'ticket', company_id) is None:
                 user_lead = UserDA().get_lead_id_by_user(user_id)
                 current_user_lead_ids.append(user_lead)
             current_user_lead_ids.append(user_id)

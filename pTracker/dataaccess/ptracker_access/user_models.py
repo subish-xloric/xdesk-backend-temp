@@ -18,6 +18,7 @@ class UserProfile(models.Model):
     is_twofa_on = models.SmallIntegerField(default=0)
     is_accout_blocked = models.SmallIntegerField(default=0)
     company_id = models.SmallIntegerField(default=0)
+    branch_id = models.IntegerField(null=True, blank=True)
     reported_to = models.SmallIntegerField(default=0)
     dob = models.DateField()
     gender = models.CharField(max_length=10)
@@ -57,6 +58,7 @@ class UserProfile(models.Model):
     )
 
     class Meta:
+        managed = False
         db_table = u'user_profile'
 
 class UsedBirthdayImage(models.Model):

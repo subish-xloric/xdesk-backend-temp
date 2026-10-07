@@ -18,6 +18,7 @@ from openpyxl.styles import Color, Fill
 from openpyxl.styles import Font
 
 from pTracker.dataaccess.db import Connection
+from pTracker.dataaccess.platform_access.tenancy_da import TenancyDA
 from pTracker.common.utility import Utility
 from pTracker.user_management.employee import Employee
 from pTracker.dataaccess.ptracker_access.attendance import AttendanceDA
@@ -104,7 +105,7 @@ class MonthlyAttendanceReportBL():
 
 
 
-    def format_excel_report(self, log_list, month, year, company_name, holidays):
+    def format_excel_report(self, log_list, month, year, company_name, holidays, company_id):
 
         try:
             #str_month  = 12_2019
@@ -165,10 +166,7 @@ class MonthlyAttendanceReportBL():
                 ws = wb.worksheets[0]
 
 
-                if company_name == 'Digitalmesh':
-                    company_address = company_address = """Digital Mesh Softech India (P) Limited\nUnit 1: 43-A, E Block, 2nd Floor,\nCochin Special Economic Zone, Kakkanad, Kochi – 682 037, Kerala, India.\nTel: +91-484-4060200, Fax: +91-484-4060201"""
-                else:
-                    company_address = """EM Softech LLP\nUnit 1:Plot No.43/ A, D Block, 2nd floor,\nCochin Special Economic Zone(CSEZ), Kakkanad, Kochi-682037, Kerala, India.\nTel:+91-484-2413280"""
+                company_address = TenancyDA().get_company_letterhead(company_id)
 
                 ws.merge_cells('A1:' + day_head[-1]+'1')
                 ws.merge_cells('A3:' + day_head[-1]+'3')
@@ -384,8 +382,8 @@ class MonthlyAttendanceReportBL():
                         em_emp_att_list.append(dto)
                     del dto
 
-            self.format_excel_report(dm_emp_att_list, month, year, 'Digitalmesh', holidays)
-            self.format_excel_report(em_emp_att_list, month, year, 'EM_Softech', holidays)
+            self.format_excel_report(dm_emp_att_list, month, year, 'Digitalmesh', holidays, settings.COMPANY['DM']['ID'])
+            self.format_excel_report(em_emp_att_list, month, year, 'EM_Softech', holidays, settings.COMPANY['EM']['ID'])
 
         except Exception as err:
             Utility().log("Error in the method generate_daily_att_report, Error is : {0} ".format(str(err)))

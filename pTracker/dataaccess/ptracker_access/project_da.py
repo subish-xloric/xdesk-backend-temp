@@ -47,6 +47,10 @@ class ProjectDA():
         objs = Project.objects.filter(is_deleted=0).order_by('name')
         return objs
 
+    def get_all_projects_by_company(self, company_id):
+        objs = Project.objects.filter(is_deleted=0, company_id=company_id).order_by('name')
+        return objs
+
     def get_project_user_mapping(self, user_id):
         objs = ProjectEmployee.objects.filter(user_id=user_id)
         return objs
@@ -145,6 +149,10 @@ class ProjectDA():
 
     def get_all_project_ids(self):
         project_ids = Project.objects.filter(is_deleted=0).values_list('project_id', flat=True)
+        return project_ids
+
+    def get_all_project_ids_by_company(self, company_id):
+        project_ids = Project.objects.filter(is_deleted=0, company_id=company_id).values_list('project_id', flat=True)
         return project_ids
 
 

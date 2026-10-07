@@ -13,6 +13,9 @@ from pTracker.api.platform.views import RoleDetailView
 from pTracker.api.platform.views import RoleCapabilitiesView
 from pTracker.api.platform.views import MembershipListCreateView
 from pTracker.api.platform.views import MembershipDetailView
+from pTracker.api.platform.views import MembershipCapabilitiesView
+from pTracker.api.platform.views import ModuleListView
+from pTracker.api.platform.views import CompanyModulesView
 
 
 urlpatterns = [
@@ -31,8 +34,12 @@ urlpatterns = [
 
     path('capabilities/', CapabilityListView.as_view(), name='platform_capability_list'),
 
+    path('modules/', ModuleListView.as_view(), name='platform_module_list'),
+    path('companies/<int:company_id>/modules/', CompanyModulesView.as_view(), name='platform_company_modules'),
+
     path('roles/<int:role_id>/', RoleDetailView.as_view(), name='platform_role_detail'),
     path('roles/<int:role_id>/capabilities/', RoleCapabilitiesView.as_view(), name='platform_role_capabilities'),
 
     path('memberships/<int:membership_id>/', MembershipDetailView.as_view(), name='platform_membership_detail'),
+    path('memberships/<int:membership_id>/capabilities/', MembershipCapabilitiesView.as_view(), name='platform_membership_capabilities'),
 ]

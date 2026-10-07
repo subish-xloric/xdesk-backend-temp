@@ -10,6 +10,8 @@ from django.db import  transaction
 
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_context import get_active_company
+from pTracker.common.company_authorization import has_capability
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
 from pTracker.common.file_manager import FileManager
@@ -47,7 +49,6 @@ class TaxBL():
 
         try:
             user_id = request.user.id
-            role_id, name = UserDA().get_user_role_by_id(user_id)
 
             request_data = request.data
             emp_id = int(request_data.get('emp_id'))
@@ -64,7 +65,7 @@ class TaxBL():
                 response['chat_id'] = is_chat_exist.chat_id
                 return response
 
-            if not is_chat_exist and role_id != 3:
+            if not is_chat_exist and not has_capability(user_id, 'payroll.manage_tax_claims'):
                 response["error"] = settings.ERROR_MSG.get("access_denied")
                 response["status"] = 403
                 return response
@@ -351,8 +352,8 @@ class TaxBL():
                             for financial_year in fin_data ]
             fin_year_data.reverse()
 
-            organization_data = settings.ORGANIZATION
-            organization_data = [ key for key, value in organization_data.items() ]
+            active = get_active_company()
+            organization_data = [active.company_id] if active else []
 
             for tax_period in list(tax_periods):
                 tax_batch_count = TaxDA().get_tax_batch_by_period(tax_period_id=tax_period.id)
@@ -396,12 +397,7 @@ class TaxBL():
         }
         try:
             user_id = request.user.id
-            role_id, name = UserDA().get_user_role_by_id(user_id)
-
-            if role_id == 3:
-                is_manager = True
-            else:
-                is_manager = False
+            is_manager = has_capability(user_id, 'payroll.manage_tax_claims')
 
             current_fyd = FinanaceDA().get_financial_year_by_date(datetime.now())
             assessment_years = FinanaceDA().get_all_financial_years()
@@ -485,7 +481,6 @@ class TaxBL():
         emp_mail_list = list()
         try:
             user_id = request.user.id
-            role_id, name = UserDA().get_user_role_by_id(user_id)
             is_permitted = self.__utility.is_permitted(user_id, 'can_add_assessment_period')
             if not is_permitted:
                 response["error"] = settings.ERROR_MSG.get('access_denied')
@@ -615,7 +610,6 @@ class TaxBL():
         response = {}
         try:
             user_id = request.user.id
-            role_id, name = UserDA().get_user_role_by_id(user_id)
             is_permitted = self.__utility.is_permitted(user_id, 'can_delete_assessment_period')
             if not is_permitted:
                 response["error"] = settings.ERROR_MSG.get('access_denied')
@@ -666,7 +660,6 @@ class TaxBL():
         response = {}
         try:
             user_id = request.user.id
-            role_id, name = UserDA().get_user_role_by_id(user_id)
             is_permitted = self.__utility.is_permitted(user_id, 'can_add_employee_to_assessment_period')
             if not is_permitted:
                 response["error"] = settings.ERROR_MSG.get('access_denied')
@@ -789,7 +782,6 @@ class TaxBL():
         response = {}
         try:
             user_id = request.user.id
-            role_id, name = UserDA().get_user_role_by_id(user_id)
             is_permitted = self.__utility.is_permitted(user_id, 'can_delete_employee_from_assessment_period')
             if not is_permitted:
                 response["error"] = settings.ERROR_MSG.get('access_denied')
@@ -851,7 +843,6 @@ class TaxBL():
         emp_mail_list = list()
         try:
             user_id = request.user.id
-            role_id, name = UserDA().get_user_role_by_id(user_id)
             is_permitted = self.__utility.is_permitted(user_id, 'can_add_assessment_period')
             if not is_permitted:
                 response["error"] = settings.ERROR_MSG.get('access_denied')
@@ -1799,7 +1790,6 @@ class TaxBL():
         category_dict = {}
         try:
             user_id = request.user.id
-            role_id, name = UserDA().get_user_role_by_id(user_id)
 
             if tax_period_id in (0, '0', None):
                 current_date = datetime.now()

@@ -38,8 +38,10 @@ class AppraisalDA():
     def update_appraisal_form(self, appraisal_id, data):
         return AppraisalForm.objects.filter(appraisal_id = appraisal_id).update(**data)
 
-    def get_all_my_appraisal_forms_by_appraisal_period(self, user_id, period_id, role_id):
-        if role_id in (1, '1', 2, '2'):
+    def get_all_my_appraisal_forms_by_appraisal_period(self, user_id, period_id, see_all=False):
+        """ see_all: whether the caller may see every form in the period (see
+        appraisal.manage in the biz layer), not just their own. """
+        if see_all:
             return AppraisalForm.objects.filter(period_id=period_id)
         return AppraisalForm.objects.filter(Q(employee_id= user_id)|Q(reviewer_id=user_id)|Q(appraiser_id=user_id),period_id=period_id)
 

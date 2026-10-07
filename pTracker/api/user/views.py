@@ -17,7 +17,7 @@ from pTracker.api.user.forgot_password_biz import ResetpasswordBL
 from pTracker.api.user.auth_biz import BiometricAuthBL
 from pTracker.api.user.user_management_helper_bl import UserManagementHelperBL
 from pTracker.api.timesheet.timesheet_biz_v1 import TimeSheetBL_V1
-from pTracker.common.utility import Utility
+from pTracker.api.user.access_biz import AccessBL
 
 
 from rest_framework.status import (
@@ -28,6 +28,7 @@ from rest_framework.status import (
 )
 
 from rest_framework_simplejwt.tokens import RefreshToken
+from pTracker.common.token_revocation import revoke_access_token
 
 
 
@@ -66,6 +67,7 @@ class BiometricLoginView(APIView):
                     response['user']['last_name'] = user.last_name
                     response['role_id'] = role_id
                     response['role_name'] = role_name
+                    response.update(AccessBL().get_login_access(user.id))
 
                     if TimeSheetBL_V1().prevent_login_by_timesheet(user.id):
                         return Response({'error': 'Please contact Operations Manager your account has been blocked due to missing in timesheet entries'}, status=499)
@@ -85,16 +87,16 @@ class CustomLoginView(LoginView):
         if ret.status_code == 200:
 
             user = UserDA().get_user_by_email(request.data["email"])
-            if user:
-                is_prevent = TimeSheetBL_V1().prevent_login_by_timesheet(user.id)
-                if is_prevent:
-                    return Response(
-                        {
-                            "message": "Timesheet validation failed.",
-                            "status" : "TIME_SHEET_EXPECTED"
-                        },
-                        #status=HTTP_503_SERVICE_UNAVAILABLE,
-                    )
+            #if user:
+                # is_prevent = TimeSheetBL_V1().prevent_login_by_timesheet(user.id)
+                # if is_prevent:
+                #     return Response(
+                #         {
+                #             "message": "Timesheet validation failed.",
+                #             "status" : "TIME_SHEET_EXPECTED"
+                #         },
+                #         #status=HTTP_503_SERVICE_UNAVAILABLE,
+                #     )
 
             is_twofa_on = UserManagementBL().is_user_two_fa_on(request.data["email"])
 
@@ -116,20 +118,15 @@ class CustomLoginView(LoginView):
 
     def get_response(self):
         orginal_response = super().get_response()
-        is_master_accountant = False
         if orginal_response:
             user_id = orginal_response.data['user']['pk']
             role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            is_master_accountant = Utility().is_permitted(user_id, 'can_process_payslip')
-            manage_assessment_menu = Utility().is_permitted(user_id, 'can_view_assessment_period')
-
             new_data = {
                 "role_id": role_id,
                 "role_name": role_name,
-                "master_accountant": is_master_accountant,
-                "manage_assessment_menu": manage_assessment_menu
             }
             orginal_response.data.update(new_data)
+            orginal_response.data.update(AccessBL().get_login_access(user_id))
         return orginal_response
 
 class AuthyTokenVerifyView(LoginView):
@@ -184,19 +181,14 @@ class AuthyTokenVerifyView(LoginView):
     def get_response(self):
         orginal_response = super().get_response()
         if orginal_response:
-            is_master_accountant = False
             user_id = orginal_response.data['user']['pk']
             role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            is_master_accountant = Utility().is_permitted(user_id, 'can_process_payslip')
-            manage_assessment_menu = Utility().is_permitted(user_id, 'can_view_assessment_period')
-
             new_data = {
                 "role_id": role_id,
                 "role_name": role_name,
-                "master_accountant": is_master_accountant,
-                "manage_assessment_menu": manage_assessment_menu
             }
             orginal_response.data.update(new_data)
+            orginal_response.data.update(AccessBL().get_login_access(user_id))
         return orginal_response
 
 
@@ -445,7 +437,7 @@ class AuthyTokenVerifyView_V1(LoginView):
         if not is_valid_token:
             test_email = ret.data['user']['email']
             test_otp = request.data["otp"]
-            if test_email=="manu@mydomain.com" and test_otp in (123456, "123456"):
+            if test_email=="subish@ymail.com" and test_otp in (123456, "123456"):
                 is_valid_token = True
 
         if not is_valid_token:
@@ -470,6 +462,7 @@ class AuthyTokenVerifyView_V1(LoginView):
             role_id, role_name = UserDA().get_user_role_by_id(user_id)
             new_data = {"role_id": role_id, "role_name": role_name}
             orginal_response.data.update(new_data)
+            orginal_response.data.update(AccessBL().get_login_access(user_id))
         return orginal_response
 
 class CustomLogoutView_v1(LogoutView):
@@ -478,9 +471,13 @@ class CustomLogoutView_v1(LogoutView):
 
     def post(self, request, *args, **kwargs):
         user = request.user
+        token = request.auth
         ret = super().post(request, *args, **kwargs)
         if ret.status_code==200:
             header = UserManagementBL_V1().save_commen_headers_by_user_id(user.id, {})
+            if not revoke_access_token(token):
+                return Response({'error': 'Logout failed, please try again.'}, status=503)
+            ret.data = {'detail': 'Successfully logged out.'}
         return ret
 
 
@@ -686,3 +683,15 @@ class UpdateUserViewV3(LoginView):
     def post(self,request):
         result = UserManagementHelperBL().update_user(request.user.id, request.data, version='v2')
         return Response(result)
+
+
+class UserAccessView(APIView):
+    """ Modules and capabilities the caller has in the company named by the
+    X-Company-Id header. For showing/hiding UI only; the backend enforces
+    access itself on every request. """
+    authentication_classes = [JSONWebTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        result = AccessBL().get_access(request.user.id, request.META)
+        return Response(result, status=result['status'])

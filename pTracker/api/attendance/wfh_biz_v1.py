@@ -14,6 +14,7 @@ from pTracker.common.utility import Utility
 from pTracker.api.attendance.wfh_biz import WorkFromHomeBL
 from datetime import date, timedelta, datetime
 import calendar
+from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_TEAM
 
 def new_dto():
     dto = SimpleNamespace()
@@ -161,13 +162,12 @@ class WorkFromHomeBL_V1():
 
         wfh_list = []
         wfh_emp_id_list = []
-        role_id=''
 
         try:
             user_id = request.user.id
             data = request
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (1, 2, 3, 4, "1", "2", "3", "4"):
+            scope = data_scope(user_id, 'attendance')
+            if scope is None:
                 result["error"] = settings.ERROR_MSG.get('access_denied')
                 return result
 
@@ -214,7 +214,7 @@ class WorkFromHomeBL_V1():
                 wfh_details = AttendanceDA().get_all_wfh_requests().filter(start_date__gte=obj_start_datetime,start_date__lte=obj_end_datetime,
                     status__in =[1,2])
 
-            if role_id == 4:
+            if scope == SCOPE_TEAM:
                 emp_temp_data = UserDA().get_current_team_members_by_lead_id(user_id)
                 emp_temp_id = []
                 temp_user = UserDA().get_user_by_id(user_id)
@@ -341,14 +341,14 @@ class WorkFromHomeBL_V1():
             status_approved_id = settings.WFH_REQUEST_STATUS_V1['Approved']
             team_members = [user_id]
 
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
+            scope = data_scope(user_id, 'attendance')
 
             start_date = date(year, 1, 1)
             end_date = date(year, 12, 31)
 
-            if role_id in (1, 2, 3):
+            if scope == SCOPE_ALL:
                 users = UserDA().get_current_team_members_by_lead_id(0)
-            elif role_id == 4:
+            elif scope == SCOPE_TEAM:
                 users = UserDA().get_current_team_members_by_lead_id(user_id)
             else:
                 temp_user = UserDA().get_user_by_id(user_id)
@@ -357,7 +357,7 @@ class WorkFromHomeBL_V1():
             for user in users:
                 team_members.append(user.id)
 
-            if role_id == 5 :
+            if scope is None :
                 wfhs = AttendanceDA().get_employee_wfh_by_date(start_date, end_date, user_id)
             else:
                 if emp_id:
@@ -432,8 +432,8 @@ class WorkFromHomeBL_V1():
             status_approved_id = settings.WFH_REQUEST_STATUS_V1['Approved']
             team_members = [user_id]
 
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (1, 2, 3, "1", "2", "3"):
+            scope = data_scope(user_id, 'attendance')
+            if scope != SCOPE_ALL:
                 result["error"] = settings.ERROR_MSG.get('access_denied')
                 return result
 
@@ -530,10 +530,10 @@ class WorkFromHomeBL_V1():
         try:
             user_id = user.id
             permitted =  False
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id in (1, 2, 3, 4):
+            scope = data_scope(user_id, 'attendance')
+            if scope is not None:
                 response['is_display'] = 1
-                if role_id == 4:
+                if scope == SCOPE_TEAM:
                     response['is_display'] = 0
                 permitted =  True
             if not permitted:
@@ -545,7 +545,7 @@ class WorkFromHomeBL_V1():
                 members_list = UserDA().get_current_team_members_by_lead_id(user_id)
                 members_list.append(UserDA().get_user_by_id(user_id))
             else:
-                if role_id == 4:
+                if scope == SCOPE_TEAM:
                     # get team members
                     members_list = UserDA().get_current_team_members_by_lead_id(user_id)
                     members_list.append(user)
@@ -579,12 +579,12 @@ class WorkFromHomeBL_V1():
             user_id = request.user.id
             emp_id = int(request.GET.get('emp_id'))
 
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id not in (1, 2, 3, 4, "1", "2", "3", "4"):
+            scope = data_scope(user_id, 'attendance')
+            if scope is None:
                 result["error"] = settings.ERROR_MSG.get('access_denied')
                 return result
 
-            if role_id == 4:
+            if scope == SCOPE_TEAM:
                 emp_temp_data = UserDA().get_current_team_members_by_lead_id(user_id)
                 emp_temp_id = []
                 for each in emp_temp_data:

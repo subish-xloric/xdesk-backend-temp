@@ -1,4 +1,5 @@
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import has_capability
 from pTracker.dataaccess.ptracker_access.asset_da import AssetDA
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
 from django.conf import settings
@@ -16,8 +17,7 @@ class AssetBL():
         purchase_data = {}
         try:
             userID = user.id
-            roleID , roleName = objUser.get_user_role_by_id(userID)
-            if roleID in (2 , '2'):
+            if has_capability(userID, 'asset.manage_purchase_orders'):
                 purchaseID = data.get('poID',0)
                 purchase_data['companyID'] = data.get('companyID',0)
                 purchase_data['vendorID'] = data.get('vendorID',0)
@@ -94,8 +94,7 @@ class AssetBL():
             userID = user.id
             action = data.get("action","")
             purchase_orderID = data.get('poID',0)
-            roleID , roleName = objUser.get_user_role_by_id(userID)
-            if roleID in (1 , 2 , "1" , "2") :
+            if has_capability(userID, 'asset.manage_purchase_orders'):
                 if action == 'APPROVED':
                     status = 2
                 elif action == 'REJECTED':

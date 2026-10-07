@@ -1,5 +1,6 @@
 from pTracker.dataaccess.platform_access.membership_da import MembershipDA
 from pTracker.dataaccess.platform_access.tenancy_da import TenancyDA
+from pTracker.dataaccess.platform_access.capability_da import CapabilityDA
 from pTracker.common.logs import Logs
 from pTracker.common.exception_handler import ExceptionHandler
 
@@ -11,6 +12,7 @@ def _membership_dict(membership):
         'company_id': membership.company_id,
         'branch_id': membership.branch_id,
         'role_id': membership.role_id,
+        'extra_capabilities': [c.code for c in membership.extra_capabilities.all()],
         'is_primary': membership.is_primary,
         'status': membership.status,
         'created_at': membership.created_at,
@@ -25,6 +27,7 @@ class MembershipBL():
         self.__exception = ExceptionHandler()
         self.__da = MembershipDA()
         self.__tenancy_da = TenancyDA()
+        self.__capability_da = CapabilityDA()
 
     def create_membership(self, company_id, data):
         if not self.__tenancy_da.get_company_by_id(company_id):
@@ -90,4 +93,19 @@ class MembershipBL():
             return {'error': 'No updatable fields provided', 'status': 400}
 
         membership = self.__da.update_membership(membership_id, **fields)
+        return {'membership': _membership_dict(membership), 'status': 200}
+
+    def set_extra_capabilities(self, membership_id, capability_codes):
+        membership = self.__da.get_membership_by_id(membership_id)
+        if not membership:
+            return {'error': 'Membership not found', 'status': 404}
+        if not isinstance(capability_codes, list):
+            return {'error': 'capability_codes must be a list', 'status': 400}
+
+        existing = set(self.__capability_da.get_by_codes(capability_codes).values_list('code', flat=True))
+        unknown = set(capability_codes) - existing
+        if unknown:
+            return {'error': f'Unknown capability codes: {sorted(unknown)}', 'status': 400}
+
+        membership = self.__da.set_extra_capabilities(membership_id, capability_codes)
         return {'membership': _membership_dict(membership), 'status': 200}

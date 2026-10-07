@@ -7,7 +7,10 @@ from types import SimpleNamespace
 from django.template import loader
 
 from pTracker.common.logs import Logs
+from pTracker.common.company_context import get_active_company_id
+from pTracker.dataaccess.platform_access.tenancy_da import TenancyDA
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import has_capability
 from pTracker.common.exception_handler import ExceptionHandler
 
 from pTracker.dataaccess.ptracker_access.interview_da import InterviewDA
@@ -28,8 +31,8 @@ class InterviewScoreCardBL():
         self.__exception = ExceptionHandler()
         self.__utility = Utility()
 
-    def __is_create_scorecard(self, role_id, user_id, interviewers):
-        if role_id in (1, 2, "1", "2"):
+    def __is_create_scorecard(self, user_id, interviewers):
+        if has_capability(user_id, 'interview.manage_interviews'):
             return True
         if user_id in interviewers:
             return True
@@ -94,8 +97,6 @@ class InterviewScoreCardBL():
         interviewers = []
         try:
             user_id = user.id
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-
 
             interview = obj_da.get_interview(interview_id)
 
@@ -108,7 +109,7 @@ class InterviewScoreCardBL():
             for each in temp_interviewers:
                 interviewers.append(int(each))
 
-            is_view = self.__is_create_scorecard(role_id, user_id, interviewers)
+            is_view = self.__is_create_scorecard(user_id, interviewers)
             if not is_view:
                 response['error'] = settings.ERROR_MSG['access_denied']
                 response['status'] = 403
@@ -196,7 +197,6 @@ class InterviewScoreCardBL():
         try:
 
             user_id = user.id
-            role_id, roleName = UserDA().get_user_role_by_id(user_id)
 
             #Collect input from form
             interview_id = data.get('interviewID',0)
@@ -213,7 +213,7 @@ class InterviewScoreCardBL():
                 for each in temp_interviewers:
                     interviewers.append(int(each))
 
-            if not self.__is_create_scorecard(role_id, user_id, interviewers):
+            if not self.__is_create_scorecard(user_id, interviewers):
                 response['error'] = settings.ERROR_MSG['access_denied']
                 response['status'] = 403
                 return response
@@ -317,7 +317,7 @@ class InterviewScoreCardBL():
                     completed_email.emp_name = user.first_name+ ' '+ user.last_name
                     completed_email.emp_email = user.email
                     completed_email.designation = emp_designation
-                    completed_email.company_name = settings.COMPANY_NAME_FOR_INTERVIEW_MAIL
+                    completed_email.company_name = TenancyDA().get_company_legal_name(get_active_company_id())
                     interview_completion_msg = self.generate_interview_completion_mail(completed_email)
                     ccaddress1 = []
                     ccaddress1.append(user.email)

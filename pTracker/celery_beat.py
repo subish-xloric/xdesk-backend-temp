@@ -84,6 +84,13 @@ PRO_SCHEDULE = {
         'args': (),
     },
 
+    'finalize_attendance_v2': {
+        'task': 'pTracker.cronjobs.attendance_v2_daily.finalize_attendance_v2',
+        'schedule': crontab(hour=23, minute=30),
+        'options': {'queue': CELERY_QUEUE['daily_report']},
+        'args': (),
+    },
+
     'send_interview_notifications': { 
         'task': 'pTracker.cronjobs.interview_notifications.send_interview_notifications',
         'schedule': crontab(minute='*/15', hour='*', day_of_week='*'),

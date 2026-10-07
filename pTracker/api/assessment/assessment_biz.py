@@ -19,6 +19,8 @@ from django.template import loader
 
 
 from pTracker.common.utility import Utility
+from pTracker.dataaccess.platform_access.tenancy_da import TenancyDA
+from pTracker.common.company_authorization import data_scope, has_capability, SCOPE_ALL, SCOPE_TEAM
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
 
@@ -85,8 +87,7 @@ class AssessmentBL():
         try:
             user_id = request.user.id
             user_name = f"{request.user.first_name} {request.user.last_name}"
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id == 2:
+            if has_capability(user_id, 'assessment.manage'):
                 is_permitted = True
 
             if not is_permitted:
@@ -156,7 +157,7 @@ class AssessmentBL():
                     employee = UserDA().get_user_by_id(post_data.get('employee'))
 
                     template_name = 'assessment_initiated.html'
-                    organization = 'Digital Mesh' if employee_profile.company_id == 2 else 'EM Softech'
+                    organization = TenancyDA().get_company_name(employee_profile.company_id)
                     subject = "Assessment Notification"
                     mail_context = {}
                     mail_context['heading'] = subject
@@ -190,8 +191,7 @@ class AssessmentBL():
         try:
             user_id = request.user.id
             user_name = f"{request.user.first_name} {request.user.last_name}"
-            role_id, role_name = UserDA().get_user_role_by_id(user_id)
-            if role_id == 2:
+            if has_capability(user_id, 'assessment.manage'):
                 is_permitted = True
 
             if not is_permitted:
@@ -255,7 +255,7 @@ class AssessmentBL():
                     employee = UserDA().get_user_by_id(post_data.get('employee'))
 
                     template_name = 'assessment_initiated.html'
-                    organization = 'Digital Mesh' if employee_profile.company_id == 2 else 'EM Softech'
+                    organization = TenancyDA().get_company_name(employee_profile.company_id)
                     subject = "Assessment Notification"
                     mail_context = {}
                     mail_context['heading'] = subject
@@ -284,7 +284,6 @@ class AssessmentBL():
         is_success = False
         try:
             user_id = request.user.id
-            role_id, name = UserDA().get_user_role_by_id(user_id)
             is_permitted = True #TODO
             if not is_permitted:
                 response["error"] = settings.ERROR_MSG.get('access_denied')
@@ -315,7 +314,6 @@ class AssessmentBL():
         is_success = False
         try:
             user_id = request.user.id
-            role_id, name = UserDA().get_user_role_by_id(user_id)
             is_permitted = True #TODO
             if not is_permitted:
                 response["error"] = settings.ERROR_MSG.get('access_denied')
@@ -342,7 +340,6 @@ class AssessmentBL():
         try:
             user_id = request.user.id
             user_name = f"{request.user.first_name} {request.user.last_name}"
-            role_id, name = UserDA().get_user_role_by_id(user_id)
             is_permitted = True #TODO
             if not is_permitted:
                 response["error"] = settings.ERROR_MSG.get('access_denied')
@@ -379,7 +376,7 @@ class AssessmentBL():
                 employee_profile = UserDA().get_user_profile_by_id(assessee_id)
                 employee = UserDA().get_user_by_id(assessee_id)
                 template_name = "reschedule_assessment.html"
-                organization = 'Digital Mesh' if employee_profile.company_id == 2 else 'EM Softech'
+                organization = TenancyDA().get_company_name(employee_profile.company_id)
                 subject = "Assessment Reschedule Notification"
                 mail_context = {}
                 mail_context['heading'] = subject
@@ -420,17 +417,17 @@ class AssessmentBL():
         user_dict = {None: '-'}
         try:
             user_id = request.user.id
-            role_id, name = UserDA().get_user_role_by_id(user_id)
+            scope = data_scope(user_id, 'assessment')
             user_name = request.user.first_name+' '+request.user.last_name
-            if role_id not in (1, 2, 3, 4):
+            if scope is None:
                 response["error"] = settings.ERROR_MSG.get('access_denied')
                 response['status'] = 403
                 return response
 
 
-            if role_id in (1, 2, 3):
+            if scope == SCOPE_ALL:
                 assessee_objects = AssessmentDA().get_asessee()
-            elif role_id==4:
+            elif scope == SCOPE_TEAM:
                 team_members = UserDA().get_current_team_members_by_lead_id(user_id)
                 team_members_ids = [x.id for x in team_members]
                 assessee_objects = AssessmentDA().get_asessee(emp_id=team_members_ids)
@@ -475,11 +472,11 @@ class AssessmentBL():
                 response["error"] = settings.ERROR_MSG.get('access_denied')
                 response['status'] = 403
                 return response
-            role_id, name = UserDA().get_user_role_by_id(user_id)
+            scope = data_scope(user_id, 'assessment')
 
-            if role_id in (1, 2, 3):
+            if scope == SCOPE_ALL:
                 assessment_objects = AssessmentDA().get_assessment()
-            elif role_id==4:
+            elif scope == SCOPE_TEAM:
                 team_members = UserDA().get_current_team_members_by_lead_id(user_id)
                 team_members_ids = [x.id for x in team_members]
                 assessment_objects = AssessmentDA().get_assessment_by_team_ids(team_members_ids)
@@ -538,7 +535,6 @@ class AssessmentBL():
                 response["error"] = settings.ERROR_MSG.get('access_denied')
                 response['status'] = 403
                 return response
-            role_id, name = UserDA().get_user_role_by_id(user_id)
             request_data = request.data
             comment_list = json.loads(request_data.get('comments', ''))
             assessment_id = request_data.get('assessementID')
@@ -581,7 +577,7 @@ class AssessmentBL():
                     employee_profile = UserDA().get_user_profile_by_id(assessee_id)
                     employee = UserDA().get_user_by_id(assessee_id)
                     template_name = 'assessment_complete.html'
-                    organization = 'Digital Mesh' if employee_profile.company_id == 2 else 'EM Softech'
+                    organization = TenancyDA().get_company_name(employee_profile.company_id)
                     subject = f"Assessment Completion Notification"
                     mail_context = {}
                     mail_context['heading'] = subject
@@ -625,7 +621,7 @@ class AssessmentBL():
                 response["error"] = settings.ERROR_MSG.get('access_denied')
                 response['status'] = 403
                 return response
-            role_id, name = UserDA().get_user_role_by_id(user_id)
+            scope = data_scope(user_id, 'assessment')
             assessment = AssessmentDA().get_assessment_by_id(assessment_id)
             if assessment:
                 assessment=assessment.last()
@@ -637,7 +633,7 @@ class AssessmentBL():
                 reports = AssessmentDA().get_assessment_comments(assessment_id)
                 for each in reports:
                     temp_dict = {}
-                    if each.is_private and role_id in (1, 2, 3, 4):
+                    if each.is_private and scope is not None:
                         temp_dict['comment'] = each.comment
                         temp_dict['comment_type'] = each.comment_type
                         response['report_data'].append(temp_dict)
@@ -662,7 +658,7 @@ class AssessmentBL():
                 response["error"] = settings.ERROR_MSG.get('access_denied')
                 response['status'] = 403
                 return response
-            role_id, name = UserDA().get_user_role_by_id(user_id)
+            scope = data_scope(user_id, 'assessment')
             assessee_data = AssessmentDA().get_asessee(assessee_id).last()
             if assessee_data:
                 employee = UserDA().get_user_by_id(assessee_id)
@@ -688,7 +684,7 @@ class AssessmentBL():
                     temp_dict['score'] = self.__get_value_by_rounding(each_asssessmrnt.score)
                     reports = AssessmentDA().get_assessment_comments(each_asssessmrnt.assessment_id)
                     for each in reports:
-                        if each.is_private and role_id in (1, 2, 3, 4):
+                        if each.is_private and scope is not None:
                             if each.comment_type==0:report_data['negative'].append(each.comment)
                             else:report_data['positive'].append(each.comment)
                         elif not each.is_private:
@@ -725,7 +721,7 @@ class AssessmentBL():
     def __get_assessment_data(self, assessee_id, user_id):
         result = []
         try:
-            role_id, name = UserDA().get_user_role_by_id(user_id)
+            scope = data_scope(user_id, 'assessment')
             assessments = AssessmentDA().get_assessment(assessee_id)
             if assessments:
                 for each_asssessmrnt in assessments.order_by('assessment_code'):
@@ -740,7 +736,7 @@ class AssessmentBL():
                     temp_dict['score'] = self.__get_value_by_rounding(each_asssessmrnt.score)
                     reports = AssessmentDA().get_assessment_comments(each_asssessmrnt.assessment_id)
                     for each in reports:
-                        if each.is_private and role_id in (1, 2, 3, 4):
+                        if each.is_private and scope is not None:
                             if each.comment_type==0:report_data['negative'].append(each.comment)
                             else:report_data['positive'].append(each.comment)
                         elif not each.is_private:

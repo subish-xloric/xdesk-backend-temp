@@ -25,7 +25,10 @@ class LeaveQuota(models.Model):
     leave_taken = models.FloatField()
     leave_brought_forward = models.FloatField(default=0.0)
     leave_carried_forward = models.FloatField(default=0.0)
+    company_id = models.IntegerField(null=True, blank=True)
+    branch_id = models.IntegerField(null=True, blank=True)
     class Meta:
+        managed = False
         db_table = u'leave_quota'
 
 
@@ -45,7 +48,10 @@ class LeaveRequests(models.Model):
     notify = models.CharField(max_length=250, default=None)
     last_updated_date = models.DateTimeField(auto_now=True)
     comp_off_id = models.IntegerField(default=0)
+    company_id = models.IntegerField(null=True, blank=True)
+    branch_id = models.IntegerField(null=True, blank=True)
     class Meta:
+        managed = False
         db_table = u'leave_requests'
 
 class Leave(models.Model):
@@ -58,7 +64,10 @@ class Leave(models.Model):
     leave_day_type =  models.SmallIntegerField()
     employee_id =  models.SmallIntegerField()
     leave_period_id =  models.SmallIntegerField()
+    company_id = models.IntegerField(null=True, blank=True)
+    branch_id = models.IntegerField(null=True, blank=True)
     class Meta:
+        managed = False
         db_table = u'leaves'
 
 class LeaveRequestLog(models.Model):
@@ -86,7 +95,10 @@ class CompensatoryLeaveRequest(models.Model):
     last_updated_date = models.DateField(auto_now=True)
     is_flag = models.IntegerField(default=0)
     scheduled_date = models.DateField(default=None)
+    company_id = models.IntegerField(null=True, blank=True)
+    branch_id = models.IntegerField(null=True, blank=True)
     class Meta:
+        managed = False
         db_table = u'compensatory_leave_request'
 
 class CompensatoryLeaveRequestLog(models.Model):
