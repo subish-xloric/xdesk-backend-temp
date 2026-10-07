@@ -4,6 +4,8 @@ services:
     container_name: x-desk-backend
     restart: always
     build: .
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
     volumes:
       - .:/x_desk_backend
       # - /projects/in_house/pTracker/application_uploads/confidential_docs:/dmdeskbackend/dm-desk-docs/confidential_docs
@@ -52,5 +54,7 @@ services:
 networks:
   app_network:
     driver: bridge
-    #web_network:
-    #driver: bridge
+    ipam:
+      config:
+        - subnet: 172.19.0.0/16
+

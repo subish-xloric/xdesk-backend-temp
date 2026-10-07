@@ -87,7 +87,16 @@ DISTRICTS = {
 }
 #b = [(k, v) for k, v in a.items()]
 
-EMPLOYMENT_STATUS = {1: 'Probation', 2: 'Confirmed', 3: 'Internship', 4: 'Resigned'}
+# Seeded into a new company's employment_status / leave_type tables. The code
+# relies on these system codes; companies can rename them and add their own.
+DEFAULT_EMPLOYMENT_STATUSES = (
+    ('probation', 'Probation'), ('confirmed', 'Confirmed'),
+    ('internship', 'Internship'), ('resigned', 'Resigned'),
+)
+DEFAULT_LEAVE_TYPES = (  # (code, name, default_no_of_leaves)
+    ('general', 'General', 21), ('official', 'Official', 0), ('comp_off', 'Comp Off', 0),
+    ('lop', 'LOP', 10), ('maternity', 'Maternity', 0),
+)
 
 ERROR_MSG = {
     'application_error': 'Applicaton execution failed, {0}. LogID: {1}',

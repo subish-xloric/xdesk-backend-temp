@@ -5,6 +5,7 @@ from datetime import date
 from django.conf import settings
 
 from pTracker.common.logs import Logs
+from pTracker.common.company_context import get_active_company_id
 from pTracker.api.leave.leave_helper import LeaveHelperBL
 from pTracker.settings import constants
 from pTracker.common.utility import Utility
@@ -33,6 +34,9 @@ class LeaveBulkBL():
         if has_capability(user_id, 'leave.manage_all'):
             is_access = True
         return is_access
+
+    def __company_employee_ids(self):
+        return UserDA().get_user_ids_by_company(get_active_company_id())
 
     def __get_emp_profile_dict(self):
         profile_dict = {}
@@ -70,14 +74,19 @@ class LeaveBulkBL():
                 result["error"] = "Leave period for selecting year ({0}) is missing in system.".format(credit_year)
                 return result
 
-            if leave_da.get_all_employees_leave_quota(obj_leave_period.leave_period_id):
+            company_employee_ids = self.__company_employee_ids()
+            if leave_da.get_all_employees_leave_quota(obj_leave_period.leave_period_id, company_employee_ids):
                 result["error"] = "Leave quota is already processed for selecting year ({0}).".format(credit_year)
                 return result
 
 
-            active_emps = user_da.get_all_active_users()
+            active_emps = user_da.get_all_active_users().filter(id__in=company_employee_ids)
             profile_dict = self.__get_emp_profile_dict()
-            leave_types = LeaveDA().get_all_leave_types()
+            leave_types_by_company = {}
+            for leave_type in LeaveDA().get_all_leave_types():
+                leave_types_by_company.setdefault(leave_type.company_id, []).append(leave_type)
+            status_codes = {status_id: UserDA().get_employment_status_code(status_id)
+                            for status_id in {p.job_status for p in profile_dict.values()}}
             period_id = LeaveDA().get_leave_period_by_date(date(credit_year,1,1)).leave_period_id
 
             for employee in active_emps:
@@ -86,7 +95,7 @@ class LeaveBulkBL():
                 profile = profile_dict.get(employee.id, None)
 
 
-                if profile and profile.job_status == 2: #Confirmed
+                if profile and status_codes.get(profile.job_status) == 'confirmed':
                     balance = 999
                 else:
                     year_start = date(credit_year, 1, 1)
@@ -98,7 +107,8 @@ class LeaveBulkBL():
                         balance = 0
 
                 leave_details = {}
-                for leave_type in leave_types:
+                company_leave_types = leave_types_by_company.get(profile.company_id, []) if profile else []
+                for leave_type in company_leave_types:
                     leave_quota_dict = {
                         "leave_type_id": 0,
                         "leave_period_id": period_id,
@@ -106,7 +116,7 @@ class LeaveBulkBL():
                         "no_of_days_allotted": 0
                     }
                     leave_quota_dict['leave_type_id'] = leave_type.leave_type_id
-                    if leave_type.leave_type_id == 1 and balance != 999 :
+                    if leave_type.code == 'general' and balance != 999 :
                         leave_quota_dict['no_of_days_allotted'] = balance
                     else:
                         leave_quota_dict['no_of_days_allotted'] = leave_type.default_no_of_leaves
@@ -134,19 +144,19 @@ class LeaveBulkBL():
         }
         try:
             leave_quota_list = []
-            helper = LeaveHelperBL()
             leave_da = LeaveDA()
             obj_start = Utility().convert_string_to_date_time(str(year) + "-01-01", "%Y-%m-%d")
             # check permission
             if not has_capability(user_id, 'leave.manage_all'):
                 response['error'] = settings.ERROR_MSG.get('no_permission')
                 return response
-            active_users = UserDA().get_all_active_users()
-            leave_types = helper.get_leave_type_dict()
+            company_employee_ids = self.__company_employee_ids()
+            active_users = UserDA().get_all_active_users().filter(id__in=company_employee_ids)
+            leave_types = LeaveDA().get_leave_type_code_name_dict()
             # obj_date = date.today()
             leave_period = leave_da.get_leave_period_by_date(obj_start)
             if leave_period:
-                all_leave_quota = leave_da.get_all_employees_leave_quota(leave_period.leave_period_id)
+                all_leave_quota = leave_da.get_all_employees_leave_quota(leave_period.leave_period_id, company_employee_ids)
                 if all_leave_quota:
                     for each in active_users:
                         user_leave_quota = all_leave_quota.filter(employee_id = each.id)
@@ -159,20 +169,20 @@ class LeaveBulkBL():
                             test_list = []
                             temp = {'general': 0,'official': 0,'comp_off': 0,'lop' : 0,'maternity' : 0 }
                             for leave_quota in user_leave_quota:
-                                leave_type = leave_types.get(int(leave_quota.leave_type_id), '')
-                                if str(leave_type).lower() == "general":
+                                leave_type = leave_types.get(int(leave_quota.leave_type_id), (None, ''))[0]
+                                if leave_type == "general":
                                     temp['general'] = leave_quota.no_of_days_allotted
                                     temp['general_quota_id'] = leave_quota.quota_id
-                                elif str(leave_type).lower() == "official":
+                                elif leave_type == "official":
                                     temp['official'] = leave_quota.no_of_days_allotted
                                     temp['official_quota_id'] = leave_quota.quota_id
-                                elif str(leave_type).lower() == "comp off":
+                                elif leave_type == "comp_off":
                                     temp['comp_off'] = leave_quota.no_of_days_allotted
                                     temp['comp_off_quota_id'] = leave_quota.quota_id
-                                elif str(leave_type).lower() == "lop":
+                                elif leave_type == "lop":
                                     temp['lop'] = leave_quota.no_of_days_allotted
                                     temp['lop_quota_id'] = leave_quota.quota_id
-                                elif str(leave_type).lower() == "maternity":
+                                elif leave_type == "maternity":
                                     temp['maternity'] = leave_quota.no_of_days_allotted
                                     temp['maternity_quota_id'] = leave_quota.quota_id
                             test_list.append(temp)
@@ -194,6 +204,10 @@ class LeaveBulkBL():
             leave_data = data
             # check permission
             if not has_capability(user_id, 'leave.manage_all'):
+                result['error'] = settings.ERROR_MSG.get('no_permission')
+                return result
+            quota_ids = {each['quota_id'] for each in leave_data}
+            if LeaveDA().count_quotas_of_employees(quota_ids, self.__company_employee_ids()) != len(quota_ids):
                 result['error'] = settings.ERROR_MSG.get('no_permission')
                 return result
             for each in leave_data:

@@ -17,6 +17,7 @@ from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_context import get_active_company_id
 from pTracker.dataaccess.platform_access.tenancy_da import TenancyDA
 from pTracker.common.company_context import get_active_company
 from pTracker.common.company_authorization import has_capability
@@ -32,7 +33,6 @@ from pTracker.dataaccess.ptracker_access.leave_da import LeaveDA
 from pTracker.api.user.user_management_bl_v1 import UserManagementBL_V1
 from pTracker.api.induction.induction_biz import InductionBL
 from pTracker.wiki.data_access.master.logs_da import LogsDA
-from pTracker.settings.constants import EMPLOYMENT_STATUS
 from pTracker.dataaccess.ptracker_access.user_models import UserProfileProvisional
 from pTracker.common.company_authorization import has_capability
 
@@ -411,6 +411,7 @@ class UserManagementBL():
                 mapping_dict[each.emp_id] = each.lead_id
             for each in job_title_mapping:
                 job_mapping_dict[each.id] = each.job_title
+            status_name_dict = user_da.get_employment_status_name_dict()
 
             employees, error = user_da.get_all_employees(include)
 
@@ -436,7 +437,7 @@ class UserManagementBL():
                         emp_job_title = 'None'
                         pass
                     try:
-                        emp_job_status = EMPLOYMENT_STATUS.get(int(employee_job_status))
+                        emp_job_status = status_name_dict.get(int(employee_job_status))
                     except:
                         emp_job_status = 'None'
                         pass
@@ -474,13 +475,13 @@ class UserManagementBL():
                 result["error"] = settings.ERROR_MSG.get('access_denied')
                 return result
 
-            job_titles = user_da.get_all_job_titles()
+            job_titles = user_da.get_all_job_titles(get_active_company_id())
             for job_title in job_titles:
                 job_title_list.append({"id": job_title.id, "title": job_title.job_title})
             result['job_titles'] = job_title_list
 
-            for k, v in settings.EMPLOYMENT_STATUS.items():
-                employment_status.append({"id": k, "status": v})
+            for status in user_da.get_employment_statuses(get_active_company_id()):
+                employment_status.append({"id": status.id, "status": status.name})
             result['employment_status'] = employment_status
 
             supervisors, error = user_da.get_all_supervisors()
@@ -521,15 +522,15 @@ class UserManagementBL():
             result['organizations'] = temp_list
 
             temp_list = []
-            job_titles = user_da.get_all_job_titles()
+            job_titles = user_da.get_all_job_titles(get_active_company_id())
             for job_title in job_titles:
                 temp_list.append({"id": job_title.id, "title": job_title.job_title})
             result['job_titles'] = temp_list
             del temp_list
 
             temp_list = []
-            for k, v in settings.EMPLOYMENT_STATUS.items():
-                temp_list.append({"id": k, "status": v})
+            for status in UserDA().get_employment_statuses(get_active_company_id()):
+                temp_list.append({"id": status.id, "status": status.name})
             result['employment_status'] = temp_list
             del temp_list
 
@@ -569,7 +570,7 @@ class UserManagementBL():
 
     def create_user_leave_quota(self,user_id):
         leave_period = LeaveDA().get_leave_period_by__date(datetime.now())
-        leave_types = LeaveDA().get_all_leave_types()
+        leave_types = LeaveDA().get_all_leave_types(UserDA().get_user_organization(user_id))
         for leave_type in leave_types:
             leave_quota_dict = {
                         "leave_type_id": 0,
@@ -578,9 +579,9 @@ class UserManagementBL():
                         "no_of_days_allotted": 0
                     }
             leave_quota_dict['leave_type_id'] = leave_type.leave_type_id
-            if (leave_type.leave_type_name).lower() == 'general':
+            if leave_type.code == 'general':
                 leave_quota_dict['no_of_days_allotted'] = settings.PROBATION_GENERAL_LEAVE
-            if (leave_type.leave_type_name).lower() == 'lop':
+            if leave_type.code == 'lop':
                 leave_quota_dict['no_of_days_allotted'] = settings.PROBATION_LOP_LEAVE
             LeaveDA().create_leave_quota(leave_quota_dict)
 

@@ -19,6 +19,7 @@ from django.http import JsonResponse
 from pTracker.common.module_registry import is_context_only_view_class
 from pTracker.common.module_registry import module_for_view_class
 from pTracker.common.company_modules import get_enabled_module_codes
+from pTracker.common.company_context import COMPANY_HEADER
 from pTracker.common.company_context import CompanyContextError
 from pTracker.common.company_context import resolve_active_company
 from pTracker.common.company_context import set_active_company
@@ -45,7 +46,7 @@ class ModuleGateMiddleware:
         module_code = module_for_view_class(view_class)
         if module_code is None:
             if is_context_only_view_class(view_class):
-                self._set_context_if_resolvable(view_class, request)
+                return self._set_context_if_resolvable(view_class, request)
             return None
 
         user = self._authenticate(view_class, request)
@@ -69,13 +70,20 @@ class ModuleGateMiddleware:
         }, status=403)
 
     def _set_context_if_resolvable(self, view_class, request):
+        """ Context-only views still run without a company (no membership, or
+        several and no header) so logout/password change keep working - their
+        capability checks then fail closed. But an X-Company-Id the caller sent
+        explicitly must be one they belong to: it is rejected, never ignored. """
         user = self._authenticate(view_class, request)
         if not self._is_employee(user):
-            return
+            return None
         try:
             set_active_company(resolve_active_company(user.pk, request.META))
-        except CompanyContextError:
-            pass
+        except CompanyContextError as error:
+            if request.META.get(COMPANY_HEADER) not in (None, ''):
+                return JsonResponse({'error': error.message, 'code': error.code, 'status': error.status},
+                                    status=error.status)
+        return None
 
     def _is_employee(self, user):
         """ Platform operators and machine principals (e.g. attendance

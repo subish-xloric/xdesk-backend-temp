@@ -4,6 +4,7 @@ from django.conf import settings
 from types import SimpleNamespace
 
 from pTracker.dataaccess.ptracker_access.project_models import ProjectActivity
+from pTracker.dataaccess.company_scope import ALL_COMPANIES, filter_by_company
 from pTracker.dataaccess.ptracker_access.project_models import Project
 from pTracker.dataaccess.ptracker_access.project_models import ProjectEmployee
 from pTracker.dataaccess.ptracker_access.project_models import ProjectModule
@@ -28,9 +29,25 @@ class ProjectDA():
     def __init__(self):
         pass
 
-    def get_all_project_activity(self):
-        objs = ProjectActivity.objects.filter(is_deleted=0).order_by('name')
-        return objs
+    def get_all_project_activity(self, company_id=ALL_COMPANIES):
+        """ Active activities of one company (none for company_id=None); the
+        ALL_COMPANIES default is only for id -> name lookups. """
+        return filter_by_company(ProjectActivity.objects.filter(is_deleted=0), company_id).order_by('name')
+
+    def get_company_project_activity(self, company_id, activity_id):
+        return ProjectActivity.objects.filter(company_id=company_id, activity_id=activity_id, is_deleted=0).first()
+
+    def project_activity_exists(self, company_id, name, exclude_id=None):
+        objs = ProjectActivity.objects.filter(company_id=company_id, name__iexact=name, is_deleted=0)
+        if exclude_id:
+            objs = objs.exclude(activity_id=exclude_id)
+        return objs.exists()
+
+    def create_project_activity(self, data):
+        return ProjectActivity.objects.create(**data)
+
+    def update_project_activity(self, activity_id, data):
+        return ProjectActivity.objects.filter(activity_id=activity_id).update(**data)
 
     def get_all_project_modules(self):
         objs = ProjectModule.objects.filter(is_deleted=0)
@@ -48,7 +65,7 @@ class ProjectDA():
         return objs
 
     def get_all_projects_by_company(self, company_id):
-        objs = Project.objects.filter(is_deleted=0, company_id=company_id).order_by('name')
+        objs = filter_by_company(Project.objects.filter(is_deleted=0), company_id).order_by('name')
         return objs
 
     def get_project_user_mapping(self, user_id):
@@ -152,7 +169,7 @@ class ProjectDA():
         return project_ids
 
     def get_all_project_ids_by_company(self, company_id):
-        project_ids = Project.objects.filter(is_deleted=0, company_id=company_id).values_list('project_id', flat=True)
+        project_ids = filter_by_company(Project.objects.filter(is_deleted=0), company_id).values_list('project_id', flat=True)
         return project_ids
 
 

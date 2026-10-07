@@ -709,7 +709,7 @@ class InductionBL():
         user = None
         try:
             user_profile = UserDA().get_user_profile_by_id(user_id)
-            if user_profile.job_status == 1:  # probation employees only
+            if UserDA().get_employment_status_code(user_profile.job_status) == 'probation':
                 user = user_profile
         except Exception as err:
             pass

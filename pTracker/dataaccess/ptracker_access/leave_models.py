@@ -13,6 +13,11 @@ class LeaveType(models.Model):
     leave_type_name = models.CharField(max_length=50)
     available_flag =  models.SmallIntegerField()
     default_no_of_leaves = models.IntegerField()
+    company_id = models.IntegerField(null=True, blank=True, db_column='company_id')
+    # Fixed system code (general/official/comp_off/lop/maternity) for types the code
+    # depends on; NULL for a company's own extra types.
+    code = models.CharField(max_length=30, null=True, blank=True, db_column='code')
+    copied_from_id = models.IntegerField(null=True, blank=True, db_column='copied_from_id')
     class Meta:
         db_table = u'leave_type'
 

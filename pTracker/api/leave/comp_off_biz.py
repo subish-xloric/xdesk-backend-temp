@@ -10,6 +10,7 @@ from django.template import loader
 
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_context import get_active_company_id
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
 
@@ -112,7 +113,7 @@ class CompOffBL():
 
                 comp_off_duration = 1 #compensatory leave can be applied for 1 day only
                 leave_duration = 1 #compensatory leave can be applied for 1 day only
-                if comp_off.leave_type_id == '5': #hard code to be removed for maternity leave
+                if LeaveDA().get_leave_type_code_name_dict().get(int(comp_off.leave_type_id), (None,))[0] == 'maternity':
                     if leave_duration > settings.MAXIMUM_MATERNITY_LEAVE_DURATION:
                         response['error'] = 'Maximum leave duration for maternity is 180'
                         return response
@@ -194,6 +195,10 @@ class CompOffBL():
                 comp_off_data['is_flag'] = data.get('is_flag', 0)
                 comp_off_data['scheduled_date'] = data.get('scheduled_date', None)
 
+                if not helper.is_company_leave_type(user_id, comp_off_data['leave_type_id']):
+                    response['error'] = 'Invalid leave type selected'
+                    return response
+
                 dt_start = datetime.strptime(comp_off_data['start_date'], "%Y-%m-%d")
                 dt_end = datetime.strptime(comp_off_data['end_date'], "%Y-%m-%d")
                 leave_period = LeaveDA().get_leave_period_by_date(dt_start)
@@ -259,6 +264,10 @@ class CompOffBL():
             is_flag = int(request.data.get('is_flag', 0))
 
             leave_period = LeaveDA().get_leave_period_by_date(start_date)
+
+            if not helper.is_company_leave_type(user_id, leave_type_id):
+                response['error'] = 'Invalid leave type selected'
+                return response
 
             if not helper.is_date_range_valid(start_date, end_date):
                 response['error'] = "Start date should be less than or equal to end date."
@@ -514,10 +523,10 @@ class CompOffBL():
         try:
             all_leave_types = []
             # leave types
-            leave_types = LeaveDA().get_all_leave_types().exclude(leave_type_name='General')
+            leave_types = LeaveDA().get_all_leave_types(get_active_company_id()).exclude(code='general')
             user_profile = UserDA().get_user_profile_by_id(user_id)
             if str(user_profile.gender).lower() == "male":
-                leave_types = leave_types.exclude(leave_type_name='Maternity')
+                leave_types = leave_types.exclude(code='maternity')
             if leave_types:
                 for each in leave_types:
                     all_leave_types.append({"id": each.leave_type_id,

@@ -16,6 +16,7 @@ from django.core.files.base import ContentFile
 from django.core.files.images import get_image_dimensions
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_context import get_active_company_id
 from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_TEAM
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
@@ -32,7 +33,6 @@ from pTracker.api.user.anniversary_biz import AnniversaryBL
 from pTracker.api.attendance.attendance_biz import AttendanceBL
 from pTracker.dataaccess.ptracker_access.project_da import ProjectDA
 from pTracker.wiki.data_access.master.logs_da import LogsDA
-from pTracker.settings.constants import EMPLOYMENT_STATUS
 
 from rest_framework.response import Response
 from pTracker.common.company_authorization import has_capability
@@ -207,7 +207,7 @@ class UserManagementBL_V1():
             result['job_title_id'] = job_title_id
             result['reporting_person'] = result.get("reported_to")
             result['job_status_id'] = result.get("job_status")
-            result['job_status'] = settings.EMPLOYMENT_STATUS[result.get("job_status")]
+            result['job_status'] = UserDA().get_employment_status_name(result.get("job_status"))
 
             result["current_address"] = current_address
             result["permanent_address"] = permanent_address
@@ -388,7 +388,7 @@ class UserManagementBL_V1():
                 "job_titles": [],
                 "job_status": []
             }
-            leave_types = LeaveDA().get_all_leave_types()
+            leave_types = LeaveDA().get_all_leave_types(get_active_company_id())
             if leave_types:
                 for each in leave_types:
                     temp = {}
@@ -426,7 +426,7 @@ class UserManagementBL_V1():
                 response['projects'] = project_list
             #time sheet activities
             activity_list = []
-            activities = ProjectDA().get_all_project_activity()
+            activities = ProjectDA().get_all_project_activity(get_active_company_id())
             if activities:
                 for activity in activities:
                     activity_list.append({"id": activity.activity_id, "name": activity.name})
@@ -434,7 +434,7 @@ class UserManagementBL_V1():
 
             # job titles
             job_title_list = []
-            job_titles = UserDA().get_all_job_titles()
+            job_titles = UserDA().get_all_job_titles(get_active_company_id())
             if job_titles:
                 for job_title in job_titles:
                     job_title_list.append({"id": job_title.id, "title": job_title.job_title})
@@ -442,8 +442,8 @@ class UserManagementBL_V1():
 
             #job statuses
             job_status_list = []
-            for job_status in settings.EMPLOYMENT_STATUS:
-                job_status_list.append({"id": job_status, "status": settings.EMPLOYMENT_STATUS[job_status]})
+            for job_status in UserDA().get_employment_statuses(get_active_company_id()):
+                job_status_list.append({"id": job_status.id, "status": job_status.name})
             response['job_status'] = job_status_list
 
             return response

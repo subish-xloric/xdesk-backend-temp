@@ -74,9 +74,28 @@ class EmployeeJobTitle(models.Model):
     job_description = models.CharField(max_length=100,db_column='job_description')
     note = models.CharField(max_length=400,default=None,db_column='note')
     is_deleted = models.IntegerField(default=0, db_column='is_deleted')
+    company_id = models.IntegerField(null=True, blank=True, db_column='company_id')
+    copied_from_id = models.IntegerField(null=True, blank=True, db_column='copied_from_id')
 
     class Meta:
         db_table = u'job_title'
+
+
+class EmploymentStatus(models.Model):
+    """ Per-company employment statuses (user_profile.job_status holds the id).
+    code is fixed for the statuses the code depends on - probation, confirmed,
+    internship, resigned - and NULL for a company's own extra statuses. """
+    id = models.AutoField(primary_key=True, db_column='id')
+    company_id = models.IntegerField(db_column='company_id')
+    name = models.CharField(max_length=50, db_column='name')
+    code = models.CharField(max_length=30, null=True, blank=True, db_column='code')
+    sort_order = models.IntegerField(default=0, db_column='sort_order')
+    is_deleted = models.IntegerField(default=0, db_column='is_deleted')
+    copied_from_id = models.IntegerField(null=True, blank=True, db_column='copied_from_id')
+
+    class Meta:
+        managed = False
+        db_table = u'employment_status'
 
 class Organization(models.Model):
     id = models.AutoField(primary_key=True, db_column='id')

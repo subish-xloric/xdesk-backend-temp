@@ -19,6 +19,7 @@ from django.template.loader import get_template
 import pyotp
 
 from pTracker.notification_center.email_engine import Email
+from pTracker.common.company_context import get_active_company_id
 from pTracker.common.utility import Utility
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
@@ -471,13 +472,13 @@ class OnboardingBL():
                 result['supervisors'] = temp_list
                 del temp_list
                 temp_list = []
-            for k, v in settings.EMPLOYMENT_STATUS.items():
-                temp_list.append({"id": k, "status": v})
+            for status in UserDA().get_employment_statuses(get_active_company_id()):
+                temp_list.append({"id": status.id, "status": status.name})
             result['employment_status'] = temp_list
             del temp_list
 
             temp_list = []
-            job_titles = UserDA().get_all_job_titles()
+            job_titles = UserDA().get_all_job_titles(get_active_company_id())
             for job_title in job_titles:
                 temp_list.append({"id": job_title.id, "title": job_title.job_title})
             result['job_titles'] = temp_list
@@ -831,7 +832,7 @@ class OnboardingBL():
 
     def create_user_leave_quota(self,user_id):
         leave_period = LeaveDA().get_leave_period_by__date(datetime.now())
-        leave_types = LeaveDA().get_all_leave_types()
+        leave_types = LeaveDA().get_all_leave_types(UserDA().get_user_organization(user_id))
         for leave_type in leave_types:
             leave_quota_dict = {
                         "leave_type_id": 0,
@@ -840,9 +841,9 @@ class OnboardingBL():
                         "no_of_days_allotted": 0
                     }
             leave_quota_dict['leave_type_id'] = leave_type.leave_type_id
-            if (leave_type.leave_type_name).lower() == 'general':
+            if leave_type.code == 'general':
                 leave_quota_dict['no_of_days_allotted'] = settings.PROBATION_GENERAL_LEAVE
-            if (leave_type.leave_type_name).lower() == 'lop':
+            if leave_type.code == 'lop':
                 leave_quota_dict['no_of_days_allotted'] = settings.PROBATION_LOP_LEAVE
             LeaveDA().create_leave_quota(leave_quota_dict)
 

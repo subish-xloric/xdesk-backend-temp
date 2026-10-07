@@ -28,8 +28,15 @@ from pTracker.api.user.views import SaveEmployeeProfileImage_v1
 from pTracker.api.user.views import VersionExpiredView
 from pTracker.api.user.views import VersionExpiredLoginView
 from pTracker.api.user.views import UserAccessView
+from pTracker.api.user.views import JobTitleListView, JobTitleDetailView
+from pTracker.api.user.views import EmploymentStatusListView, EmploymentStatusDetailView
 
 urlpatterns = [
+   path('job-titles/', JobTitleListView.as_view(), name='job_titles_v1'),
+   path('job-titles/<int:row_id>/', JobTitleDetailView.as_view(), name='job_title_v1'),
+   path('employment-statuses/', EmploymentStatusListView.as_view(), name='employment_statuses_v1'),
+   path('employment-statuses/<int:row_id>/', EmploymentStatusDetailView.as_view(), name='employment_status_v1'),
+
 
    url(r'login/', CustomLoginView_v1.as_view(), name='custom_login_v1'),
    url(r'2fa/token-verify/', AuthyTokenVerifyView_V1.as_view(), name='2fa_token_verify_v1'),

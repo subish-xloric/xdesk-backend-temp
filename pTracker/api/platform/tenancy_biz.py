@@ -1,4 +1,9 @@
+from django.conf import settings
+from django.db import transaction
+
 from pTracker.dataaccess.platform_access.tenancy_da import TenancyDA
+from pTracker.dataaccess.ptracker_access.leave_da import LeaveDA
+from pTracker.dataaccess.ptracker_access.user_da import UserDA
 from pTracker.dataaccess.platform_access.tenancy_models import Tenant
 from pTracker.dataaccess.platform_access.tenancy_models import Branch
 from pTracker.common.logs import Logs
@@ -110,14 +115,18 @@ class TenancyBL():
             if not parent or parent.tenant_id != tenant.id:
                 return {'error': 'parent_company_id must belong to the same tenant', 'status': 400}
 
-        company = self.__da.create_company(
-            tenant_id=tenant.id,
-            legal_name=legal_name,
-            short_name=short_name,
-            parent_company_id=parent_company_id,
-            registered_address=data.get('registered_address'),
-            contact_email=data.get('contact_email'),
-        )
+        with transaction.atomic():
+            company = self.__da.create_company(
+                tenant_id=tenant.id,
+                legal_name=legal_name,
+                short_name=short_name,
+                parent_company_id=parent_company_id,
+                registered_address=data.get('registered_address'),
+                contact_email=data.get('contact_email'),
+            )
+            # The statuses and leave types the code depends on (by system code)
+            UserDA().seed_employment_statuses(company.id, settings.DEFAULT_EMPLOYMENT_STATUSES)
+            LeaveDA().seed_leave_types(company.id, settings.DEFAULT_LEAVE_TYPES)
         return {'company': _company_dict(company), 'status': 201}
 
     def list_companies(self, tenant_id):

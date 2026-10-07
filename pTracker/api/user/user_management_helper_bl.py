@@ -64,7 +64,7 @@ class UserManagementHelperBL():
             basic_info['marital_status'] = user_profile.marital_status
             basic_info['dob'] = user_profile.dob
             basic_info['job_status_id'] = user_profile.job_status
-            basic_info['job_status'] = settings.EMPLOYMENT_STATUS[int(user_profile.job_status)]
+            basic_info['job_status'] = UserDA().get_employment_status_name(user_profile.job_status)
             basic_info['job_title_id'] = user_profile.job_title
             basic_info['pan'] = user_profile.pan
             job_titles = self._get_job_title_dict()

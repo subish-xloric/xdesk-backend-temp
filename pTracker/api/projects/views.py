@@ -11,6 +11,7 @@ from pTracker.common.company_authorization import has_capability
 from pTracker.api.projects.project_biz_v1 import ProjectBL_V1
 
 from pTracker.api.projects.project_biz_v2 import ProjectCreateBL
+from pTracker.api.projects.activity_biz import ProjectActivityBL
 
 class ProjectActivityView(APIView):
     authentication_classes = [JSONWebTokenAuthentication]
@@ -186,3 +187,31 @@ class GetProjectDropDownParams(APIView):
     def get(self, request):
         response = ProjectCreateBL().get_project_drop_down_params(request)
         return Response(response)
+
+
+class ProjectActivityAdminListView(APIView):
+    """ GET: the active company's timesheet activities. POST: add one (project.manage). """
+    authentication_classes = [JSONWebTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        res = ProjectActivityBL().list(request.user.id)
+        return Response(res, status=res.get('status', 200))
+
+    def post(self, request):
+        res = ProjectActivityBL().create(request.user.id, request.data)
+        return Response(res, status=res.get('status', 201))
+
+
+class ProjectActivityAdminDetailView(APIView):
+    """ PUT: edit one of the active company's timesheet activities. DELETE: remove it (project.manage). """
+    authentication_classes = [JSONWebTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, row_id):
+        res = ProjectActivityBL().update(request.user.id, row_id, request.data)
+        return Response(res, status=res.get('status', 200))
+
+    def delete(self, request, row_id):
+        res = ProjectActivityBL().delete(request.user.id, row_id)
+        return Response(res, status=res.get('status', 200))

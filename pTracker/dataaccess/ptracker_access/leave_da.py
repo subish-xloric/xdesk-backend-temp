@@ -7,6 +7,7 @@ from django.db.models import Q
 from django.contrib.auth.models import Group
 
 from pTracker.dataaccess.db import Connection
+from pTracker.dataaccess.company_scope import ALL_COMPANIES, filter_by_company
 from pTracker.common.utility import Utility
 from pTracker.dataaccess.ptracker_access.leave_models import CompensatoryLeaveRequestLog, Leave
 from pTracker.dataaccess.ptracker_access.leave_models import LeaveQuota, LeaveType
@@ -43,8 +44,44 @@ class LeaveDA():
             results=None
         return results
 
-    def get_all_leave_types(self):
-        return LeaveType.objects.filter(available_flag=1)
+    def get_all_leave_types(self, company_id=ALL_COMPANIES):
+        """ Enabled leave types of one company (none for company_id=None); the
+        ALL_COMPANIES default is only for id -> name lookups. """
+        return filter_by_company(LeaveType.objects.filter(available_flag=1), company_id)
+
+    def get_leave_type_code_name_dict(self):
+        """ leave_type_id -> (system code or None, name), across all companies. """
+        return {type_id: (code, name) for type_id, code, name in
+                LeaveType.objects.values_list('leave_type_id', 'code', 'leave_type_name')}
+
+    def get_leave_type_by_code(self, company_id, code):
+        return LeaveType.objects.filter(company_id=company_id, code=code).first()
+
+    def get_company_leave_types(self, company_id):
+        """ Every leave type of the company, disabled ones included (admin list). """
+        return filter_by_company(LeaveType.objects.all(), company_id).order_by('leave_type_name')
+
+    def get_company_leave_type(self, company_id, leave_type_id):
+        return LeaveType.objects.filter(company_id=company_id, leave_type_id=leave_type_id).first()
+
+    def leave_type_name_exists(self, company_id, name, exclude_id=None):
+        leave_types = LeaveType.objects.filter(company_id=company_id, leave_type_name__iexact=name)
+        if exclude_id:
+            leave_types = leave_types.exclude(leave_type_id=exclude_id)
+        return leave_types.exists()
+
+    def seed_leave_types(self, company_id, leave_types):
+        """ leave_types: (code, name, default_no_of_leaves) tuples. """
+        LeaveType.objects.bulk_create([
+            LeaveType(company_id=company_id, code=code, leave_type_name=name,
+                      default_no_of_leaves=default_days, available_flag=1)
+            for code, name, default_days in leave_types])
+
+    def create_leave_type(self, data):
+        return LeaveType.objects.create(**data)
+
+    def update_leave_type(self, leave_type_id, data):
+        return LeaveType.objects.filter(leave_type_id=leave_type_id).update(**data)
 
     def get_leaves_by_user_id(self, user_id, period):
         try:
@@ -309,8 +346,14 @@ class LeaveDA():
         data.save()
         return data
 
-    def get_all_employees_leave_quota(self, leave_period_id):
-        return LeaveQuota.objects.filter(leave_period_id = leave_period_id)
+    def get_all_employees_leave_quota(self, leave_period_id, employee_ids=None):
+        quotas = LeaveQuota.objects.filter(leave_period_id = leave_period_id)
+        if employee_ids is not None:
+            quotas = quotas.filter(employee_id__in=employee_ids)
+        return quotas
+
+    def count_quotas_of_employees(self, quota_ids, employee_ids):
+        return LeaveQuota.objects.filter(quota_id__in=quota_ids, employee_id__in=employee_ids).count()
 
     def update_leave_quota_by_id(self,quota_id, no_of_days_allotted):
         return LeaveQuota.objects.filter(quota_id = quota_id).update(no_of_days_allotted = no_of_days_allotted)

@@ -30,7 +30,7 @@ class ProjectBL():
     def get_all_project_activity(self):
         activity_list = []
 
-        activities = ProjectDA().get_all_project_activity()
+        activities = ProjectDA().get_all_project_activity(get_active_company_id())
         if activities:
             for activity in activities:
                 activity_list.append({"id": activity.activity_id, "name": activity.name})

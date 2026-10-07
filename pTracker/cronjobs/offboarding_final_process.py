@@ -34,7 +34,8 @@ def offboard_final_process(self, user_id, off_boarding_id):
             UserDA().delete_lead_mapping_by_employee_id(user_id)
             ProjectDA().delete_employee_project_mappings_by_user_id(user_id)
             ProjectDA().update_employee_project_mapping_log(user_id)
-            update_data['job_status'] = 4 #TODO remove hard code values  settings.EMPLOYMENT_STATUS[]
+            company_id = UserDA().get_user_organization(user_id)
+            update_data['job_status'] = UserDA().get_employment_status_id_by_code(company_id, 'resigned')
             UserDA().update_user_profile(user_id, update_data)
             user_update_data['is_active'] = 0
             UserDA().update_auth_user(user_update_data, user_id)

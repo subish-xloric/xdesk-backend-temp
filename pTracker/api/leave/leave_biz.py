@@ -10,6 +10,7 @@ from django.http import response
 from django.template import loader
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_context import get_active_company_id
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
 
@@ -130,6 +131,10 @@ class LeaveBL():
             leave_type_id = request.data.get('type_id', 0)
             notify = request.data.get('notify', None)
             leave_day_type = request.data.get('leave_day_type', None)
+            if not LeaveHelperBL().is_company_leave_type(user_id, leave_type_id):
+                response['error'] = 'Invalid leave type selected'
+                response['status_code'] = 499
+                return response
 
             dt_start = datetime.strptime(start_date, "%Y-%m-%d")
             dt_end = datetime.strptime(end_date, "%Y-%m-%d")
@@ -449,6 +454,10 @@ class LeaveBL():
             leave_type_id = request.data.get('type_id', 0)
             notify = request.data.get('notify', None)
             leave_day_type = request.data.get('leave_day_type', None)
+            if not LeaveHelperBL().is_company_leave_type(user_id, leave_type_id):
+                response['error'] = 'Invalid leave type selected'
+                response['status_code'] = 499
+                return response
 
             dt_start = datetime.strptime(start_date, "%Y-%m-%d")
             dt_end = datetime.strptime(end_date, "%Y-%m-%d")
@@ -697,7 +706,7 @@ class LeaveBL():
                                 ' ' + each.last_name, 'value': each.id}
                     response['members_list'].append(member)
             # get all leave types
-            leave_type = LeaveDA().get_all_leave_types()
+            leave_type = LeaveDA().get_all_leave_types(get_active_company_id())
             for each in leave_type:
                     l_type = {}
                     l_type = {'label': each.leave_type_name ,
@@ -901,6 +910,15 @@ class LeaveBL():
                 return response
 
             emp_id = request.data.get('emp_id')
+            try:
+                in_company = UserDA().get_user_organization(emp_id) == get_active_company_id()
+            except Exception:
+                in_company = False
+            if not in_company:
+                response['error'] = settings.ERROR_MSG.get('access_denied')
+                return response
+            general_type_id = helper.get_leave_type_id_by_code(emp_id, 'general')
+            lop_type_id = helper.get_leave_type_id_by_code(emp_id, 'lop')
             start_date = request.data.get('start_date', None)
             end_date = request.data.get('end_date', None)
             comment = request.data.get('comment', "")
@@ -921,10 +939,10 @@ class LeaveBL():
             for each_date in missed_dates:
                 leave_type = 0
 
-                if self.__check_leave_avalability(emp_id, 1, leave_period_id): #check general leave
-                    leave_type = 1
-                elif self.__check_leave_avalability(emp_id, 4, leave_period_id): #check LOP leave
-                    leave_type = 4
+                if general_type_id and self.__check_leave_avalability(emp_id, general_type_id, leave_period_id):
+                    leave_type = general_type_id
+                elif lop_type_id and self.__check_leave_avalability(emp_id, lop_type_id, leave_period_id):
+                    leave_type = lop_type_id
 
                 if not leave_type:
                     response['error'] = "We sincerely apologize, but we cannot debit any more leaves for this\

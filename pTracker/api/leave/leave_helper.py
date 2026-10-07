@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_context import get_active_company_id
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
 
@@ -174,10 +175,26 @@ class LeaveHelperBL():
                 is_overlapped = True
         return is_overlapped
 
+    def is_company_leave_type(self, employee_id, leave_type_id):
+        """ The leave type is enabled and belongs to the employee's company. """
+        try:
+            leave_type_id = int(leave_type_id)
+            company_id = UserDA().get_user_organization(employee_id)
+        except Exception:
+            return False
+        leave_type = LeaveDA().get_company_leave_type(company_id, leave_type_id)
+        return bool(leave_type and leave_type.available_flag == 1)
+
+    def get_leave_type_id_by_code(self, employee_id, code):
+        """ Id of the employee's company's leave type with this system code, or None. """
+        leave_type = LeaveDA().get_leave_type_by_code(UserDA().get_user_organization(employee_id), code)
+        return leave_type.leave_type_id if leave_type else None
+
     def is_valid_leave_duration(self, start_date, end_date, leave_type_id):
         msg = None
         duration = self.__utility.get_date_range(start_date, end_date)
-        if leave_type_id == '5': #hard code to be removed for maternity leave
+        leave_types = LeaveDA().get_leave_type_code_name_dict()
+        if leave_types.get(int(leave_type_id or 0), (None,))[0] == 'maternity':
             if len(duration) > settings.MAXIMUM_MATERNITY_LEAVE_DURATION:
                 msg = f'''Maximum leave duration for maternity is 180'''
         else:
@@ -355,7 +372,7 @@ class LeaveHelperBL():
         try:
             all_leave_types = []
             # leave types
-            leave_types = LeaveDA().get_all_leave_types()
+            leave_types = LeaveDA().get_all_leave_types(get_active_company_id())
             if leave_types:
                 for each in leave_types:
                     all_leave_types.append({"id": each.leave_type_id,
@@ -451,22 +468,19 @@ class LeaveHelperBL():
             balance = (float(quota.no_of_days_allotted) - float(len(fulldays)) - float(len(halfdays) / 2))
         return balance
 
-    def __get_leave_type_name(self, leave_type_id):
-        if leave_type_id in (1, '1'):
-            type_name = 'General'
-        elif leave_type_id in (2, '2'):
-            type_name = 'Official'
-        elif leave_type_id in (3, '3'):
-            type_name = 'Comp_Off'
-        elif leave_type_id in (4, '4'):
-            type_name = 'LOP'
-        else:
-            type_name = 'Maternity'
-        return type_name
+    LEAVE_SUMMARY_LABELS = {'general': 'General', 'official': 'Official', 'comp_off': 'Comp_Off',
+                            'lop': 'LOP', 'maternity': 'Maternity'}
+
+    def __get_leave_type_name(self, leave_type_id, leave_types):
+        """ Summary key for a leave type: the fixed label for system types, the
+        type's own name for a company's extra types. """
+        code, name = leave_types.get(int(leave_type_id), (None, ''))
+        return self.LEAVE_SUMMARY_LABELS.get(code, name)
 
     def generate_leave_summary(self, user_id, period):
         temp = {}
         leave_quota = LeaveDA().get_leave_quota_by_user_id(user_id, period)
+        leave_types = LeaveDA().get_leave_type_code_name_dict()
         if leave_quota:
             user_leaves = LeaveDA().get_leaves_by_user_id(user_id, period)
             for each in leave_quota: # set scheduled number and balance  based on leave status
@@ -485,7 +499,7 @@ class LeaveHelperBL():
                                 scheduled += float(leave[1] / 8)
                                 balance -= float(leave[1] / 8)
                 if each.leave_type_id:
-                    type_name = self.__get_leave_type_name(each.leave_type_id)
+                    type_name = self.__get_leave_type_name(each.leave_type_id, leave_types)
                 temp[type_name] = {
                     'total': total,
                     'taken': taken,

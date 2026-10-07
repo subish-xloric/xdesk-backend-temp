@@ -29,6 +29,7 @@ from rest_framework.status import (
 
 from rest_framework_simplejwt.tokens import RefreshToken
 from pTracker.common.token_revocation import revoke_access_token
+from pTracker.api.user.master_data_biz import JobTitleBL, EmploymentStatusBL
 
 
 
@@ -695,3 +696,59 @@ class UserAccessView(APIView):
     def get(self, request):
         result = AccessBL().get_access(request.user.id, request.META)
         return Response(result, status=result['status'])
+
+
+class JobTitleListView(APIView):
+    """ GET: the active company's job titles. POST: add one (employee.manage). """
+    authentication_classes = [JSONWebTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        res = JobTitleBL().list(request.user.id)
+        return Response(res, status=res.get('status', 200))
+
+    def post(self, request):
+        res = JobTitleBL().create(request.user.id, request.data)
+        return Response(res, status=res.get('status', 201))
+
+
+class JobTitleDetailView(APIView):
+    """ PUT: edit one of the active company's job titles. DELETE: remove it (employee.manage). """
+    authentication_classes = [JSONWebTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, row_id):
+        res = JobTitleBL().update(request.user.id, row_id, request.data)
+        return Response(res, status=res.get('status', 200))
+
+    def delete(self, request, row_id):
+        res = JobTitleBL().delete(request.user.id, row_id)
+        return Response(res, status=res.get('status', 200))
+
+
+class EmploymentStatusListView(APIView):
+    """ GET: the active company's employment statuses. POST: add one (employee.manage). """
+    authentication_classes = [JSONWebTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        res = EmploymentStatusBL().list(request.user.id)
+        return Response(res, status=res.get('status', 200))
+
+    def post(self, request):
+        res = EmploymentStatusBL().create(request.user.id, request.data)
+        return Response(res, status=res.get('status', 201))
+
+
+class EmploymentStatusDetailView(APIView):
+    """ PUT: edit one of the active company's employment statuses. DELETE: remove it (employee.manage). """
+    authentication_classes = [JSONWebTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, row_id):
+        res = EmploymentStatusBL().update(request.user.id, row_id, request.data)
+        return Response(res, status=res.get('status', 200))
+
+    def delete(self, request, row_id):
+        res = EmploymentStatusBL().delete(request.user.id, row_id)
+        return Response(res, status=res.get('status', 200))

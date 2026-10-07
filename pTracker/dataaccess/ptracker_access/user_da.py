@@ -12,6 +12,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
 
 from pTracker.dataaccess.ptracker_access.time_sheet_models import TimeSheet
+from pTracker.dataaccess.company_scope import ALL_COMPANIES, filter_by_company
 from pTracker.dataaccess.ptracker_access.time_sheet_models import TimeSheetActionLog
 from pTracker.dataaccess.ptracker_access.time_sheet_models import TimeSheetItem
 from pTracker.dataaccess.ptracker_access.user_models import EmpLeadMappingLog, EncryptedMobileData
@@ -21,6 +22,7 @@ from pTracker.dataaccess.ptracker_access.user_models import ResetPasswordModel
 from pTracker.dataaccess.ptracker_access.user_models import EmployeeLeadMapping
 from pTracker.dataaccess.ptracker_access.user_models import EmployeeJobTitle
 from pTracker.dataaccess.ptracker_access.user_models import UserProfile
+from pTracker.dataaccess.ptracker_access.user_models import EmploymentStatus
 from pTracker.dataaccess.ptracker_access.user_models import EmployeeEmergencyContacts
 from pTracker.dataaccess.ptracker_access.user_models import UserProfileProvisional
 from pTracker.dataaccess.ptracker_access.user_models import AuthBiometric
@@ -386,8 +388,68 @@ class UserDA():
     def get_all_employee_lead_mapping(self):
         return EmployeeLeadMapping.objects.filter(is_deleted=0)
 
-    def get_all_job_titles(self):
-        return EmployeeJobTitle.objects.filter(is_deleted=0).order_by('job_title')
+    def get_user_ids_by_company(self, company_id):
+        return list(filter_by_company(UserProfile.objects.all(), company_id).values_list('user_id', flat=True))
+
+    def get_all_job_titles(self, company_id=ALL_COMPANIES):
+        """ Active job titles of one company (none for company_id=None); the
+        ALL_COMPANIES default is only for id -> title lookups. """
+        return filter_by_company(EmployeeJobTitle.objects.filter(is_deleted=0), company_id).order_by('job_title')
+
+    def get_company_job_title(self, company_id, title_id):
+        return EmployeeJobTitle.objects.filter(company_id=company_id, id=title_id, is_deleted=0).first()
+
+    def job_title_exists(self, company_id, title, exclude_id=None):
+        job_titles = EmployeeJobTitle.objects.filter(company_id=company_id, job_title__iexact=title, is_deleted=0)
+        if exclude_id:
+            job_titles = job_titles.exclude(id=exclude_id)
+        return job_titles.exists()
+
+    def create_job_title(self, data):
+        return EmployeeJobTitle.objects.create(**data)
+
+    def update_job_title(self, title_id, data):
+        return EmployeeJobTitle.objects.filter(id=title_id).update(**data)
+
+    def get_employment_statuses(self, company_id):
+        return filter_by_company(EmploymentStatus.objects.filter(is_deleted=0), company_id).order_by('sort_order', 'name')
+
+    def get_company_employment_status(self, company_id, status_id):
+        return EmploymentStatus.objects.filter(company_id=company_id, id=status_id, is_deleted=0).first()
+
+    def get_employment_status_name(self, status_id):
+        status = EmploymentStatus.objects.filter(id=status_id).only('name').first()
+        return status.name if status else ''
+
+    def get_employment_status_name_dict(self):
+        """ status id -> name across all companies (ids are unique). """
+        return dict(EmploymentStatus.objects.values_list('id', 'name'))
+
+    def get_employment_status_code(self, status_id):
+        status = EmploymentStatus.objects.filter(id=status_id).only('code').first()
+        return status.code if status else None
+
+    def get_employment_status_id_by_code(self, company_id, code):
+        status = EmploymentStatus.objects.filter(company_id=company_id, code=code).only('id').first()
+        return status.id if status else None
+
+    def employment_status_exists(self, company_id, name, exclude_id=None):
+        statuses = EmploymentStatus.objects.filter(company_id=company_id, name__iexact=name, is_deleted=0)
+        if exclude_id:
+            statuses = statuses.exclude(id=exclude_id)
+        return statuses.exists()
+
+    def seed_employment_statuses(self, company_id, statuses):
+        """ statuses: (code, name) pairs, created in order. """
+        EmploymentStatus.objects.bulk_create([
+            EmploymentStatus(company_id=company_id, code=code, name=name, sort_order=order)
+            for order, (code, name) in enumerate(statuses, start=1)])
+
+    def create_employment_status(self, data):
+        return EmploymentStatus.objects.create(**data)
+
+    def update_employment_status(self, status_id, data):
+        return EmploymentStatus.objects.filter(id=status_id).update(**data)
 
     def get_all_employees(self, is_active):
         if is_active == -1:

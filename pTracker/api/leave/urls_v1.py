@@ -12,8 +12,12 @@ from pTracker.api.leave.views import LeaveCancelView_V1
 from pTracker.api.leave.views import UserLeaveSummaryViewByEmpID_V1
 from pTracker.api.leave.views import GetUserLeaveSummaryByEmpID_V1
 from pTracker.api.leave.views import VersionExpiredView
+from pTracker.api.leave.views import LeaveTypeListView, LeaveTypeDetailView
 
 urlpatterns = [
+    path('leave-types/', LeaveTypeListView.as_view(), name='leave_types_v1'),
+    path('leave-types/<int:row_id>/', LeaveTypeDetailView.as_view(), name='leave_type_v1'),
+
     path('request-leave/', CreateLeaveRequest_V1.as_view(), name="leave_request_create_v1"),
     path('get-all-my-leave-requests/<int:page>/<int:emp_id>/', UserLeaveSummaryViewByEmpID_V1.as_view(), name="my_leave_summary_v1"),
     path('get-all-my-leave-requests/<int:page>/', UserLeaveSummaryView_V1.as_view(), name="my_leave_summary_v1"),

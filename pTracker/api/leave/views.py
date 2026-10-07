@@ -10,6 +10,7 @@ from pTracker.api.leave.leave_reports_biz import LeaveReportsBL
 from pTracker.api.leave.leave_bulk_load_biz import LeaveBulkBL
 from pTracker.api.leave.comp_off_biz import CompOffBL
 from pTracker.api.leave.leave_biz_v1 import LeaveBL_V1
+from pTracker.api.leave.leave_type_biz import LeaveTypeBL
 
 class TeamLeaveCalendarView(APIView):
     authentication_classes = [JSONWebTokenAuthentication]
@@ -365,3 +366,31 @@ class VersionExpiredView(APIView):
     def get(self,*args, **kwargs):
         response ={"error": "This version of the app is obsolete. Please update.", "status": 426}
         return Response(response, status = response.get("status", 200))
+
+
+class LeaveTypeListView(APIView):
+    """ GET: the active company's leave types. POST: add one (leave.manage_all). """
+    authentication_classes = [JSONWebTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        res = LeaveTypeBL().list(request.user.id)
+        return Response(res, status=res.get('status', 200))
+
+    def post(self, request):
+        res = LeaveTypeBL().create(request.user.id, request.data)
+        return Response(res, status=res.get('status', 201))
+
+
+class LeaveTypeDetailView(APIView):
+    """ PUT: edit one of the active company's leave types. DELETE: remove it (leave.manage_all). """
+    authentication_classes = [JSONWebTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, row_id):
+        res = LeaveTypeBL().update(request.user.id, row_id, request.data)
+        return Response(res, status=res.get('status', 200))
+
+    def delete(self, request, row_id):
+        res = LeaveTypeBL().delete(request.user.id, row_id)
+        return Response(res, status=res.get('status', 200))

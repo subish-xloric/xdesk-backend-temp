@@ -5,6 +5,8 @@ class ProjectActivity(models.Model):
     name = models.CharField(max_length=150, db_column='name')
     description = models.CharField(max_length=500, db_column='description', blank=True)
     is_deleted = models.IntegerField(default=0, db_column='is_deleted')
+    company_id = models.IntegerField(null=True, blank=True, db_column='company_id')
+    copied_from_id = models.IntegerField(null=True, blank=True, db_column='copied_from_id')
 
     class Meta:
         db_table = u'project_activity'
