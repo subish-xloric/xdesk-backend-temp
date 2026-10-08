@@ -84,7 +84,7 @@ class LeaveNotificationBL():
         mail_dto["smtp_username"] = settings.EMAIL_ADDRESS['do_not_reply']['mailID']
         mail_dto["smtp_password"] = settings.EMAIL_ADDRESS['do_not_reply']['password']
         # uncomment to send mail TODO
-        send_email_notification.apply_async([mail_dto, 1], queue=settings.CELERY_QUEUE['mail_sender'])
+        #send_email_notification.apply_async([mail_dto, 1], queue=settings.CELERY_QUEUE['mail_sender'])
 
     def send_leave_request_update_notification(self, message, emp_name, to_email, subject, cc_addresses=[]):
         if cc_addresses == []:
@@ -104,9 +104,11 @@ class LeaveNotificationBL():
 
     def setup_leave_request_email_content(self, user_id, leave_types, start_date, end_date, dt_start, dt_end, user_name, leave_request_data, notify, no_of_days = 1):
         email_content_dto = new_dto()
+        lead, lead_name, to_email = None, '', ''
         lead_user = UserDA().get_my_lead(user_id)
         if lead_user:
             lead = UserDA().get_user_by_id(lead_user.lead_id)
+        if lead:
             lead_name = lead.first_name
             to_email = lead.email
         #leave_types = helper.get_leave_type_dict()
@@ -125,15 +127,20 @@ class LeaveNotificationBL():
         email_content_dto.link = f"{settings.BASE_URL}leave/team-leave-summary"
         email_content_dto.no_of_days = no_of_days
         users = UserDA().get_all_active_users()
-        cc_addresses = []
+        cc_users = []
         if notify:
             for each in notify:
-                if each['id'] != lead.id:
-                    selected_user = users.get(id=each['id'])
-                    if selected_user:
-                        cc_addresses.append(selected_user.email)
+                if lead and int(each['id']) == lead.id:
+                    continue
+                selected_user = users.filter(id=each['id']).first()
+                if selected_user and selected_user not in cc_users:
+                    cc_users.append(selected_user)
+        if not to_email and cc_users:
+            # No reporting lead: address the first approver to be notified
+            first = cc_users.pop(0)
+            lead_name, to_email = first.first_name, first.email
         email_content_dto.lead_name = lead_name
-        return email_content_dto, cc_addresses, to_email
+        return email_content_dto, [u.email for u in cc_users], to_email
 
     def send_single_push_notification(self, approver, title, body, sound = None, extra_kwargs=None):
         res = None

@@ -17,6 +17,10 @@ from django.core.files.images import get_image_dimensions
 
 from pTracker.common.utility import Utility
 from pTracker.common.company_context import get_active_company_id
+from pTracker.common.company_modules import is_catalog_module_disabled
+from pTracker.api.attendance_v2.checkin_biz import SelfCheckInBL
+from pTracker.dataaccess.attendance_v2_access.constants import PUNCH_OUT
+from pTracker.dataaccess.attendance_v2_access.org_da import OrgDA
 from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_TEAM
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
@@ -27,10 +31,8 @@ from pTracker.api.user.access_biz import AccessBL
 from pTracker.notification_center.email_engine import Email
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
 from pTracker.dataaccess.ptracker_access.attendance import AttendanceDA
-from pTracker.dataaccess.essl_access.attendance import  AttendanceDA as eAttendanceDA
 from pTracker.dataaccess.ptracker_access.leave_da import LeaveDA
 from pTracker.api.user.anniversary_biz import AnniversaryBL
-from pTracker.api.attendance.attendance_biz import AttendanceBL
 from pTracker.dataaccess.ptracker_access.project_da import ProjectDA
 from pTracker.wiki.data_access.master.logs_da import LogsDA
 
@@ -270,7 +272,7 @@ class UserManagementBL_V1():
                         date = date
                     else:
                         date = datetime.today().date()
-                    period = LeaveDA().get_leave_period_by_date(date)
+                    period = LeaveDA().get_employee_leave_period(user_id, date)
                     if period:
                         period_id = period.leave_period_id
                         leave_requests = leave_requests.filter(leave_period_id=period_id)
@@ -314,11 +316,12 @@ class UserManagementBL_V1():
 
             requsests = {"leave_requests": 0, "wfh_requests": 0}
             holiday_list = []
-            anniversaries = AnniversaryBL().get_work_anniversaries()
+            company_id = get_active_company_id()
+            anniversaries = AnniversaryBL().get_work_anniversaries(company_id)
             if anniversaries.get('error', None):
                 response['error'] = anniversaries.get('error', None)
             response['work_anniversaries'] = anniversaries.get('anniversaries', [])
-            holidays = AnniversaryBL().get_upcoming_holidays()
+            holidays = AnniversaryBL().get_upcoming_holidays(company_id)
             if holidays.get('error', None):
                 response['error'] = holidays.get('error', None)
             if holidays.get('holidays', []):
@@ -330,29 +333,12 @@ class UserManagementBL_V1():
                     #holiday_list[r]["background_image"] = ""
 
             response['holidays'] = holiday_list
-            birthdays = AnniversaryBL().get_employee_birthdays()
+            birthdays = AnniversaryBL().get_employee_birthdays(company_id)
             if birthdays.get('error', None):
                 response['error'] = birthdays.get('error', None)
             response['birthdays'] = birthdays.get('birthdays', [])
             response['requests'] = self.get_all_direct_reporting_leave_and_wfh_pending_request_count(request.user.id)
-            avg_data = AttendanceBL().get_dashboard_attendance_average(request.user.id)
-
-            if avg_data:
-                temp_dir = avg_data.get("direction", "OUT")
-                if temp_dir == "IN":
-                    temp_dir = False
-                elif temp_dir == "OUT":
-                    temp_dir = True
-                attendace_data["is_checked_in"] = temp_dir
-            current_date = datetime.now().strftime("%Y-%m-%d")
-            today_attendance = eAttendanceDA().get_emp_access_log(request.user.username, current_date, current_date)
-            att_data = AttendanceBL().process_employee_attendance_records(today_attendance)
-            attendace_data["working_hours"] = att_data['working_hours']
-            attendace_data["first_punch_in"] = att_data['first_punch_in']
-            attendace_data["last_punch_out"] = att_data['last_punch_out']
-            if AttendanceBL().is_work_from_home_allowed(request.user.id):
-                attendace_data['is_wfh'] = True
-            response["attendance"] = attendace_data
+            response["attendance"] = self.__get_today_attendance_v2(request.user.id, attendace_data)
             response['emp_image'] = self.__get_image_url(request.user.id)
             return response
         except Exception as err:
@@ -361,6 +347,29 @@ class UserManagementBL_V1():
             response["error"] = settings.ERROR_MSG['application_error']\
                 .format(err, self.__logs.error(self.__exception.get_exception()))
             return response
+
+    def __get_today_attendance_v2(self, user_id, attendance):
+        """ Today's attendance from Attendance V2, in the dashboard's existing
+        shape: times as '09:31 AM', working_hours in seconds. Left at the
+        defaults when the active company has the attendance module disabled. """
+        company_id = get_active_company_id()
+        if company_id is None or is_catalog_module_disabled(company_id, 'attendance'):
+            return attendance
+        status = SelfCheckInBL().status(user_id)
+        if status.get('error'):
+            return attendance
+        attendance['is_checked_in'] = status.get('suggested_punch_type') == PUNCH_OUT
+        daily = status.get('daily') or {}
+        attendance['working_hours'] = (daily.get('total_work_minutes') or 0) * 60
+        attendance['first_punch_in'] = self.__format_punch_time(daily.get('first_in'))
+        attendance['last_punch_out'] = self.__format_punch_time(daily.get('last_out'))
+        attendance['is_wfh'] = OrgDA().has_approved_wfh(user_id, date.today())
+        return attendance
+
+    def __format_punch_time(self, value):
+        if not value:
+            return ""
+        return datetime.strptime(value, '%Y-%m-%dT%H:%M:%S').strftime('%I:%M %p')
 
     def __get_image_url(self, user_id):
         try:
@@ -456,106 +465,71 @@ class UserManagementBL_V1():
 
 
     def get_all_direct_reporting_leave_and_wfh_pending_request_count(self, user_id):
-        result = {}
-        team_members_list = []
-        pending_wfh_count = 0
-        pending_leave_request_count = 0
-        pending_leave_requests = None
-
-        wfh_pending_requests = AttendanceDA().get_all_wfh_requests_by_status(settings.WFH_REQUEST_STATUS_V1['Requested'])
-        date = datetime.today().date()
-        period = LeaveDA().get_leave_period_by_date(date)
-        if period:
-            pending_leave_requests = LeaveDA().get_all_leave_requests_by_period_and_status(
-                period.leave_period_id, settings.LEAVE_REQUEST_STATUS_V1['Requested'])
-        team_members = UserDA().get_current_team_members_by_lead_id(user_id)
-
-        if team_members:
-            for member in team_members:
-                team_members_list.append(member.id)
-
-            for wfh_request in wfh_pending_requests:
-                if wfh_request.emp_id in team_members_list :
-                    pending_wfh_count = pending_wfh_count+1
-
-            for leave_request in pending_leave_requests:
-                if leave_request.employee_id in team_members_list:
-                    pending_leave_request_count = pending_leave_request_count+1
-
-        result['leave_requests'] = pending_leave_request_count
-        result['wfh_requests'] = pending_wfh_count
-
+        """ Pending leave / WFH requests of the caller's direct reports (lead
+        mapping) and pending profile changes, all within the active company. """
+        company_employee_ids = self.__company_employee_ids()
+        direct_reports = {member.id for member in UserDA().get_current_team_members_by_lead_id(user_id)}
+        direct_reports = (direct_reports & company_employee_ids) - {user_id}
+        result = {
+            'leave_requests': self.__pending_leave_count(direct_reports),
+            'wfh_requests': self.__pending_wfh_count(direct_reports),
+            'profile_requests': 0,
+        }
         if has_capability(user_id, 'employee.approve_profile_changes'):
-                result['profile_requests'] = self.get_profile_info_awaits_approval_count()
-        else:
-            result['profile_requests'] = 0
-
+            result['profile_requests'] = UserDA().count_employees_with_profile_changes(company_employee_ids)
         return result
 
+    def __company_employee_ids(self):
+        """ Active employees of the active company (none if it is unknown). """
+        company_user_ids = UserDA().get_user_ids_by_company(get_active_company_id())
+        return set(UserDA().get_all_active_users().filter(id__in=company_user_ids).values_list('id', flat=True))
+
+    def __approval_team(self, user_id, module, company_employee_ids):
+        """ Whose requests the caller oversees, by capability: <module>.view_all ->
+        the whole company, <module>.view_team -> their own team, else nobody. """
+        scope = data_scope(user_id, module)
+        if scope == SCOPE_ALL:
+            team = set(company_employee_ids)
+        elif scope == SCOPE_TEAM:
+            team = {member.id for member in UserDA().get_current_team_members_by_lead_id(user_id)}
+            team &= company_employee_ids
+        else:
+            team = set()
+        team.discard(user_id)
+        return team
+
+    def __pending_leave_count(self, employee_ids):
+        period = LeaveDA().get_leave_period_by_date(datetime.today().date(), get_active_company_id())
+        if not employee_ids or not period:
+            return 0
+        return LeaveDA().count_leave_requests(period.leave_period_id,
+                                              settings.LEAVE_REQUEST_STATUS_V1['Requested'], employee_ids)
+
+    def __pending_wfh_count(self, employee_ids):
+        if not employee_ids:
+            return 0
+        return AttendanceDA().count_wfh_requests(settings.WFH_REQUEST_STATUS_V1['Requested'], employee_ids)
+
     def get_pending_leave_and_wfh_count(self, user_id):
-        response = {}
+        """ Pending-approval counts for the active company. team_* follow the
+        caller's capabilities (leave.view_all/view_team, attendance.view_all/
+        view_team); the rest are their direct reports and profile changes. """
         try:
-            team_members_list = []
-            leave_count = 0
-            wfh_count = 0
-            if data_scope(user_id, 'leave') == SCOPE_ALL:
-                team_members = UserDA().get_all_active_users()
-                team_members = team_members.exclude(id=user_id)
-            else:
-                team_members = UserDA().get_current_team_members_by_lead_id(user_id)
-            if team_members:
-                for each in team_members:
-                    if each.id != user_id:
-                        team_members_list.append(each.id)
-                date = datetime.today().date()
-                period = LeaveDA().get_leave_period_by_date(date)
-                if period:
-                    period_id = period.leave_period_id
-                    leave_requests = LeaveDA().get_all_leave_requests_by_period_and_status(
-                        period_id, settings.LEAVE_REQUEST_STATUS_V1['Requested'])  # 1 for requests
-                if leave_requests:
-                    for leave_request in leave_requests:
-                        if leave_request.employee_id in team_members_list:
-                            leave_count = leave_count+1
-                response["team_leave_requests"] = leave_count
-                wfh_requests = AttendanceDA().get_all_wfh_requests_by_status(
-                    settings.WFH_REQUEST_STATUS_V1['Requested'])  # 1 for requests
-                if wfh_requests:
-                    for wfh_request in wfh_requests:
-                        if wfh_request.emp_id in team_members_list:
-                            wfh_count = wfh_count+1
-                response["team_wfh_requests"] = wfh_count
-
-            direct_reprting_requests = self.get_all_direct_reporting_leave_and_wfh_pending_request_count(
-                user_id)
-            response['leave_requests'] = direct_reprting_requests['leave_requests']
-            response['wfh_requests'] = direct_reprting_requests['wfh_requests']
-
-            if has_capability(user_id, 'employee.approve_profile_changes'):
-                response['profile_requests'] = self.get_profile_info_awaits_approval_count()
-            else:
-                response['profile_requests'] = 0
+            company_employee_ids = self.__company_employee_ids()
+            response = {
+                'team_leave_requests': self.__pending_leave_count(
+                    self.__approval_team(user_id, 'leave', company_employee_ids)),
+                'team_wfh_requests': self.__pending_wfh_count(
+                    self.__approval_team(user_id, 'attendance', company_employee_ids)),
+            }
+            response.update(self.get_all_direct_reporting_leave_and_wfh_pending_request_count(user_id))
             return response
         except Exception as err:
             response = {}
             response['status'] = 499
             response["error"] = settings.ERROR_MSG['application_error']\
                 .format(err, self.__logs.error(self.__exception.get_exception()))
-        return response
-
-
-
-    def get_profile_info_awaits_approval_count(self):
-        profile_info_pending_emp_list = []
-        all_profile_info_awaits_approval = UserDA().get_all_profile_info_awaits_action()
-
-        if all_profile_info_awaits_approval:
-            for each_info in all_profile_info_awaits_approval:
-                if each_info.emp_id not in profile_info_pending_emp_list:
-                    profile_info_pending_emp_list.append(each_info.emp_id)
-
-        return len(profile_info_pending_emp_list)
-
+            return response
 
     def save_employee_profile_image(self, user_id, request):
         result = {}

@@ -40,6 +40,9 @@ class Company(models.Model):
     registered_address = models.TextField(blank=True, null=True)
     contact_email = models.EmailField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
+    # Sandwich leave: weekly offs / holidays inside a leave range count as leave
+    # days. Off -> only working days of the range are counted and deducted.
+    leave_sandwich_rule = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

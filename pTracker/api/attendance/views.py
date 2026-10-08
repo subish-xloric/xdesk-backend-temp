@@ -1,3 +1,5 @@
+from datetime import date
+
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -6,6 +8,8 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 from pTracker.api.attendance.attendance_biz import AttendanceBL
 from pTracker.api.attendance.mapping_biz import UserMappingBL
+from pTracker.api.attendance.remote_punch_biz import RemotePunchBL
+from pTracker.api.attendance.monthly_attendance_biz import MonthlyAttendanceBL
 from pTracker.api.attendance.wfh_biz import WorkFromHomeBL
 from pTracker.api.attendance.wfh_biz_v1 import WorkFromHomeBL_V1
 
@@ -21,15 +25,13 @@ class MyRecordList(APIView):
 
 
     def get(self, request, month_year):
-
-        month_year = month_year.split("_")
-        month = int(month_year[0])
-        year = int(month_year[1])
-        if month > 12 :
-            return Response({"error": "Invalid date"})
-
-        time_sheet = AttendanceBL().get_emp_attendance_log(request.user.id, request.user.username, month, year)
-        return Response(time_sheet)
+        params = month_year.split("_")
+        if len(params) != 2:
+            return Response({"error": "Invalid date"}, status=400)
+        result = MonthlyAttendanceBL().get_month(request.user.id, params[1], params[0])
+        if result.get('error'):
+            return Response({"error": result['error']}, status=result['status'])
+        return Response(result['attendance'])
 
 
 class LeadMappingList(APIView):
@@ -47,20 +49,13 @@ class EmployeeAttendanceLogList(APIView):
 
 
     def get(self, request, month_year_empid):
-
         params = month_year_empid.split("_")
-        month = int(params[0])
-        year = int(params[1])
-        emp_id = int(params[2])
-        if month > 12 :
-            return Response({"error": "Invalid date"})
-
-        emp_code = UserMappingBL().get_employee_code(emp_id)
-        if UserMappingBL().is_employee_accessible(emp_id, request.user.id):
-            time_sheet = AttendanceBL().get_emp_attendance_log(emp_id, emp_code, month, year)
-            return Response(time_sheet)
-        else:
-            return Response({"error": "No records found !"})
+        if len(params) != 3:
+            return Response({"error": "Invalid date"}, status=400)
+        result = MonthlyAttendanceBL().get_month(request.user.id, params[1], params[0], params[2])
+        if result.get('error'):
+            return Response({"error": result['error']}, status=result['status'])
+        return Response(result['attendance'])
 
 class EmployeeAttendanceAverage(APIView):
     authentication_classes = [JSONWebTokenAuthentication]
@@ -88,9 +83,10 @@ class WebPunchCheck(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        emp_code = UserMappingBL().get_employee_code(request.user.id)
-        result = AttendanceBL().get_web_punch_check(emp_code)
-        return Response(result)
+        result = RemotePunchBL().punch_check(request.user.id)
+        if result.get('error'):
+            return Response(result, status=result['status'])
+        return Response({'direction': result['direction'], 'is_display': result['is_display']})
 
 class WebPunch(APIView):
     authentication_classes = [JSONWebTokenAuthentication]
@@ -98,9 +94,10 @@ class WebPunch(APIView):
 
 
     def put(self, request, format=None):
-        emp_code = UserMappingBL().get_employee_code(request.user.id)
-        result = AttendanceBL().create_web_punch(emp_code, request.data)
-        return Response(result)
+        result = RemotePunchBL().punch(request.user.id, request.data.get('direction'),
+                                       request.data.get('channel', 'web'))
+        return Response({'error': result.get('error', ''), 'success': result.get('message', ''),
+                         'status': result['status']}, status=result['status'])
 
 class UpcomingHolidays(APIView):
     authentication_classes = [JSONWebTokenAuthentication]
@@ -236,35 +233,21 @@ class WebPunch_V1(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, format=None):
-        emp_code = UserMappingBL().get_employee_code(request.user.id)
-        data = WorkFromHomeBL_V1().format_web_punch_data(request.data)
-        result = AttendanceBL().create_web_punch(emp_code, data)
-        if result.get("error"):
-            result = {"error": result.get("error"), "status": 499}
-        elif result.get("success"):
-            result = {"message":result.get("success")}
-        return Response(result, status= result.get("status", 200))
+        result = RemotePunchBL().punch(request.user.id, request.data.get('direction'),
+                                       request.data.get('channel', 'mobile'))
+        if result.get('error'):
+            return Response({'error': result['error'], 'status': result['status']}, status=result['status'])
+        return Response({'message': result['message']})
 
 class WebPunchCheck_V1(APIView):
     authentication_classes = [JSONWebTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        res = {'direction':'', 'is_display': True}
-        emp_code = UserMappingBL().get_employee_code(request.user.id)
-        result = AttendanceBL().get_web_punch_check(emp_code)
-        direction = result.get('direction', None)
-        if str(direction).lower() == 'in':
-            res['direction'] = 'in'
-        elif str(direction).lower() == 'out':
-            res['direction'] = 'out'
-
-        is_display = result.get('is_display', True)
-        if str(is_display).lower() == 'true':
-            res['is_display'] = True
-        else:
-            res['is_display'] = False
-        return Response(res, status = result.get("status", 200))
+        result = RemotePunchBL().punch_check(request.user.id)
+        if result.get('error'):
+            return Response(result, status=result['status'])
+        return Response({'direction': result['direction'].lower(), 'is_display': result['is_display']})
 
 class CreateWFHRequestView_V1(APIView):
     authentication_classes = [JSONWebTokenAuthentication]
@@ -313,11 +296,15 @@ class MyRecordList_V1(APIView):
     authentication_classes = [JSONWebTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, year, month, emp_id):
-        emp_code = WorkFromHomeBL_V1().get_emp_code_by_emp_id(emp_id)
-        result = AttendanceBL().get_emp_attendance_log(request.user.id, emp_code, month, year)
-        attendance = WorkFromHomeBL_V1().format_my_attendance_record(result)
-        return Response(attendance, status = attendance.get("status", 200))
+    def get(self, request, year=None, month=None, emp_id=None):
+        """ Path form /<year>/<month>/<emp_id>/, or the bare URL with optional
+        ?year=&month=&emp_id= (defaults: this month, the caller). """
+        today = date.today()
+        year = year or request.query_params.get('year') or today.year
+        month = month or request.query_params.get('month') or today.month
+        emp_id = emp_id or request.query_params.get('emp_id') or request.user.id
+        result = MonthlyAttendanceBL().get_month(request.user.id, year, month, emp_id)
+        return Response(result, status=result['status'])
 
 class GetWorkHours_V1(APIView):
     authentication_classes = [JSONWebTokenAuthentication]

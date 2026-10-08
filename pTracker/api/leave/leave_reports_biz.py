@@ -9,6 +9,7 @@ from django.db import  DatabaseError, transaction
 from django.http import response
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_context import get_active_company_id
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
 
@@ -214,7 +215,7 @@ class LeaveReportsBL():
             if not obj_start or not obj_end:
                 response["error"] = "Invalid leave year."
                 return response
-            period = leave_da.get_leave_period_by_date(obj_start)
+            period = leave_da.get_leave_period_by_date(obj_start, get_active_company_id())
             if period:
                 leave_period_id = period.leave_period_id
             leave_quota_dict = helper.get_total_leave_quota_by_period(leave_period_id)
@@ -304,7 +305,7 @@ class LeaveReportsBL():
             #year_end = date(date.today().year, 12, 31)
             leave_types = helper.get_leave_type_dict()
 
-            leave_period = leave_da.get_leave_period_by_date(year_start)
+            leave_period = leave_da.get_leave_period_by_date(year_start, get_active_company_id())
 
             if leave_period:
                 start_date = leave_period.leave_period_start_date
@@ -456,7 +457,7 @@ class LeaveReportsBL():
             id_list = []
             for member in team_members:
                 id_list.append(member.id)
-            period = LeaveDA().get_leave_period_by_date(date.today()).leave_period_id
+            period = LeaveDA().get_leave_period_by_date(date.today(), get_active_company_id()).leave_period_id
             leaves = LeaveDA().get_all_comp_off_requests_by_status(period)
             if leaves:
                 leaves = leaves.filter(employee_id__in=id_list, status = 1).count()
@@ -474,7 +475,7 @@ class LeaveReportsBL():
                 return response
             temp ={}
             today = date.today()
-            period = LeaveDA().get_leave_period_by_date(today)
+            period = LeaveDA().get_leave_period_by_date(today, get_active_company_id())
             temp_leaves = LeaveDA().get_all_leave_requests()
             if temp_leaves:
                 exclude_list = [settings.LEAVE_REQUEST_STATUS['Cancelled'],settings.LEAVE_REQUEST_STATUS['Rejected']]

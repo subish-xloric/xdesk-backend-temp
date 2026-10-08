@@ -29,6 +29,7 @@ urlpatterns = [
     url(r'cancel-wfh-request/', CancelWFHRequestView_V1.as_view(), name='cancel_wfh_request_v1'),
 
     path('get-attendance-of-month/<int:year>/<int:month>/<int:emp_id>/', MyRecordList_V1.as_view(), name='my_record_list_v1'),
+    path('get-attendance-of-month/', MyRecordList_V1.as_view(), name='my_record_list_current_v1'),
     path('get-work-hours/<str:date>/<int:emp_id>/', GetWorkHours_V1.as_view(), name='work_hours_v1'),
     path('get-team-stats/<str:date>/<int:page>/<str:filterByType>/<str:searchKeyword>/', GetTeamStatsViewbyKeyword_V1.as_view(), name='team_stats_v1'),
     path('get-team-stats/<str:date>/<int:page>/<str:filterByType>/', GetTeamStatsView_V1.as_view(), name='team_stats_v1'),

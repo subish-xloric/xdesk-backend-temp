@@ -26,6 +26,7 @@ urlpatterns = [
     path('validate-date/<str:start_date>/<str:end_date>/', LeaveDateValidation_V1.as_view(), name="leave_date_validation"),
     path('respond-to-leave-request/', LeaveStatusUpdateView_V1.as_view(), name="leave_request_respond_v1"),
     path('get-leave-summary/<int:emp_id>/', GetUserLeaveSummaryByEmpID_V1.as_view(), name="get_leave_summary"),
+    path('get-leave-summary/', GetUserLeaveSummaryByEmpID_V1.as_view(), name="get_my_leave_summary"),
 
 
 

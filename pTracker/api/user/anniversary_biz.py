@@ -10,6 +10,7 @@ from pTracker.settings import ATT_DEVICE
 from pTracker.settings import PUNCH_IN_CONFIG
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_context import get_active_company_id
 from pTracker.dataaccess.ptracker_access.project_da import  ProjectDA
 
 from pTracker.dataaccess.essl_access.attendance import  AttendanceDA
@@ -71,7 +72,7 @@ class AnniversaryBL():
             print(self.__exception.exception())
         return response
 
-    def get_employee_birthdays(self):
+    def get_employee_birthdays(self, company_id):
         response = {
             "birthdays": [],
             "error": None
@@ -80,7 +81,7 @@ class AnniversaryBL():
             start_date = date.today()
             end_date = start_date + timedelta(days=constants.UPCOMING_DAYS)
             days = self.__get_date_range(start_date, end_date)
-            birthdays = UserDA().get_upcoming_birthdays(days)
+            birthdays = UserDA().get_upcoming_birthdays(days, company_id)
             if birthdays:
                 birthday_list = []
                 for each in birthdays:
@@ -102,7 +103,7 @@ class AnniversaryBL():
             Utility().log(msg)
         return response
 
-    def get_upcoming_holidays(self):
+    def get_upcoming_holidays(self, company_id):
         response = {
             "holidays": [],
             "error": None
@@ -111,7 +112,7 @@ class AnniversaryBL():
         try:
             start_date = date.today()
             end_date = start_date + relativedelta(months=constants.FUTURE_MONTHS)
-            holidays = HolidayDA().get_holidays(start_date, end_date)
+            holidays = HolidayDA().get_company_holidays(company_id, start_date, end_date)
             if holidays:
                 for holiday in holidays:
                     temp_dict = {
@@ -135,7 +136,7 @@ class AnniversaryBL():
             days_list.append(days.strftime("%d-%m"))
         return days_list
 
-    def get_work_anniversaries(self):
+    def get_work_anniversaries(self, company_id):
         response = {
             'anniversaries': [],
             'error': None
@@ -145,7 +146,8 @@ class AnniversaryBL():
             current_date = datetime.today()
             start_date = current_date - timedelta(days=constants.PAST_DAYS)
             end_date = current_date + timedelta(days=constants.FUTURE_DAYS)
-            all_users = UserDA().get_all_active_users().order_by('date_joined')
+            all_users = UserDA().get_all_active_users().filter(
+                id__in=UserDA().get_user_ids_by_company(company_id)).order_by('date_joined')
             days_list = self.__get_days_list(self.__get_date_range(start_date, end_date))
             for user in all_users:
                 if user.date_joined.year != current_date.year:
@@ -180,15 +182,16 @@ class AnniversaryBL():
             "birthdays": [],
             "error": None
         }
-        anniversaries = self.get_work_anniversaries()
+        company_id = get_active_company_id()
+        anniversaries = self.get_work_anniversaries(company_id)
         if anniversaries.get('error', None):
             response['error'] = anniversaries.get('error', None)
         response['work_anniversaries'] = anniversaries.get('anniversaries', [])
-        holidays = self.get_upcoming_holidays()
+        holidays = self.get_upcoming_holidays(company_id)
         if holidays.get('error', None):
             response['error'] = holidays.get('error', None)
         response['holidays'] = holidays.get('holidays', [])
-        birthdays = self.get_employee_birthdays()
+        birthdays = self.get_employee_birthdays(company_id)
         if birthdays.get('error', None):
             response['error'] = birthdays.get('error', None)
         response['birthdays'] = birthdays.get('birthdays', [])

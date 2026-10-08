@@ -201,7 +201,7 @@ class CompOffBL():
 
                 dt_start = datetime.strptime(comp_off_data['start_date'], "%Y-%m-%d")
                 dt_end = datetime.strptime(comp_off_data['end_date'], "%Y-%m-%d")
-                leave_period = LeaveDA().get_leave_period_by_date(dt_start)
+                leave_period = LeaveDA().get_employee_leave_period(user_id, dt_start)
 
                 if not helper.is_date_range_valid(dt_start, dt_end):
                     response['error'] = "Start date should be less than or equal to end date."
@@ -263,7 +263,7 @@ class CompOffBL():
             end_date = datetime.strptime(str_end_date, "%Y-%m-%d")
             is_flag = int(request.data.get('is_flag', 0))
 
-            leave_period = LeaveDA().get_leave_period_by_date(start_date)
+            leave_period = LeaveDA().get_employee_leave_period(user_id, start_date)
 
             if not helper.is_company_leave_type(user_id, leave_type_id):
                 response['error'] = 'Invalid leave type selected'
@@ -432,7 +432,7 @@ class CompOffBL():
             "error":None
         }
         try:
-            leave_period = LeaveDA().get_leave_period_by_date(datetime.now())
+            leave_period = LeaveDA().get_employee_leave_period(user_id, datetime.now())
             emps = UserDA().get_all_active_users()
             emp_dict = {}
             if emps:
@@ -495,7 +495,7 @@ class CompOffBL():
             "error": ""
         }
         try:
-            leave_period = LeaveDA().get_leave_period_by_date(datetime.now())
+            leave_period = LeaveDA().get_employee_leave_period(user_id, datetime.now())
             emps = UserDA().get_all_active_users()
             emp_dict = {}
             if emps:
@@ -550,7 +550,7 @@ class CompOffBL():
             start = datetime.strptime(start_date, "%Y-%m-%d")
             end = datetime.strptime(end_date, "%Y-%m-%d")
             duration = Utility().get_date_range(start, end)
-            leave_period = LeaveDA().get_leave_period_by_date(start)
+            leave_period = LeaveDA().get_employee_leave_period(user_id, start)
             if start.year != end.year:
                 response['message'] = "Dates can't be in different years"
                 response['is_valid'] = 0

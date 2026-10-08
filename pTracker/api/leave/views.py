@@ -348,7 +348,9 @@ class GetUserLeaveSummaryByEmpID_V1(APIView):
     authentication_classes = [JSONWebTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, emp_id):
+    def get(self, request, emp_id=None):
+        """ /<emp_id>/, or the bare URL (optionally ?emp_id=) for your own summary. """
+        emp_id = emp_id or request.query_params.get('emp_id')
         result = LeaveBL_V1().get_user_leave_summary_by_emp_id(request.user.id, emp_id)
         return Response(result, status = result.get("status", 200))
 

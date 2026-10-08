@@ -139,14 +139,14 @@ COMP_LEAVE_ACTION_LOG = {
     5: "Compensatory leave request edited by {0} at {1} "
 }
 
-TEAM_EMAIL = 'team@mydomain.com'
-EM_TEAM_EMAIL = "team@mydomain.com"
+TEAM_EMAIL = 'kssubish999@gmail.com'
+EM_TEAM_EMAIL = "kssubish999@gmail.com"
 
-LEAVE_DEFAULT_NOTIFOCATION_EMAIL = 'leave@mydomain.com'
+LEAVE_DEFAULT_NOTIFOCATION_EMAIL = 'kssubish999@gmail.com'
 
-INTERVIEW_DEFAULT_MAIL = 'interview@mydomain.com'
+INTERVIEW_DEFAULT_MAIL = 'kssubish999@gmail.com'
 
-HR_EMAIL = 'radhi.menon@mydomain.com'
+HR_EMAIL = 'kssubish999@gmail.com'
 
 PROBATION_LOP_LEAVE = 10
 PROBATION_GENERAL_LEAVE = 5
@@ -182,7 +182,7 @@ ADMIN_DEPT = {
             "name":"Admin Department",
             "emp_name":"Manju KG",
             "res_emp_id" : '22',
-            'email' : 'manju.kg@mydomain.com',
+            'email' : 'manju@mydomain.com',
             "checklist":[{"id":'1',"name":"Books/Journals/Magazines from library","value":0},{"id":'2',"name":"Lunch Coupons amount","value":0}],
             "signed" : 0,
             "signed_date" : "",
@@ -206,7 +206,7 @@ QA_DEPT = {
             "name":"QA Department",
             "emp_name":"Jibin Joy",
             "res_emp_id" : '27',
-            "email" : 'jibin.joy@mydomain.com',
+            "email" : 'jibin@mydomain.com',
             "checklist":[{"id":'1',"name":"QA Tasks Completed","value":0}],
             "signed" : 0,
             "signed_date" : "",
@@ -236,7 +236,7 @@ ACCOUNTS_DEPT = {
             "dept_id": '6',
             "name":"Accounts Department",
             "emp_name":"Renjith M B",
-            "email" : 'renjith@mydomain.com',
+            "email" : 'jith@mydomain.com',
             "res_emp_id" : '4',
             "checklist":[{"id":'1',"name":"Documents regarding tax","value":0}],
             "signed" : 0,
@@ -249,7 +249,7 @@ HR_DEPT = {
             "name":"HR Department",
             "emp_name":"Radhi Menon",
             "res_emp_id" : '20',
-            "email" : 'radhi.menon@mydomain.com',
+            "email" : 'radhi@mydomain.com',
             "checklist":[{"id":'1',"name":"Check List","value":0},{"id":'2',"name":"Acces Card","value":0},{"id":'3',"name":"Disable in DM Desk","value":0},{"id":'4',"name":"CSEZ Card","value":0},{"id":'5',"name":"Visting Cards","value":0},{"id":'6',"name":"Exit interview Completed","value":0}],
             "signed" : 0,
             "signed_date" : "",
@@ -330,7 +330,7 @@ PERSONAL_APPRAISAL_RATINGS = {
 
 APPRAISAL_EXCLUDED_EMPLOYESS = [2, 3, '2', '3']
 
-OFF_BOARDING_CC_MAILS = ["hr@mydomain.com", "ajith.s@mydomain.com"]
+OFF_BOARDING_CC_MAILS = ["ar@mydomain.com", "ajith@mydomain.com"]
 
 
 SEO_EMPLOYESS = [113,'113',152,'152', 209, '209',219,'219']
@@ -358,9 +358,9 @@ TERMINATION_ACTION_LOG = {
 
 OFFBOARDING_TYPE = {1: "Resigned", 2: "Relieved", 3: "Terminated"}
 
-EM_HR_MAIL = "hr@mydomain.com"
+EM_HR_MAIL = "ar@mydomain.com"
 
-DM_HR_MAIL = "hr@mydomain.com"
+DM_HR_MAIL = "ar@mydomain.com"
 
 CANDIDATE_STATUS = {
     1: "Shortlisted for Interview",
@@ -658,9 +658,9 @@ CODENAME_EMP = [
 ]
 
 
-EM_HR_MAIL = "hr@mydomain.com"
+EM_HR_MAIL = "ar@mydomain.com"
 
-DM_HR_MAIL = "hr@mydomain.com"
+DM_HR_MAIL = "ar@mydomain.com"
 
 REWARD_TITLES = ['Think Fresh', 'Well Done']
 

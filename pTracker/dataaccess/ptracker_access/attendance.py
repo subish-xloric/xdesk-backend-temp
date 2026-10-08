@@ -40,6 +40,9 @@ class AttendanceDA:
     def get_all_wfh_requests_by_user_id(self, user_id):
         return WFHRequest.objects.filter(emp_id=user_id).order_by('-wfh_id')
 
+    def count_wfh_requests(self, status, employee_ids):
+        return WFHRequest.objects.filter(status=status, emp_id__in=employee_ids).count()
+
     def get_all_wfh_requests_by_status(self, status):
         return WFHRequest.objects.filter(status=status).order_by('-wfh_id')
 

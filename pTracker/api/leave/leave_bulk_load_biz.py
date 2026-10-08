@@ -69,7 +69,7 @@ class LeaveBulkBL():
                 return result
 
             year_start = date(credit_year,1,1)
-            obj_leave_period = leave_da.get_leave_period_by_date(year_start)
+            obj_leave_period = leave_da.get_leave_period_by_date(year_start, get_active_company_id())
             if not obj_leave_period:
                 result["error"] = "Leave period for selecting year ({0}) is missing in system.".format(credit_year)
                 return result
@@ -87,7 +87,7 @@ class LeaveBulkBL():
                 leave_types_by_company.setdefault(leave_type.company_id, []).append(leave_type)
             status_codes = {status_id: UserDA().get_employment_status_code(status_id)
                             for status_id in {p.job_status for p in profile_dict.values()}}
-            period_id = LeaveDA().get_leave_period_by_date(date(credit_year,1,1)).leave_period_id
+            period_id = LeaveDA().get_leave_period_by_date(date(credit_year,1,1), get_active_company_id()).leave_period_id
 
             for employee in active_emps:
                 emp_name = employee.first_name + " " + employee.last_name
@@ -154,7 +154,7 @@ class LeaveBulkBL():
             active_users = UserDA().get_all_active_users().filter(id__in=company_employee_ids)
             leave_types = LeaveDA().get_leave_type_code_name_dict()
             # obj_date = date.today()
-            leave_period = leave_da.get_leave_period_by_date(obj_start)
+            leave_period = leave_da.get_leave_period_by_date(obj_start, get_active_company_id())
             if leave_period:
                 all_leave_quota = leave_da.get_all_employees_leave_quota(leave_period.leave_period_id, company_employee_ids)
                 if all_leave_quota:

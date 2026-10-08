@@ -569,7 +569,7 @@ class UserManagementBL():
         return result
 
     def create_user_leave_quota(self,user_id):
-        leave_period = LeaveDA().get_leave_period_by__date(datetime.now())
+        leave_period = LeaveDA().get_employee_leave_period(user_id, datetime.now())
         leave_types = LeaveDA().get_all_leave_types(UserDA().get_user_organization(user_id))
         for leave_type in leave_types:
             leave_quota_dict = {

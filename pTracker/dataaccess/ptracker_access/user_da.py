@@ -352,30 +352,24 @@ class UserDA():
         return  conn.execute(query)
 
 
-    def get_upcoming_birthdays(self, date_range):
-        birthdays = []
-        for days in date_range:
-            query = f"""select
-                            user_profile.dob,
-                            auth_user.first_name,
-                            auth_user.last_name,
-                            auth_user.id
-                        from
-                            user_profile
-                        inner join
-                            auth_user on(auth_user.id=user_profile.user_id)
-                        where
-                            day(dob)={days.day} and
-                            month(dob)={days.month} and
-                            auth_user.is_active=1"""
-            conn = Connection('default')
-            results, error = conn.execute(query)
-            if results:
-                birthdays.append(results)
-            if error:
-                results = None
-                #Utility().log(error)
-        return birthdays
+    def get_upcoming_birthdays(self, date_range, company_id):
+        """ Active employees of one company whose birthday falls on a day of
+        date_range, grouped per day in date_range order: [[(dob, first_name,
+        last_name, user_id), ...], ...]. None company -> no one. """
+        days = [(day.month, day.day) for day in date_range]
+        if not days:
+            return []
+        on_days = Q()
+        for month, day in days:
+            on_days |= Q(dob__month=month, dob__day=day)
+        profiles = filter_by_company(UserProfile.objects.filter(on_days), company_id)
+        dob_by_user = dict(profiles.values_list('user_id', 'dob'))
+        users = User.objects.filter(id__in=dob_by_user.keys(), is_active=1).order_by('first_name')
+        per_day = {key: [] for key in days}
+        for user in users:
+            dob = dob_by_user[user.id]
+            per_day[(dob.month, dob.day)].append((dob, user.first_name, user.last_name, user.id))
+        return [per_day[key] for key in days if per_day[key]]
 
     def get_all_used_images(self, max_number):
         send_images = UsedBirthdayImage.objects.all()
@@ -693,6 +687,11 @@ class UserDA():
 
     def create_emp_profile_changes(self, emp_edit_data):
         return UserProfileProvisional.objects.bulk_create(emp_edit_data)
+
+    def count_employees_with_profile_changes(self, employee_ids, status=1):
+        """ Employees (not individual field changes) with pending profile changes. """
+        return UserProfileProvisional.objects.filter(status=status, emp_id__in=employee_ids)\
+            .values('emp_id').distinct().count()
 
     def get_all_profile_info_awaits_action(self, status=1):
         return UserProfileProvisional.objects.filter(status=status)

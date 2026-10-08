@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 from pTracker.dataaccess.db import Connection
 # from pTracker.common.utility import Utility
+from pTracker.dataaccess.company_scope import filter_by_company
 from pTracker.dataaccess.ptracker_access.models import Holidays
 from pTracker.dataaccess.ptracker_access.models import AdditionalWorkingDays
 
@@ -23,6 +24,11 @@ class HolidayDA():
 
     def get_holidays(self, str_date, end_date):
         return Holidays.objects.filter(deleted=0, holiday_date__range=[str_date, end_date])
+
+    def get_company_holidays(self, company_id, str_date, end_date):
+        """ One company's holidays in the range (none when company_id is None). """
+        holidays = Holidays.objects.filter(deleted=0, holiday_date__range=[str_date, end_date])
+        return filter_by_company(holidays, company_id).order_by('holiday_date')
 
     def get_additional_working_days(self, str_date, end_date):
         return AdditionalWorkingDays.objects.filter(deleted=0, working_date__range=[str_date, end_date])

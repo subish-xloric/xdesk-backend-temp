@@ -13,6 +13,8 @@ from pTracker.dataaccess.ptracker_access.leave_da import LeaveDA
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
 from pTracker.api.leave.leave_biz import LeaveBL
 from pTracker.api.leave.leave_helper import LeaveHelperBL
+from pTracker.dataaccess.attendance_v2_access.org_da import OrgDA
+from pTracker.common.company_context import get_active_company_id
 from pTracker.user_management.holiday_da import HolidayDA
 from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_TEAM
 
@@ -55,7 +57,7 @@ class LeaveBL_V1():
                     return result
                 user_id = emp_id
             current_date = date.today()
-            period = LeaveDA().get_leave_period_by_date(current_date)
+            period = LeaveDA().get_employee_leave_period(user_id, current_date)
             if not period:
                 result['error'] = "Invalid leave period."
                 result['status'] = 499
@@ -191,81 +193,16 @@ class LeaveBL_V1():
         return {'start_date':start_date, 'end_date':end_date}
     
     def leave_date_validation(self, data , user_id):
-        response = {"msg": "", "is_valid": True, "status": 200}
+        """ Mobile validate-date: exactly the rules used when the request is
+        submitted (LeaveHelperBL.validate_leave_dates). """
         try:
-            start_date = data.get('start_date', None)
-            end_date = data.get('end_date', None)
-            leave_type = data.get('type_id', None)
-            edit_id = data.get('request_id', 0)
-            leave_day_type = data.get('leave_day_type', None)
-            start = datetime.strptime(start_date, "%Y-%m-%d")
-            end = datetime.strptime(end_date, "%Y-%m-%d")
-            duration = Utility().get_date_range(start, end)
-            leave_period = LeaveDA().get_leave_period_by_date(start)
-            if start.year != end.year:
-                response['msg'] = "Leave start date and end date should be in the same year."
-                response["is_valid"] = False
-                response['status'] = 499
-                return response
-
-            if leave_period is None:
-                response['msg'] = f'''You can't apply leave for this date range. Leave period is missing in system.'''
-                response['status'] = 499
-                response["is_valid"] = False
-                return response
-
-            if leave_type:
-                leave_balance = self.get_user_leave_balance(leave_type, user_id, leave_period.leave_period_id, edit_id)
-
-                if leave_balance is not None:
-                    if leave_balance >= 0:
-                        if float(leave_balance) < float(len(duration)):
-                            if not (leave_balance == .5 and len(duration) == 1) :
-                                response['msg'] = f'''Insufficient leave balance for selected leave type. Leave balance is {leave_balance}'''
-                                response["is_valid"] = False
-                                return response
-                            if leave_balance == .5 and len(duration) == 1 and leave_day_type == '1':
-                                response['msg'] = f'''Insufficient leave balance for selected leave type. Leave balance is{leave_balance}.'''
-                                response["is_valid"] = False
-                                response['status'] = 499
-                                return response
-                else:
-                    response['msg'] = "You can't apply for leave right now. Please contact your respective LEAD or HR  "
-                    response["is_valid"] = False
-                    response['status'] = 499
-                    return response
-            if duration:
-                if len(duration) > settings.MAXIMUM_LEAVE_DURATION:
-                    response['msg'] = "Leave duration exceed maximum limit. Limit is {0}".format(settings.MAXIMUM_LEAVE_DURATION)
-                    response["is_valid"] = False
-                    response['status'] = 499
-                    return response
-            result = LeaveDA().get_leave_date_overlap(start_date, end_date, user_id)
-            if result:
-                if edit_id:
-                    edit_excluded_result = result.exclude(
-                        leave_request_id=edit_id)
-                    if edit_excluded_result:
-                        response['msg'] = f'''Leave dates are overlapping with previous leave request. Please change dates'''
-                        response["is_valid"] = False
-                        response['status'] = 499
-                else:
-                    response['msg'] = "dates overlapping with previous leave request dates"
-                    response["is_valid"] = False
-                    response['status'] = 499
-                return response
-            is_start_or_end_date_in_holiday = self.is_start_date_or_end_date_in_holiday(start, end)
-            if is_start_or_end_date_in_holiday:
-                response['message'] = "Start date or end date can't be a holiday"
-                response["is_valid"] = False
-                response['status'] = 499
-                return response
-        except Exception as err:
-            response['status'] = 499
-            response = { "error" : settings.ERROR_MSG['application_error']\
-                .format(str(err), self.__log.error(self.__exception.get_exception())) }
-            return response
-        return response
+            message = LeaveHelperBL().validate_leave_dates(data, user_id)
+        except Exception:
+            return {"error": "Leave validation failed. LogID: {0}".format(
+                self.__log.error(self.__exception.get_exception())), "status": 499}
+        if message:
+            return {"msg": message, "is_valid": False, "status": 400}
+        return {"msg": "", "is_valid": True, "status": 200}
 
     def format_notfy_list(self, notify):
         res = []
@@ -274,38 +211,45 @@ class LeaveBL_V1():
                 res.append({"id":each})
         return res
 
-    def get_user_leave_summary_by_emp_id(self, user_id, emp_id):
-        response ={"error":'', "general":{}, "lop": {}, "official": {}, "compOff": {}, "maternity": {},"status": 200}
+    def get_user_leave_summary_by_emp_id(self, user_id, emp_id=None):
+        """ Leave balances of an employee in the active company for the leave
+        period covering today: one entry per enabled leave type of the company
+        (zeros where the employee has no quota). Allowed: yourself, your team
+        (lead mapping) or anyone with leave.view_all. Employees outside the
+        active company are "Employee not found" (404). """
         try:
-            permitted = False
-            scope = data_scope(user_id, 'leave')
-            is_team_member = UserDA().is_team_member(emp_id, user_id)
-            if user_id == emp_id:
-                permitted = True
-            elif scope == SCOPE_ALL:
-                permitted =  True
-            elif is_team_member:
-                permitted =  True
-            if not permitted:
-                response['error'] = settings.ERROR_MSG.get('access_denied')
-                response['status'] = 403
-                return response
-            leave_period = LeaveDA().get_leave_period_by_date(datetime.now().date())
-            if leave_period:
-                leave_summary = LeaveHelperBL().generate_leave_summary(emp_id, leave_period.leave_period_id)
-                if leave_summary:
-                    response['general'] = leave_summary.get("General",{})
-                    response['lop'] = leave_summary.get("LOP",{})
-                    response['official'] = leave_summary.get("Official",{})
-                    response['compOff'] = leave_summary.get("Comp_Off",{})
-                    response['maternity'] = leave_summary.get("Maternity",{})
+            emp_id = int(emp_id) if emp_id else user_id
+            company_id = get_active_company_id()
+            if company_id is None or not OrgDA().is_company_member(company_id, emp_id):
+                return {"error": "Employee not found", "status": 404}
+            if emp_id != user_id and data_scope(user_id, 'leave') != SCOPE_ALL \
+                    and not UserDA().is_team_member(emp_id, user_id):
+                return {"error": settings.ERROR_MSG.get('access_denied'), "status": 403}
 
-        except Exception as err:
-            response['status'] = 499
-            response = { "error" : settings.ERROR_MSG['application_error']\
-                .format(str(err), self.__log.error(self.__exception.get_exception())) }
-            return response
-        return response
+            leave_period = LeaveDA().get_leave_period_by_date(date.today(), company_id)
+            quotas = {}
+            if leave_period:
+                quotas = {item['leave_type_id']: item for item in
+                          LeaveHelperBL().leave_summary_by_type(emp_id, leave_period.leave_period_id)}
+            leave_types = []
+            for leave_type in LeaveDA().get_all_leave_types(company_id).order_by('leave_type_name'):
+                item = quotas.get(leave_type.leave_type_id, {})
+                leave_types.append({
+                    'leave_type_id': leave_type.leave_type_id,
+                    'leave_type': leave_type.leave_type_name,
+                    'code': leave_type.code,
+                    'total': item.get('total', 0.0),
+                    'taken': item.get('taken', 0.0),
+                    'scheduled': item.get('scheduled', 0.0),
+                    'balance': item.get('balance', 0.0),
+                })
+            return {"error": '', "leave_period_id": leave_period.leave_period_id if leave_period else None,
+                    "leave_types": leave_types, "status": 200}
+        except (TypeError, ValueError):
+            return {"error": "Invalid employee id", "status": 400}
+        except Exception:
+            return {"error": "Leave summary failed. LogID: {0}".format(
+                self.__log.error(self.__exception.get_exception())), "status": 499}
 
     def is_start_date_or_end_date_in_holiday(self, start_date, end_date):
         in_holiday = False

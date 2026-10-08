@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.conf import settings
 from django.db import transaction
 
@@ -31,6 +33,7 @@ def _company_dict(company):
         'registered_address': company.registered_address,
         'contact_email': company.contact_email,
         'is_active': company.is_active,
+        'leave_sandwich_rule': company.leave_sandwich_rule,
         'created_at': company.created_at,
         'updated_at': company.updated_at,
     }
@@ -127,6 +130,8 @@ class TenancyBL():
             # The statuses and leave types the code depends on (by system code)
             UserDA().seed_employment_statuses(company.id, settings.DEFAULT_EMPLOYMENT_STATUSES)
             LeaveDA().seed_leave_types(company.id, settings.DEFAULT_LEAVE_TYPES)
+            year = date.today().year  # leave year: calendar year by default
+            LeaveDA().create_leave_period(company.id, date(year, 1, 1), date(year, 12, 31))
         return {'company': _company_dict(company), 'status': 201}
 
     def list_companies(self, tenant_id):
@@ -150,6 +155,10 @@ class TenancyBL():
         for key in ('legal_name', 'short_name', 'registered_address', 'contact_email', 'is_active'):
             if key in data:
                 fields[key] = data[key]
+        if 'leave_sandwich_rule' in data:
+            if not isinstance(data['leave_sandwich_rule'], bool):
+                return {'error': 'leave_sandwich_rule must be true or false', 'status': 400}
+            fields['leave_sandwich_rule'] = data['leave_sandwich_rule']
         if not fields:
             return {'error': 'No updatable fields provided', 'status': 400}
 

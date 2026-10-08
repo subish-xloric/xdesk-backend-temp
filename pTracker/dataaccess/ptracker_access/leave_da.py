@@ -185,13 +185,8 @@ class LeaveDA():
     def create_leave_log(self, leave_log):
         return LeaveRequestLog.objects.create(**leave_log)
 
-    def get_leave_period_by__date(self,start_date):
-        try:
-            period = LeavePeriod.objects.get(leave_period_start_date__lt=start_date,
-                                            leave_period_end_date__gt=start_date)
-            return period
-        except:
-            return None
+    def get_leave_period_by__date(self, start_date, company_id):
+        return self.get_leave_period_by_date(start_date, company_id)
 
     def get_leave_request(self,request_id):
         try:
@@ -276,15 +271,24 @@ class LeaveDA():
             Utility().log(err)
             return None
 
-    def get_leave_period_by_date(self, obj_date):
-        try:
-            period = LeavePeriod.\
-                objects.get(
-                    leave_period_start_date__lte=obj_date,
-                    leave_period_end_date__gte=obj_date)
-        except:
-            period = None
-        return period
+    def get_leave_period_by_date(self, obj_date, company_id):
+        """ The company's leave period covering obj_date, or None (also when
+        company_id is None - never another company's period). """
+        if company_id is None or obj_date is None:
+            return None
+        if isinstance(obj_date, datetime.datetime):
+            obj_date = obj_date.date()
+        return LeavePeriod.objects.filter(company_id=company_id, leave_period_start_date__lte=obj_date,
+                                          leave_period_end_date__gte=obj_date).first()
+
+    def get_employee_leave_period(self, employee_id, obj_date):
+        """ The leave period covering obj_date in the employee's company. """
+        company_id = UserProfile.objects.filter(user_id=employee_id).values_list('company_id', flat=True).first()
+        return self.get_leave_period_by_date(obj_date, company_id)
+
+    def create_leave_period(self, company_id, start_date, end_date):
+        return LeavePeriod.objects.create(company_id=company_id, leave_period_start_date=start_date,
+                                          leave_period_end_date=end_date)
 
 
     def get_all_leaves_by_date_range(self, start_date, end_date, status):
@@ -388,6 +392,10 @@ class LeaveDA():
 
     def get_leave_details_by_period_id_and_leave_day_types(self, period, leave_day_types):
         return Leave.objects.filter(leave_period_id = period, leave_day_type__in =leave_day_types)
+
+    def count_leave_requests(self, period_id, status, employee_ids):
+        return LeaveRequests.objects.filter(leave_period_id=period_id, status=status,
+                                            employee_id__in=employee_ids).count()
 
     def get_all_leave_requests_by_period_and_status(self, period, status):
         return LeaveRequests.objects.filter(leave_period_id = period,status = status).order_by('-request_id')

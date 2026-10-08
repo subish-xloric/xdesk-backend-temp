@@ -27,6 +27,7 @@ from pTracker.settings import constants
 from pTracker.notification_center.email_engine import Email
 from pTracker.common.utility import Utility
 from pTracker.common.company_authorization import data_scope, has_capability, SCOPE_ALL, SCOPE_TEAM
+from pTracker.common.company_authorization import users_with_capability
 
 
 def new_dto():
@@ -53,7 +54,7 @@ class LeaveBL():
         try:
             # get leave details
             current_date = date.today()
-            period = LeaveDA().get_leave_period_by_date(current_date)
+            period = LeaveDA().get_employee_leave_period(user_id, current_date)
             if not period:
                 result['error'] = "Invalid leave period."
                 return result
@@ -97,12 +98,33 @@ class LeaveBL():
         return LeaveHelperBL().leave_date_validation(request, user_id)
 
 
+    def __request_error(self, helper, request, user_id, leave_type_id, notify):
+        """ Validation shared by create and edit; the error message or ''. """
+        if not helper.is_company_leave_type(user_id, leave_type_id):
+            return 'Invalid leave type selected'
+        if helper.invalid_notify_ids(user_id, notify):
+            return 'Notify list can only contain active employees of your company'
+        return helper.validate_leave_dates(request.data, user_id)
+
+    def __with_fallback_approvers(self, notify, approver_id, user_id):
+        """ Without a reporting lead the request has no approver: notify the
+        company's leave approvers (leave.approve) so it still reaches someone. """
+        if approver_id:
+            return notify
+        approvers = [{'id': uid} for uid in users_with_capability('leave.approve') if uid != user_id]
+        return list(notify or []) + approvers
+
+    def __company_fields(self, user_id):
+        profile = UserDA().get_user_profile_by_id(user_id)
+        return {'company_id': profile.company_id, 'branch_id': profile.branch_id}
+
     def __get_notification_list(self, notify, approver_id):
         notify_list = []
         if notify:
             for each_user in notify:
                 notify_list.append(str(each_user['id']))
-            notify_list.append(str(approver_id))
+            if approver_id:
+                notify_list.append(str(approver_id))
             notify_list = list(set(notify_list))
         return str(','.join(notify_list))
 
@@ -120,27 +142,25 @@ class LeaveBL():
             length_hours = settings.LEAVE_HOURS['Fullday']
             user_id = user.id
             user_name = user.first_name + " " + user.last_name
-            validation = helper.leave_date_validation(request, user_id)
-            if validation['message']:
-                response['error'] = validation['message']
-                response['status_code'] = 499
-                return response
-            approver_id = UserDA().get_lead_id_by_user(user_id)
-            start_date = request.data.get('start_date', None)
-            end_date = request.data.get('end_date', None)
             leave_type_id = request.data.get('type_id', 0)
             notify = request.data.get('notify', None)
             leave_day_type = request.data.get('leave_day_type', None)
-            if not LeaveHelperBL().is_company_leave_type(user_id, leave_type_id):
-                response['error'] = 'Invalid leave type selected'
-                response['status_code'] = 499
+            error = self.__request_error(helper, request, user_id, leave_type_id, notify)
+            if error:
+                response['error'] = error
+                response['status_code'] = 400
                 return response
+            approver_id = UserDA().get_lead_id_by_user(user_id)
+            notify = self.__with_fallback_approvers(notify, approver_id, user_id)
+            start_date = request.data.get('start_date', None)
+            end_date = request.data.get('end_date', None)
 
             dt_start = datetime.strptime(start_date, "%Y-%m-%d")
             dt_end = datetime.strptime(end_date, "%Y-%m-%d")
-            date_range = Utility().get_date_range(dt_start, dt_end)
+            date_range, _ = helper.get_leave_days(user_id, dt_start.date(), dt_end.date())
+            company_fields = self.__company_fields(user_id)
 
-            leave_period = LeaveDA().get_leave_period_by_date(dt_start)  # current leave period
+            leave_period = LeaveDA().get_employee_leave_period(user_id, dt_start)  # current leave period
             if leave_period:
                 leave_period_id = leave_period.leave_period_id
 
@@ -154,6 +174,7 @@ class LeaveBL():
             leave_request_data['approver'] = approver_id
             leave_request_data['notify'] = self.__get_notification_list(notify, approver_id)
             leave_request_data['length_days'] = len(date_range)
+            leave_request_data.update(company_fields)
             no_of_days = leave_request_data['length_days']
             if is_mobile:
                 if no_of_days>1:
@@ -161,9 +182,8 @@ class LeaveBL():
                 else:
                     day_name = 'day'
             if leave_day_type:
-                leave_request_data['length_days'] = 1
                 no_of_days = leave_request_data['length_days']
-                if leave_day_type != '1':
+                if str(leave_day_type) != '1':
                     leave_request_data['length_days'] = .5
                     length_hours = settings.LEAVE_HOURS['Halfday']
                     if leave_day_type == '2':
@@ -187,6 +207,7 @@ class LeaveBL():
                         leave_data['length_hours'] = length_hours
                         leave_data['leave_request_id'] = leave_request.request_id
                         leave_data['employee_id'] = user_id
+                        leave_data.update(company_fields)
                         leave = LeaveDA().create_leave(leave_data)
 
                     leave_log = helper.get_leave_log_data_template()
@@ -206,7 +227,7 @@ class LeaveBL():
                         leave_request_data, notify, no_of_days)
 
             email_msg = LeaveNotificationBL().generate_leave_email_message(email_content_dto)
-            LeaveNotificationBL().send_leave_request_notification(email_msg, user_name, to_email, mail_subject, cc_addresses)
+            #LeaveNotificationBL().send_leave_request_notification(email_msg, user_name, to_email, mail_subject, cc_addresses) #TODO add this
             if is_mobile:
                 approver_name = ''
                 emp_image= ''
@@ -246,12 +267,14 @@ class LeaveBL():
                     "emp_image": emp_image
                     }
                 }
-                LeaveNotificationBL().send_single_push_notification(approver_id, title, msg, sound="default", extra_kwargs=data)
+                if approver_id:
+                    pass #TODO add this
+                    #LeaveNotificationBL().send_single_push_notification(approver_id, title, msg, sound="default", extra_kwargs=data)
 
-        except Exception as err:
+        except Exception:
             response['status_code'] = 499
-            response["error"] = settings.ERROR_MSG['application_error']\
-                .format(str(err), self.__log.error(self.__exception.get_exception()))
+            response["error"] = "Leave request failed. LogID: {0}".format(
+                self.__log.error(self.__exception.get_exception()))
         return response
 
     def update_leave_status(self, data, user, is_mobile= 1):
@@ -335,8 +358,8 @@ class LeaveBL():
                     email_msg = LeaveNotificationBL()\
                         .generate_email_message(email_content_dto)
                     to_email = employee.email
-                    LeaveNotificationBL()\
-                        .send_leave_request_update_notification(email_msg, user_name, to_email, email_content_dto.heading, cc_adresses) #cc_adresses TODO
+                    # LeaveNotificationBL()\ TODO add this
+                    #     .send_leave_request_update_notification(email_msg, user_name, to_email, email_content_dto.heading, cc_adresses) #cc_adresses TODO
                     if is_mobile:
                         emp_image= ''
                         leave_day_type = LeaveDA().get_leave_day_type(leave_request.request_id)
@@ -368,7 +391,8 @@ class LeaveBL():
                             "emp_image": emp_image
                             }
                         }
-                        LeaveNotificationBL().send_single_push_notification(leave_request.employee_id, title, msg, sound="default", extra_kwargs=data)
+                        #LeaveNotificationBL().send_single_push_notification(leave_request.employee_id, title, msg, sound="default", extra_kwargs=data)
+                        #TODO add this
 
         except Exception as err:
             result['status'] = 499
@@ -432,7 +456,7 @@ class LeaveBL():
             leave_request = LeaveDA().get_leave_request(edit_request_id)
             if not leave_request:
                 response['error'] = "Invalid leave request."
-                response['status_code'] = 499
+                response['status_code'] = 404
                 return response
 
             if leave_request.employee_id != user_id:
@@ -440,29 +464,27 @@ class LeaveBL():
                 response['status_code'] = 403
                 return response
 
-            validation = helper.leave_date_validation(request, user_id)
-            if validation['message']:
-                response['error'] = validation['message']
-                response['status_code'] = 499
+            leave_type_id = request.data.get('type_id', 0)
+            notify = request.data.get('notify', None)
+            leave_day_type = request.data.get('leave_day_type', None)
+            error = self.__request_error(helper, request, user_id, leave_type_id, notify)
+            if error:
+                response['error'] = error
+                response['status_code'] = 400
                 return response
 
             length_hours = settings.LEAVE_HOURS['Fullday']
             approver_id = UserDA().get_lead_id_by_user(user_id)
+            notify = self.__with_fallback_approvers(notify, approver_id, user_id)
 
             start_date = request.data.get('start_date', None)
             end_date = request.data.get('end_date', None)
-            leave_type_id = request.data.get('type_id', 0)
-            notify = request.data.get('notify', None)
-            leave_day_type = request.data.get('leave_day_type', None)
-            if not LeaveHelperBL().is_company_leave_type(user_id, leave_type_id):
-                response['error'] = 'Invalid leave type selected'
-                response['status_code'] = 499
-                return response
 
             dt_start = datetime.strptime(start_date, "%Y-%m-%d")
             dt_end = datetime.strptime(end_date, "%Y-%m-%d")
-            date_range = Utility().get_date_range(dt_start, dt_end)
-            leave_period = LeaveDA().get_leave_period_by_date(dt_start)  # current leave period
+            date_range, _ = helper.get_leave_days(user_id, dt_start.date(), dt_end.date())
+            company_fields = self.__company_fields(user_id)
+            leave_period = LeaveDA().get_employee_leave_period(user_id, dt_start)  # current leave period
             if leave_period:
                 leave_period_id = leave_period.leave_period_id
             leave_request_data = helper.get_leave_request_data_template()
@@ -475,12 +497,12 @@ class LeaveBL():
             leave_request_data['approver'] = approver_id
             leave_request_data['notify'] = self.__get_notification_list(notify, approver_id)
             leave_request_data['length_days'] = len(date_range)
+            leave_request_data.update(company_fields)
             if leave_day_type:
                 if int(leave_day_type) != 1:
                     leave_request_data['length_days'] = .5
                     length_hours = settings.LEAVE_HOURS['Halfday']
                 else:
-                    leave_request_data['length_days'] = 1
                     length_hours = settings.LEAVE_HOURS['Fullday']
             else:
                 leave_day_type = 1
@@ -497,6 +519,7 @@ class LeaveBL():
                         leave_data['length_hours'] = length_hours
                         leave_data['leave_request_id'] = edit_request_id
                         leave_data['employee_id'] = user_id
+                        leave_data.update(company_fields)
                         leave = LeaveDA().create_leave(leave_data)
                     leave_log = helper.get_leave_log_data_template()
                     leave_log['employee_id'] = user_id
@@ -505,10 +528,10 @@ class LeaveBL():
                     leave_log['action'] = action
                     leave_log = LeaveDA().create_leave_log(leave_log)
                     response['status'] = "Leave requested edited successfully"
-        except Exception as error:
+        except Exception:
             response['status_code'] = 499
-            response["error"] = settings.ERROR_MSG['application_error']\
-                .format(error, self.__log.error(self.__exception.get_exception()))
+            response["error"] = "Leave request failed. LogID: {0}".format(
+                self.__log.error(self.__exception.get_exception()))
         return response
 
     def team_leave_dropdowns(self, user_id):
@@ -567,7 +590,7 @@ class LeaveBL():
                 obj_start = self.__utility.convert_string_to_date_time(startDate, "%Y-%m-%d")
                 obj_end = self.__utility.get_last_day_of_month(obj_start)
 
-            period = LeaveDA().get_leave_period_by_date(obj_start)
+            period = LeaveDA().get_leave_period_by_date(obj_start, get_active_company_id())
             leave_details =self.get_all_halfday_leaves_detail_dict_by_period_id(period.leave_period_id)
             if period:
                 period = period.leave_period_id
@@ -748,7 +771,7 @@ class LeaveBL():
             if leave_type in (0,'0'):
                 leave_type = None
             current_date = date.today()
-            period = LeaveDA().get_leave_period_by_date(current_date)
+            period = LeaveDA().get_leave_period_by_date(current_date, get_active_company_id())
             period = period.leave_period_id
             if employee_list:
                 result_list = []
@@ -787,14 +810,14 @@ class LeaveBL():
         obj_end = Utility().convert_string_to_date_time(end_date, "%Y-%m-%d")
         # change period if start date is not null
         if start_date:
-            period = LeaveDA().get_leave_period_by_date(obj_start).leave_period_id
+            period = LeaveDA().get_leave_period_by_date(obj_start, get_active_company_id()).leave_period_id
         # change period if year is not null
         elif year:
             current_date = datetime(int(year),1,1)
-            period = LeaveDA().get_leave_period_by_date(current_date).leave_period_id
+            period = LeaveDA().get_leave_period_by_date(current_date, get_active_company_id()).leave_period_id
         # change period if both start date and year is null
         else:
-            period = LeaveDA().get_leave_period_by_date(current_date).leave_period_id
+            period = LeaveDA().get_leave_period_by_date(current_date, get_active_company_id()).leave_period_id
         # get leave reports from leave request table
         leave_data = LeaveDA().get_team_leaves_by_user_id(user_id, period)
         # filter leave reports if leave type is not null
@@ -928,7 +951,7 @@ class LeaveBL():
                 response['status_code'] = 499
                 response["error"] =  "We are unable to process your request, as we cannot find a leave period."
 
-            leave_period = LeaveDA().get_leave_period_by_date(start_date)  # current leave period
+            leave_period = LeaveDA().get_employee_leave_period(emp_id, start_date)  # current leave period
             if  not leave_period:
                 response['status_code'] = 499
                 response["error"] =  "We are unable to process your request since no date has been selected for debit leave."

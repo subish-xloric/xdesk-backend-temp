@@ -4,6 +4,7 @@ collector punch and goes through the same engine. The employee and company
 come from the JWT and the verified active company, never from the body. """
 
 import uuid
+from datetime import datetime, time
 
 from django.db import transaction
 
@@ -25,7 +26,6 @@ from pTracker.dataaccess.attendance_v2_access.constants import SELF_CHECKIN_DEVI
 from pTracker.dataaccess.attendance_v2_access.constants import PUNCH_IN
 from pTracker.dataaccess.attendance_v2_access.constants import PUNCH_OUT
 from pTracker.dataaccess.attendance_v2_access.constants import RAW_PROCESSED
-from pTracker.dataaccess.attendance_v2_access.constants import SESSION_MISSING_OUT
 
 
 class SelfCheckInBL:
@@ -42,11 +42,13 @@ class SelfCheckInBL:
         processor = AttendanceProcessorBL(company)
         work_date = processor.planner(user_id, now.date(), now.date()).work_date_for(now)
         daily = DailyDA().get_daily(company_id, user_id, work_date)
-        open_session = bool(daily) and DailyDA().get_sessions(
-            company_id, {user_id}, work_date, work_date).filter(status=SESSION_MISSING_OUT).exists()
         devices = self.__device_da.get_devices(company_id, device_types=SELF_CHECKIN_DEVICE_TYPES)
-        last_event = self.__punch_da.get_last_active_event(company_id, user_id, now.replace(hour=0, minute=0,
-                                                                                           second=0))
+        # From the start of the work day (an overnight shift's work day began yesterday)
+        since = min(datetime.combine(work_date, time.min), now.replace(hour=0, minute=0, second=0))
+        last_event = self.__punch_da.get_last_active_event(company_id, user_id, since)
+        # Checked in = the latest punch is an IN. Not "some session lacks its OUT":
+        # an earlier unmatched IN would otherwise keep the user checked in all day.
+        open_session = bool(last_event) and last_event.event_type == PUNCH_IN
         return {
             'work_date': work_date.isoformat(),
             'suggested_punch_type': PUNCH_OUT if open_session else PUNCH_IN,

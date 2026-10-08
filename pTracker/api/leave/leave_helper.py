@@ -15,6 +15,9 @@ from pTracker.notification_center.email_engine import Email
 from pTracker.dataaccess.ptracker_access.leave_da import LeaveDA
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
 from pTracker.user_management.holiday_da import HolidayDA
+from pTracker.api.attendance_v2.processing_biz import AttendanceProcessorBL
+from pTracker.dataaccess.attendance_v2_access.constants import DAY_WORKING
+from pTracker.dataaccess.attendance_v2_access.org_da import OrgDA
 from pTracker.common.company_authorization import has_capability
 from pTracker.common.company_authorization import users_with_capability
 
@@ -394,64 +397,97 @@ class LeaveHelperBL():
         return response
 
     def leave_date_validation(self, request, user_id):
-        response = {"message": "", "error": ""}
+        """ {'message': validation error or '', 'error': unexpected error or ''}. """
         try:
-            start_date = request.data.get('start_date', None)
-            end_date = request.data.get('end_date', None)
-            leave_type = request.data.get('type_id', None)
-            edit_id = request.data.get('request_id', 0)
-            leave_day_type = request.data.get('leave_day_type', None)
-            start = datetime.strptime(start_date, "%Y-%m-%d")
-            end = datetime.strptime(end_date, "%Y-%m-%d")
-            duration = Utility().get_date_range(start, end)
-            leave_period = LeaveDA().get_leave_period_by_date(start)
-            if start.year != end.year:
-                response['message'] = "Leave start date and end date should be in the same year."
-                return response
+            return {"message": self.validate_leave_dates(request.data, user_id), "error": ""}
+        except Exception:
+            log_id = self.__log.error(self.__exception.get_exception())
+            return {"message": "", "error": f"Leave validation failed. LogID: {log_id}"}
 
-            if leave_period is None:
-                response['message'] = f'''You can't apply leave for this date range. Leave period is missing in system.'''
-                return response
+    def validate_leave_dates(self, data, user_id):
+        """ The single leave-request validation used by web, mobile and the
+        validate-date endpoint. data: start_date, end_date (YYYY-MM-DD), type_id,
+        request_id (when editing), leave_day_type (1 full, 2/3 half day).
+        Returns an error message, or '' when the request is valid. """
+        try:
+            start = datetime.strptime(str(data.get('start_date')), "%Y-%m-%d").date()
+            end = datetime.strptime(str(data.get('end_date')), "%Y-%m-%d").date()
+        except ValueError:
+            return "Invalid start or end date."
+        if start > end:
+            return "Leave start date should be on or before the end date."
+        if start.year != end.year:
+            return "Leave start date and end date should be in the same year."
+        leave_period = LeaveDA().get_employee_leave_period(user_id, start)
+        if leave_period is None:
+            return "You can't apply leave for this date range. Leave period is missing in system."
 
-            if leave_type:
-                leave_balance = self.get_user_leave_balance(leave_type, user_id, leave_period.leave_period_id, edit_id)
+        leave_days, non_working = self.get_leave_days(user_id, start, end)
+        if start in non_working or end in non_working:
+            return "Leave from or leave to can't be a holiday or weekly off."
+        if len(leave_days) > settings.MAXIMUM_LEAVE_DURATION:
+            return "Leave duration exceed maximum limit. Limit is {0}".format(settings.MAXIMUM_LEAVE_DURATION)
 
-                if leave_balance is not None:
-                    if leave_balance >= 0:
-                        if float(leave_balance) < float(len(duration)):
-                            if not (leave_balance == .5 and len(duration) == 1) :
-                                response['message'] = f'''Insufficient leave balance for selected leave type. Leave balance is {leave_balance}'''
-                                return response
-                            if leave_balance == .5 and len(duration) == 1 and leave_day_type == '1':
-                                response['message'] = f'''Insufficient leave balance for selected leave type. Leave balance is{leave_balance}.'''
-                                return response
-                else:
-                    response['message'] = "You can't apply for leave right now. Please contact your respective LEAD or HR  "
-                    return response
-            if duration:
-                if len(duration) > settings.MAXIMUM_LEAVE_DURATION:
-                    response['message'] = "Leave duration exceed maximum limit. Limit is {0}".format(settings.MAXIMUM_LEAVE_DURATION)
-                    return response
-            result = LeaveDA().get_leave_date_overlap(start_date, end_date, user_id)
-            if result:
-                if edit_id:
-                    edit_excluded_result = result.exclude(
-                        leave_request_id=edit_id)
-                    if edit_excluded_result:
-                        response['message'] = f'''Leave dates are overlapping with previous leave request. Please change dates'''
-                else:
-                    response['message'] = "dates overlapping with previous leave request dates"
-                return response
+        edit_id = data.get('request_id', 0)
+        leave_type = data.get('type_id', None)
+        if leave_type:
+            balance = self.get_user_leave_balance(leave_type, user_id, leave_period.leave_period_id, edit_id)
+            if balance is None:
+                return "You can't apply for leave right now. Please contact your respective LEAD or HR"
+            if float(balance) < self.requested_days(leave_days, data.get('leave_day_type')):
+                return f"Insufficient leave balance for selected leave type. Leave balance is {balance}"
 
-            is_start_or_end_date_in_holiday = self.is_start_date_or_end_date_in_holiday(start, end)
-            if is_start_or_end_date_in_holiday:
-                response['message'] = "Leave from  or leave to can't be a holiday"
-                return response
-        except Exception as err:
-            response["error"] = settings.ERROR_MSG['application_error']\
-                .format(str(err), self.__log.error(self.__exception.get_exception()))
-            return response
-        return response
+        overlap = LeaveDA().get_leave_date_overlap(start.isoformat(), end.isoformat(), user_id)
+        if overlap and edit_id:
+            overlap = overlap.exclude(leave_request_id=edit_id)
+        if overlap:
+            return "Leave dates are overlapping with a previous leave request. Please change dates."
+        return ""
+
+    def get_leave_days(self, employee_id, start, end):
+        """ (leave_days, non_working): the dates of start..end that count as leave
+        for the employee, and the range's weekly offs / holidays. Working days
+        come from the employee's Attendance V2 shift and the company's holiday
+        calendar (no shift assigned: Saturday and Sunday are off). With the
+        company's sandwich-leave rule on, weekly offs and holidays inside the
+        range count as leave too; otherwise only working days count. """
+        company = OrgDA().get_company(UserDA().get_user_organization(employee_id))
+        if company is None:
+            raise ValueError('Employee has no active company')
+        planner = AttendanceProcessorBL(company).planner(employee_id, start, end)
+        all_days, non_working = [], set()
+        day = start
+        while day <= end:
+            plan = planner.plan(day)
+            if plan.day_type != DAY_WORKING or (plan.snapshot is None and day.weekday() >= 5):
+                non_working.add(day)
+            all_days.append(day)
+            day += timedelta(days=1)
+        if company.leave_sandwich_rule:
+            return all_days, non_working
+        return [d for d in all_days if d not in non_working], non_working
+
+    def requested_days(self, leave_days, leave_day_type):
+        """ Days to deduct: half a day for a half-day leave (types 2 / 3). """
+        if str(leave_day_type) in ('2', '3'):
+            return 0.5
+        return float(len(leave_days))
+
+    def invalid_notify_ids(self, user_id, notify):
+        """ Notify targets that are not active employees of the caller's company. """
+        company_employees = set(UserDA().get_all_active_users().filter(
+            id__in=UserDA().get_user_ids_by_company(UserDA().get_user_organization(user_id)))
+            .values_list('id', flat=True))
+        invalid = []
+        for each in notify or []:
+            try:
+                notify_id = int(each['id'] if isinstance(each, dict) else each)
+            except (TypeError, ValueError, KeyError):
+                invalid.append(each)
+                continue
+            if notify_id not in company_employees:
+                invalid.append(notify_id)
+        return invalid
 
     def get_user_leave_balance(self, leave_type_id, user_id, leave_period_id, leave_request_id=0):
         balance = 0
@@ -471,43 +507,40 @@ class LeaveHelperBL():
     LEAVE_SUMMARY_LABELS = {'general': 'General', 'official': 'Official', 'comp_off': 'Comp_Off',
                             'lop': 'LOP', 'maternity': 'Maternity'}
 
-    def __get_leave_type_name(self, leave_type_id, leave_types):
-        """ Summary key for a leave type: the fixed label for system types, the
-        type's own name for a company's extra types. """
-        code, name = leave_types.get(int(leave_type_id), (None, ''))
-        return self.LEAVE_SUMMARY_LABELS.get(code, name)
+    def leave_summary_by_type(self, user_id, period):
+        """ One entry per leave quota of the employee in the period:
+        {leave_type_id, code, leave_type, total, taken, scheduled, balance}.
+        taken = requested/approved leave days up to today, scheduled = after today. """
+        summary = []
+        leave_quota = LeaveDA().get_leave_quota_by_user_id(user_id, period)
+        if not leave_quota:
+            return summary
+        leave_types = LeaveDA().get_leave_type_code_name_dict()
+        user_leaves = LeaveDA().get_leaves_by_user_id(user_id, period)
+        for each in leave_quota:
+            total = float(each.no_of_days_allotted)
+            taken = scheduled = 0.0
+            for leave in user_leaves:
+                if leave[0] in (1, 2, '2', '1') and leave[2] == int(each.leave_type_id):
+                    if leave[3] <= date.today():
+                        taken += float(leave[1] / 8)
+                    else:
+                        scheduled += float(leave[1] / 8)
+            code, name = leave_types.get(int(each.leave_type_id), (None, ''))
+            summary.append({'leave_type_id': int(each.leave_type_id), 'code': code, 'leave_type': name,
+                            'total': total, 'taken': taken, 'scheduled': scheduled,
+                            'balance': total - taken - scheduled})
+        return summary
 
     def generate_leave_summary(self, user_id, period):
+        """ {label: {total, taken, scheduled, balance}}; label is the fixed one for
+        system leave types (General, LOP, ...) and the type's name otherwise. """
         temp = {}
-        leave_quota = LeaveDA().get_leave_quota_by_user_id(user_id, period)
-        leave_types = LeaveDA().get_leave_type_code_name_dict()
-        if leave_quota:
-            user_leaves = LeaveDA().get_leaves_by_user_id(user_id, period)
-            for each in leave_quota: # set scheduled number and balance  based on leave status
-                each.no_of_days_allotted = float(each.no_of_days_allotted)
-                scheduled = 0
-                balance = each.no_of_days_allotted
-                total = each.no_of_days_allotted
-                taken = total - balance - scheduled
-                for leave in user_leaves:
-                    if leave[0] in (1, 2, '2', '1'):
-                        if leave[2] == int(each.leave_type_id):
-                            if leave[3] <= date.today():
-                                taken += float(leave[1] / 8)
-                                balance -= float(leave[1] / 8)
-                            else:
-                                scheduled += float(leave[1] / 8)
-                                balance -= float(leave[1] / 8)
-                if each.leave_type_id:
-                    type_name = self.__get_leave_type_name(each.leave_type_id, leave_types)
-                temp[type_name] = {
-                    'total': total,
-                    'taken': taken,
-                    'scheduled': scheduled,
-                    'balance': balance
-                }
-            return temp
-    
+        for item in self.leave_summary_by_type(user_id, period):
+            label = self.LEAVE_SUMMARY_LABELS.get(item['code'], item['leave_type'])
+            temp[label] = {key: item[key] for key in ('total', 'taken', 'scheduled', 'balance')}
+        return temp
+
     def is_start_date_or_end_date_in_holiday(self, start_date, end_date):
         in_holiday = False
         date_list = [start_date, end_date ]

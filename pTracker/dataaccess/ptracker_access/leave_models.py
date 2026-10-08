@@ -4,6 +4,8 @@ class LeavePeriod(models.Model):
     leave_period_id = models.AutoField(primary_key=True)
     leave_period_start_date =  models.DateField()
     leave_period_end_date =  models.DateField()
+    company_id = models.IntegerField(null=True, blank=True)
+    copied_from_id = models.IntegerField(null=True, blank=True)
 
     class Meta:
         db_table = u'leave_period'

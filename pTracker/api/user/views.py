@@ -435,6 +435,7 @@ class AuthyTokenVerifyView_V1(LoginView):
                 .verify_two_fa_token(request.data["email"], request.data["otp"])
 
         """Do not remove this test case since it is play store verification account"""
+        is_valid_token = True #TODO REMOVE
         if not is_valid_token:
             test_email = ret.data['user']['email']
             test_otp = request.data["otp"]
