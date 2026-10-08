@@ -72,6 +72,7 @@ class WFHRequest(models.Model):
     created_date = models.DateTimeField(auto_now=True)
     respond_date = models.DateField(default=None)
     notify = models.CharField(max_length=100, default='')
+    company_id = models.IntegerField(null=True, blank=True)
 
     class Meta:
         db_table = u'wfh_requests'

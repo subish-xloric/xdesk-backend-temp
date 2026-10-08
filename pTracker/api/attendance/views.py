@@ -10,11 +10,11 @@ from pTracker.api.attendance.attendance_biz import AttendanceBL
 from pTracker.api.attendance.mapping_biz import UserMappingBL
 from pTracker.api.attendance.remote_punch_biz import RemotePunchBL
 from pTracker.api.attendance.monthly_attendance_biz import MonthlyAttendanceBL
+from pTracker.api.attendance.team_stats_biz import TeamStatsBL
 from pTracker.api.attendance.wfh_biz import WorkFromHomeBL
 from pTracker.api.attendance.wfh_biz_v1 import WorkFromHomeBL_V1
 
 from pTracker.api.attendance.today_attendance_biz import TodayAttendanceBL
-from pTracker.api.attendance.attendance_biz_v1 import AttendanceBL_V1
 from pTracker.api.attendance.attendance_report_biz import AttendanceReportBL
 
 
@@ -224,8 +224,13 @@ class TeamWFHRequestListView_V1(APIView):
     authentication_classes = [JSONWebTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, page, status, includeOnlyDirectReporting):
-        wfh_requests = WorkFromHomeBL_V1().get_all_my_wfh_requests(request.user.id, team=1, page=page, status=status, include_only_direct_reporting = includeOnlyDirectReporting)
+    def get(self, request, page=None, status=None, includeOnlyDirectReporting=None):
+        """ /<page>/<status>/<includeOnlyDirectReporting>/, or the bare URL with optional
+        ?page=&status=&direct= (defaults: 1, pending, false). """
+        params = request.query_params
+        wfh_requests = WorkFromHomeBL_V1().get_team_wfh_requests(
+            request.user.id, page if page is not None else params.get('page', 1),
+            status or params.get('status', 'pending'), includeOnlyDirectReporting or params.get('direct', 'false'))
         return Response(wfh_requests, status = wfh_requests.get('status', 200))
 
 class WebPunch_V1(APIView):
@@ -319,8 +324,13 @@ class GetTeamStatsView_V1(APIView):
     authentication_classes = [JSONWebTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, date, page, filterByType):
-        dash_info = AttendanceBL_V1().get_team_stats(request.user.id, date, page, filterByType)
+    def get(self, request, date=None, page=None, filterByType=None):
+        """ /<date>/<page>/<filterByType>/, or the bare URL with optional
+        ?date=&page=&filter=&keyword= (defaults: today, page 1, ALL). """
+        params = request.query_params
+        dash_info = TeamStatsBL().get_team_stats(
+            request.user.id, date or params.get('date'), page or params.get('page', 1),
+            filterByType or params.get('filter', 'ALL'), params.get('keyword'))
         return Response(dash_info, status=dash_info.get('status', 200))
 
 class GetTeamStatsViewbyKeyword_V1(APIView):
@@ -328,7 +338,7 @@ class GetTeamStatsViewbyKeyword_V1(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, date, page,  filterByType, searchKeyword):
-        dash_info = AttendanceBL_V1().get_team_stats(request.user.id, date, page,filterByType, searchKeyword)
+        dash_info = TeamStatsBL().get_team_stats(request.user.id, date, page, filterByType, searchKeyword)
         return Response(dash_info, status=dash_info.get('status', 200))
 
 class WFHRequestListViewByEmpId_V1(APIView):

@@ -181,6 +181,9 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('JWT',),
     'SIGNING_KEY': SECRET_KEY,
     'AUTH_TOKEN_CLASSES': ('pTracker.common.token_revocation.RevocableAccessToken',),
+    # Tokens carry a fingerprint of the password hash; changing or resetting the
+    # password invalidates every token issued before it.
+    'CHECK_REVOKE_TOKEN': True,
 }
 
 # Shared cache (Redis) - holds revoked JWT ids, must be shared across workers.

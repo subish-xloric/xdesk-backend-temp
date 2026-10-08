@@ -144,15 +144,12 @@ class TeamTimeSheetList_V1(APIView):
     authentication_classes = [JSONWebTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, emp_id, year, month):
-        start_date, end_date = TimeSheetBL_V1().get_last_and_first_date(year, month)
-        if request.user.id != emp_id:
-            time_sheets = TimeSheetBL().\
-                get_time_sheets_by_date_range(emp_id, start_date, end_date, 0, request.user.id)
-        else:
-            time_sheets = TimeSheetBL().\
-                get_time_sheets_by_date_range(emp_id, start_date, end_date, 0, 0)
-        result = TimeSheetBL_V1().format_my_timesheet_list(time_sheets)
+    def get(self, request, emp_id=None, year=None, month=None):
+        """ /<emp_id>/<year>/<month>/, or the bare URL with optional
+        ?emp_id=&year=&month= (defaults: the caller, this month). """
+        params = request.query_params
+        result = TimeSheetBL_V1().get_month_timesheets(
+            request.user.id, emp_id or params.get('emp_id'), year or params.get('year'), month or params.get('month'))
         return Response(result, status= result.get("status", 200))
 
 class TimeSheetDetail_V1(APIView):

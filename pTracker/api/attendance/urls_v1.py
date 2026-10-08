@@ -22,6 +22,7 @@ urlpatterns = [
     path('get-all-my-wfh-requests/<int:page>/', MyWFHRequestListView_V1.as_view(), name='get_all_my_wfh_requests_v1'),
     # path('get-all-team-wfh-requests/<int:page>/', TeamWFHRequestListView_V1.as_view(), name='get_all_team_wfh_requests_v1'),
     path('get-all-team-wfh-requests/<int:page>/<str:status>/<str:includeOnlyDirectReporting>/', TeamWFHRequestListView_V1.as_view(), name='get_all_team_wfh_requests_v1'),
+    path('get-all-team-wfh-requests/', TeamWFHRequestListView_V1.as_view(), name='get_all_team_wfh_requests_default_v1'),
     url(r'remote-punch/', WebPunch_V1.as_view(), name='webPunch_v1'),
     path('remote-punch-check/', WebPunchCheck_V1.as_view(), name='webPunchCheck_v1'),
     url(r'request-wfh/', CreateWFHRequestView_V1.as_view(), name='create_wfh_request_v1'),
@@ -33,6 +34,7 @@ urlpatterns = [
     path('get-work-hours/<str:date>/<int:emp_id>/', GetWorkHours_V1.as_view(), name='work_hours_v1'),
     path('get-team-stats/<str:date>/<int:page>/<str:filterByType>/<str:searchKeyword>/', GetTeamStatsViewbyKeyword_V1.as_view(), name='team_stats_v1'),
     path('get-team-stats/<str:date>/<int:page>/<str:filterByType>/', GetTeamStatsView_V1.as_view(), name='team_stats_v1'),
+    path('get-team-stats/', GetTeamStatsView_V1.as_view(), name='team_stats_today_v1'),
 
 
 

@@ -109,6 +109,20 @@ class OrgDA:
             result[leave_date] = result.get(leave_date, False) or day_type == LEAVE_FULL_DAY_TYPE
         return result
 
+    def get_approved_wfh_employee_ids(self, employee_ids, on_date):
+        return set(WFHRequest.objects.filter(
+            emp_id__in=list(employee_ids), status=APPROVED_STATUS, start_date__lte=on_date, end_date__gte=on_date,
+        ).values_list('emp_id', flat=True))
+
+    def get_employees_on_leave(self, employee_ids, on_date, statuses):
+        """ {employee_id: True if full day else False} for leave on on_date in the given statuses. """
+        result = {}
+        for employee_id, day_type in Leave.objects.filter(
+                employee_id__in=list(employee_ids), status__in=list(statuses), leave_date=on_date,
+        ).values_list('employee_id', 'leave_day_type'):
+            result[employee_id] = result.get(employee_id, False) or day_type == LEAVE_FULL_DAY_TYPE
+        return result
+
     def has_approved_wfh(self, user_id, on_date):
         return WFHRequest.objects.filter(
             emp_id=user_id, status=APPROVED_STATUS, start_date__lte=on_date, end_date__gte=on_date,

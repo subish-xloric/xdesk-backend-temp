@@ -28,6 +28,7 @@ from pTracker.notification_center.email_engine import Email
 from pTracker.common.utility import Utility
 from pTracker.common.company_authorization import data_scope, has_capability, SCOPE_ALL, SCOPE_TEAM
 from pTracker.common.company_authorization import users_with_capability
+from pTracker.dataaccess.attendance_v2_access.org_da import OrgDA
 
 
 def new_dto():
@@ -289,31 +290,45 @@ class LeaveBL():
         message = 'leave request '
         cc_adresses = []
         try:
+            if not data or data.get('error'):
+                return data or {'error': 'Invalid request', 'success': None, 'status': 400}
             user_id = user.id
             user_name = user.first_name + " " + user.last_name
-            req_id = int(data.get('req_id', 0))
-            status_id = int(data.get('status', 0))
-            emp_id = int(data.get('emp_id', 0))
-            comment = data.get('comment', '')
-            permitted = self.__check_status_change_permission(user_id, status_id, emp_id)
-            if not permitted:
+            try:
+                req_id = int(data.get('req_id', 0))
+                status_id = int(data.get('status', 0))
+            except (TypeError, ValueError):
+                req_id = status_id = 0
+            comment = data.get('comment', '') or ''
+            if status_id not in (2, 3, 4):
+                result.update(error="action must be APPROVED or REJECTED", status=400)
+                return result
+            leave_request = LeaveDA().get_leave_request(req_id) if req_id else None
+            company_id = get_active_company_id()
+            # the request's own employee - never an emp_id sent by the client
+            if not leave_request or company_id is None \
+                    or not OrgDA().is_company_member(company_id, leave_request.employee_id):
+                result.update(error="Leave request not found", status=404)
+                return result
+            emp_id = leave_request.employee_id
+            if not self.__check_status_change_permission(user_id, status_id, emp_id):
                 result["error"] = settings.ERROR_MSG.get('access_denied')
                 result['status'] = 403
                 return result
-
-            if req_id and status_id:
-                #TODO confirm with dev team
-                leave_request = LeaveDA().get_leave_request(req_id)
-                if leave_request:
-                    if leave_request.status == 3:
-                        result['success'] = "Leave Request Already Cancelled, Not Able To Process."
-                        result['status'] = 499
-                        return result
-                    if leave_request.status == status_id:
-                        result['success'] = "Nothing To Change."
-                        result['status'] = 499
-                        return result
-                status = LeaveDA().update_leave_status(req_id, status_id, comment, user_id)
+            if leave_request.status == 3:
+                result.update(error="Leave Request Already Cancelled, Not Able To Process.", status=400)
+                return result
+            if leave_request.status == status_id:
+                result.update(error="Nothing To Change.", status=400)
+                return result
+            if status_id == 2:
+                balance = LeaveHelperBL().get_user_leave_balance(leave_request.type_id, emp_id,
+                                                                 leave_request.leave_period_id, req_id)
+                if float(balance) < float(leave_request.length_days):
+                    result.update(error=f"Insufficient leave balance to approve. Balance is {balance}, "
+                                        f"request is {leave_request.length_days} day(s)", status=400)
+                    return result
+            status = LeaveDA().update_leave_status(req_id, status_id, comment, user_id)
 
             if status:
                 leave_log['employee_id'] = user_id
@@ -358,8 +373,8 @@ class LeaveBL():
                     email_msg = LeaveNotificationBL()\
                         .generate_email_message(email_content_dto)
                     to_email = employee.email
-                    # LeaveNotificationBL()\ TODO add this
-                    #     .send_leave_request_update_notification(email_msg, user_name, to_email, email_content_dto.heading, cc_adresses) #cc_adresses TODO
+                    LeaveNotificationBL()\
+                        .send_leave_request_update_notification(email_msg, user_name, to_email, email_content_dto.heading, cc_adresses)
                     if is_mobile:
                         emp_image= ''
                         leave_day_type = LeaveDA().get_leave_day_type(leave_request.request_id)
@@ -391,13 +406,12 @@ class LeaveBL():
                             "emp_image": emp_image
                             }
                         }
-                        #LeaveNotificationBL().send_single_push_notification(leave_request.employee_id, title, msg, sound="default", extra_kwargs=data)
-                        #TODO add this
+                        LeaveNotificationBL().send_single_push_notification(leave_request.employee_id, title, msg, sound="default", extra_kwargs=data)
 
-        except Exception as err:
+        except Exception:
             result['status'] = 499
-            result["error"] = settings.ERROR_MSG['application_error']\
-                .format(str(err), self.__log.error(self.__exception.get_exception()))
+            result["error"] = "Leave status update failed. LogID: {0}".format(
+                self.__log.error(self.__exception.get_exception()))
         return result
 
     def get_leave_request_by_id(self, data, user_id):
@@ -682,14 +696,13 @@ class LeaveBL():
         return result
 
     def __check_status_change_permission(self, user_id, status_id, emp_id):
-        # permission to change leave request status
-        permitted = False
+        """ Cancel (3): the employee themself or an approver. Approve / reject:
+        an approver - the employee's lead, or a holder of leave.approve in the
+        active company - but never for their own request. """
+        is_approver = UserDA().is_team_member(emp_id, user_id) or has_capability(user_id, 'leave.approve')
         if status_id == 3:
-            if emp_id == user_id:
-                permitted = True
-        if UserDA().is_team_member(emp_id, user_id):
-            permitted = True
-        return permitted
+            return emp_id == user_id or is_approver
+        return emp_id != user_id and is_approver
 
     def leave_report_dropdowns(self, user, data):
         response = {

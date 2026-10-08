@@ -132,6 +132,16 @@ class TimeSheetDA():
         if actions:
             actions.delete()
 
+    def get_user_time_sheets_in_range(self, user_id, start_date, end_date):
+        return TimeSheet.objects.filter(user_id=user_id, timesheet_date__range=[start_date, end_date])\
+            .order_by('timesheet_date')
+
+    def get_rejection_comments(self, timesheet_ids):
+        """ timesheet_id -> latest rejection comment, for the given timesheets only. """
+        actions = TimeSheetActionLog.objects.filter(action="REJECTED", timesheet_id__in=list(timesheet_ids))\
+            .order_by('action_id').values_list('timesheet_id', 'comment')
+        return dict(actions)
+
     def get_all_rejected_time_sheets(self):
         actions = TimeSheetActionLog.objects.filter(action="REJECTED").order_by('action_id')
         return actions

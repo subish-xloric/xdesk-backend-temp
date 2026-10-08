@@ -195,6 +195,18 @@ class LeaveDA():
         except Exception as err:
             return None
 
+    def get_team_leave_requests(self, period_id, employee_ids, statuses):
+        return LeaveRequests.objects.filter(leave_period_id=period_id, employee_id__in=list(employee_ids),
+                                            status__in=list(statuses)).order_by('-start_date', '-request_id')
+
+    def get_leave_day_types(self, request_ids):
+        """ request_id -> leave_day_type of its first leave day (1 full, 2 / 3 half). """
+        day_types = {}
+        for request_id, day_type in Leave.objects.filter(leave_request_id__in=list(request_ids))\
+                .order_by('leave_date').values_list('leave_request_id', 'leave_day_type'):
+            day_types.setdefault(request_id, day_type)
+        return day_types
+
     def get_leave_day_type(self,request_id):
         try:
             leave = Leave.objects.get(leave_request_id=request_id)

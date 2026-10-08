@@ -44,6 +44,7 @@ urlpatterns = [
    path('me/access/', UserAccessView.as_view(), name='user_access_v1'),
 
    path('get-employee-profile/<int:emp_id>/', EmployeeDetailsView_V1.as_view(), name='get_employee_detail_profile_v1'),
+   path('get-employee-profile/', EmployeeDetailsView_V1.as_view(), name='get_my_employee_profile_v1'),
    path('get-team-members/', GetTeameMemebers_V1.as_view(), name='get_team_members_v1'),
    path('get-request-count/', GetRequestCount_V1.as_view(), name='get_request_count_v1'),
 

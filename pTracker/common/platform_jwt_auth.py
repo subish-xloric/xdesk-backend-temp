@@ -1,5 +1,8 @@
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.exceptions import InvalidToken
+from rest_framework_simplejwt.settings import api_settings
+from rest_framework_simplejwt.utils import get_md5_hash_password
 
 from pTracker.dataaccess.platform_access.platform_user_da import PlatformUserDA
 
@@ -22,5 +25,10 @@ class PlatformJWTAuthentication(JWTAuthentication):
         user = PlatformUserDA().get_by_id(user_id)
         if user is None or not user.is_active:
             raise InvalidToken('Platform user not found or inactive')
+
+        # same password-change revocation as JWTAuthentication.get_user
+        if api_settings.CHECK_REVOKE_TOKEN and \
+                validated_token.get(api_settings.REVOKE_TOKEN_CLAIM) != get_md5_hash_password(user.password):
+            raise AuthenticationFailed("The user's password has been changed.", code="password_changed")
 
         return user

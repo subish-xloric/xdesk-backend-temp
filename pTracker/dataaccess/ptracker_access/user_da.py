@@ -190,6 +190,10 @@ class UserDA():
             lead_id = 0
         return lead_id
 
+    def is_direct_lead(self, emp_id, lead_id):
+        """ True only if lead_id is emp_id's mapped reporting lead (no role fallback). """
+        return EmployeeLeadMapping.objects.filter(emp_id=emp_id, lead_id=lead_id, is_deleted=0).exists()
+
     def is_team_member(self, user_id, lead_id):
         try:
             is_member = False
@@ -381,6 +385,10 @@ class UserDA():
 
     def get_all_employee_lead_mapping(self):
         return EmployeeLeadMapping.objects.filter(is_deleted=0)
+
+    def get_profile_photos(self, user_ids):
+        """ user_id -> profile_photo path (may be empty) in one query. """
+        return dict(UserProfile.objects.filter(user_id__in=list(user_ids)).values_list('user_id', 'profile_photo'))
 
     def get_user_ids_by_company(self, company_id):
         return list(filter_by_company(UserProfile.objects.all(), company_id).values_list('user_id', flat=True))
@@ -589,15 +597,6 @@ class UserDA():
 
     def get_job_title_by_id(self, title_id):
         return EmployeeJobTitle.objects.get(id = title_id)
-
-    def create_encrypted_mobile_data(self, encrpted="", token = ""):
-        return EncryptedMobileData.objects.create(encrypted_text=encrpted, token_id=token)
-
-    def get_encrypted_mobile_date(self, token):
-        try:
-            return EncryptedMobileData.objects.get(token_id=token)
-        except:
-            return None
 
     def create_or_update_mobile_common_headers(self, user_id, data):
         try:

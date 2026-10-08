@@ -4,7 +4,6 @@ from pickle import TRUE
 from types import SimpleNamespace
 from datetime import datetime, timedelta, date
 from unittest import result
-import uuid
 
 from django.conf import settings
 from django.template.loader import get_template
@@ -24,7 +23,7 @@ from pTracker.dataaccess.attendance_v2_access.org_da import OrgDA
 from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_TEAM
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
-from pTracker.common.crypto_handler import CryptoHandler
+from pTracker.common.mobile_login import start_pending_login
 from pTracker.common.file_manager import FileManager
 from pTracker.api.user.access_biz import AccessBL
 
@@ -94,12 +93,12 @@ class UserManagementBL_V1():
 
     def format_login_response(self, ret, data, headers={}):
         try:
-            obj_crypto_handler = CryptoHandler()
-            enc = obj_crypto_handler.encrypt(data.get("email")+"_##_"+data.get("password")+"##")
-            token = uuid.uuid1()
-            log = UserDA().create_encrypted_mobile_data(enc, token)
+            # password verified: the OTP step continues from this short-lived token
+            token = start_pending_login(ret.get("user")["pk"])
             res = {
-                    "authToken": ret.get("token"),
+                    # No token at this step: the mobile app completes the login with the
+                    # OTP via 2fa/token-verify (identityToken + otp), which returns the JWT.
+                    "authToken": None,
                     "screenName": ret.get("user")["first_name"] + " " + ret.get("user")["last_name"],
                     "identityToken": token,
                 }
@@ -126,24 +125,23 @@ class UserManagementBL_V1():
                 .format(err, self.__logs.error(self.__exception.get_exception()))
             return Response(response)
 
-    def format_verify_token_data(self, data):
-        try:
-            obj_crypto_handler = CryptoHandler()
-            result = {}
-            token = data.get("identityToken", None)
-            if token:
-                enc_data = UserDA().get_encrypted_mobile_date(token)
-
-                if enc_data:
-                    decrypted = obj_crypto_handler.decrypt(enc_data.encrypted_text)
-                    result["email"] = decrypted.split("b'")[1].split("_##_")[0]
-                    result["password"] = decrypted.split("b'")[1].split("_##_")[1]
-            return result
-        except Exception as err:
-            response = {}
-            response["error"] = settings.ERROR_MSG['application_error']\
-                .format(err, self.__logs.error(self.__exception.get_exception()))
-            return response
+    def __address(self, data, prefix):
+        def lookup(table, code):
+            try:
+                return table.get(int(code), '')
+            except (TypeError, ValueError):
+                return ''
+        return {
+            "address_1": data.get(prefix + 'address_1'),
+            "address_2": data.get(prefix + 'address_2'),
+            "provin_code": data.get(prefix + 'provin_code'),
+            "district": lookup(settings.DISTRICTS, data.get(prefix + 'district_code')),
+            "districtId": data.get(prefix + 'district_code'),
+            "city": data.get(prefix + 'city_code'),
+            "zipcode": data.get(prefix + 'zipcode'),
+            "state": lookup(settings.STATES, data.get(prefix + 'provin_code')),
+            "stateId": data.get(prefix + 'provin_code'),
+        }
 
     def __clean_exclude_list(self, data):
         entries_to_remove = ["address_1", "address_2", "city_code", "provin_code",
@@ -171,27 +169,9 @@ class UserManagementBL_V1():
 
         result = result.get("emp_profile")
         if result:
-            current_address = {}
-            current_address["address_1"] = result.get('address_1')
-            current_address["address_2"] = result.get('address_2')
-            current_address["provin_code"] = result.get('provin_code')
-            current_address["district"] =  settings.DISTRICTS[int(result.get('district_code'),0)]
-            current_address["districtId"] =  result.get('district_code')
-            current_address["city"] = result.get('city_code')
-            current_address["zipcode"] = result.get('zipcode')
-            current_address["state"] =  settings.STATES[int(result.get('provin_code'),0)]
-            current_address["stateId"] =  result.get('provin_code')
-
-            permanent_address = {}
-            permanent_address["address_1"] = result.get('permanent_address_1')
-            permanent_address["address_2"] = result.get('permanent_address_2')
-            permanent_address["provin_code"] = result.get('permanent_provin_code')
-            permanent_address["district"] =  settings.DISTRICTS[int(result.get('permanent_district_code'),0)]
-            permanent_address["districtId"] =  result.get('permanent_district_code')
-            permanent_address["city"] = result.get('permanent_city_code')
-            permanent_address["zipcode"] = result.get('permanent_zipcode')
-            permanent_address["state"] =  settings.STATES[int(result.get('permanent_provin_code'),0)]
-            permanent_address["stateId"] =  result.get('permanent_provin_code')
+            # addresses are personal data: absent (null) when the viewer may not see them
+            current_address = self.__address(result, '') if 'address_1' in result else None
+            permanent_address = self.__address(result, 'permanent_') if 'permanent_address_1' in result else None
 
             result["emp_image"] = self.__get_image_url(result.get("id"))
             emergency_contact = {}
@@ -204,8 +184,8 @@ class UserManagementBL_V1():
             result['company_name'] = TenancyDA().get_company_name(company_id)
 
             job_title_id = result.get('job_title')
-            job_title_obj = UserDA().get_job_title_by_id(job_title_id)
-            result['job_title'] = job_title_obj.job_title
+            job_title_obj = UserDA().get_company_job_title(company_id, job_title_id) if job_title_id else None
+            result['job_title'] = job_title_obj.job_title if job_title_obj else ''
             result['job_title_id'] = job_title_id
             result['reporting_person'] = result.get("reported_to")
             result['job_status_id'] = result.get("job_status")
@@ -222,77 +202,31 @@ class UserManagementBL_V1():
         return result
 
     def get_team_members_v1(self, user_id):
-        response = {"status": 200}
+        """ The people the caller manages in the active company, for team
+        pickers: everyone else (leave.view_all) or their team (leave.view_team). """
         try:
-            res = []
             scope = data_scope(user_id, 'leave')
+            if scope not in (SCOPE_ALL, SCOPE_TEAM):
+                return {"status": 403, "error": "Access Denied"}
+            company_id = get_active_company_id()
+            if company_id is None:
+                return {"status": 200, "team_members": []}
             if scope == SCOPE_ALL:
-                team_members = UserDA().get_all_active_users()
-            elif scope == SCOPE_TEAM:
-                team_members = UserDA().get_current_team_members_by_lead_id(user_id)
+                member_ids = OrgDA().get_member_ids(company_id)
             else:
-                response['error'] = "Access Denied"
-                response['status'] = 403
-                return response
-
-            if team_members:
-                for each in team_members:
-                    if each.id == user_id:
-                        continue
-                    temp = {}
-                    temp["emp_id"] = each.id
-                    temp["emp_name"] = each.first_name + ' ' + each.last_name
-                    temp["emp_image"] = self.__get_image_url(each.id)
-                    res.append(temp)
-            response["team_members"] = res
-            return response
-        except Exception as err:
-            response['status'] = 499
-            response["error"] = settings.ERROR_MSG['application_error']\
-                .format(err, self.__logs.error(self.__exception.get_exception()))
-            return response
-
-    def get_request_count(self, user_id, date=0):
-        response = {}
-        try:
-            team_members_list = []
-            leave_count = 0
-            wfh_count = 0
-            if data_scope(user_id, 'leave') == SCOPE_ALL:
-                team_members = UserDA().get_all_active_users()
-                team_members = team_members.exclude(id=user_id)
-            else:
-                team_members = UserDA().get_current_team_members_by_lead_id(user_id)
-            if team_members:
-                for each in team_members:
-                    team_members_list.append(each.id)
-                leave_requests = LeaveDA().get_leave_request_by_status_v1(1) # 1 for requests
-                if leave_requests:
-                    if date:
-                        date = date
-                    else:
-                        date = datetime.today().date()
-                    period = LeaveDA().get_employee_leave_period(user_id, date)
-                    if period:
-                        period_id = period.leave_period_id
-                        leave_requests = leave_requests.filter(leave_period_id=period_id)
-                        leave_count = leave_requests.filter(employee_id__in = team_members_list).count()
-                    else:
-                        leave_count = 0
-                response["leave_requests"] = leave_count
-                wfh_requests = AttendanceDA().get_all_wfh_requests_by_status(1)  # 1 for requests
-                if wfh_requests:
-                    # if date:
-                        # wfh_requests = wfh_requests.filter(start_date=date)
-                    wfh_count = wfh_requests.filter(emp_id__in = team_members_list).count()
-                response["wfh_requests"] = wfh_count
-            return response
-        except Exception as err:
-            response = {}
-            response['status'] = 499
-            response["error"] = settings.ERROR_MSG['application_error']\
-                .format(err, self.__logs.error(self.__exception.get_exception()))
-            return response
+                member_ids = OrgDA().get_member_ids(company_id, OrgDA().get_team_member_ids(user_id))
+            member_ids.discard(user_id)
+            users = UserDA().get_all_active_users().filter(id__in=member_ids).order_by('first_name', 'last_name')
+            photos = UserDA().get_profile_photos(member_ids)
+            team_members = [{
+                "emp_id": user.id,
+                "emp_name": f"{user.first_name} {user.last_name}",
+                "emp_image": f"{settings.DEFAULT_SITE_MEDIA_URL}{photos[user.id]}" if photos.get(user.id) else "",
+            } for user in users]
+            return {"status": 200, "team_members": team_members}
+        except Exception:
+            return {"status": 499, "error": "Team members failed. LogID: {0}".format(
+                self.__logs.error(self.__exception.get_exception()))}
 
     def get_dashboard_anniversaries_v1(self, request):
         try:

@@ -18,6 +18,10 @@ from pTracker.common.utility import Utility
 from pTracker.api.leave.leave_notification_biz import LeaveNotificationBL
 from pTracker.api.attendance.wfh_biz import WorkFromHomeBL
 from pTracker.dataaccess.ptracker_access.timesheet_da import TimeSheetDA
+from pTracker.common.company_context import get_active_company_id
+from pTracker.common.company_authorization import data_scope, SCOPE_ALL
+from pTracker.dataaccess.attendance_v2_access.daily_da import DailyDA
+from pTracker.dataaccess.attendance_v2_access.org_da import OrgDA
 from pTracker.dataaccess.ptracker_access.project_da import ProjectDA
 from pTracker.user_management.holiday_da import HolidayDA
 from pTracker.dataaccess.ptracker_access.leave_da import LeaveDA
@@ -41,6 +45,56 @@ class TimeSheetBL_V1():
             else:
                 res = {"timesheet_list": timesheet_list, "status": 200}
         return res
+
+    def get_month_timesheets(self, user_id, emp_id=None, year=None, month=None):
+        """ An employee's timesheets for one month (default: the caller, this
+        month). Allowed: yourself, your team (lead mapping or timesheet.view_team)
+        or anyone in the company (timesheet.view_all); employees outside the
+        active company are "Employee not found" (404). actual_work_hours comes
+        from Attendance V2 daily attendance. """
+        try:
+            today = date.today()
+            emp_id = int(emp_id) if emp_id else user_id
+            year = int(year) if year else today.year
+            month = int(month) if month else today.month
+            if not 1 <= month <= 12 or not 2000 <= year <= 2100:
+                raise ValueError
+        except (TypeError, ValueError):
+            return {"error": "Invalid employee, year or month", "status": 400}
+        try:
+            company_id = get_active_company_id()
+            if company_id is None or not OrgDA().is_company_member(company_id, emp_id):
+                return {"error": "Employee not found", "status": 404}
+            if emp_id != user_id:
+                scope = data_scope(user_id, 'timesheet')
+                if scope != SCOPE_ALL and not UserDA().is_team_member(emp_id, user_id):
+                    return {"error": "No permission to view timesheets !!!", "status": 403}
+
+            start_date, end_date = self.get_last_and_first_date(year, month)
+            timesheets = list(TimeSheetDA().get_user_time_sheets_in_range(emp_id, start_date, end_date))
+            comments = TimeSheetDA().get_rejection_comments(
+                [t.timesheet_id for t in timesheets if t.status == "REJECTED"])
+            worked = {row.attendance_date: row.total_work_minutes for row in
+                      DailyDA().get_daily_list(company_id, {emp_id}, start_date, end_date)}
+            timesheet_list = []
+            for timesheet in timesheets:
+                hours = self.__utility.convert_seconds_to_hour_and_minute(timesheet.total_duration)
+                minutes = worked.get(timesheet.timesheet_date)
+                timesheet_list.append({
+                    "timesheet_id": timesheet.timesheet_id,
+                    "status": timesheet.status,
+                    "timesheet_date": timesheet.timesheet_date,
+                    "user_id": timesheet.user_id,
+                    "total_duration": timesheet.total_duration,
+                    "total_hour": hours.split(":")[0],
+                    "total_minute": hours.split(":")[1],
+                    "comment": comments.get(timesheet.timesheet_id, '') if timesheet.status == "REJECTED" else '',
+                    "actual_work_hours": f"{minutes // 60:02d}:{minutes % 60:02d}" if minutes is not None else None,
+                })
+            return {"timesheet_list": timesheet_list, "status": 200}
+        except Exception:
+            return {"error": "Timesheet list failed. LogID: {0}".format(
+                self.__logs.error(self.__exception.get_exception())), "status": 499}
 
     def get_last_and_first_date(self, year, month):
         start_date = self.__utility.get_first_day_of_month(None, int(year), int(month))

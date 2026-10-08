@@ -15,6 +15,8 @@ from pTracker.api.leave.leave_helper import LeaveHelperBL
 from pTracker.common.utility import Utility
 from pTracker.api.leave.leave_notification_biz import LeaveNotificationBL
 from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_TEAM
+from pTracker.common.company_authorization import users_with_capability
+from pTracker.common.company_context import get_active_company_id
 
 def new_dto():
     dto = SimpleNamespace()
@@ -145,123 +147,125 @@ class WorkFromHomeBL():
             return result
 
     def create_wfh_request(self, data, user_id, is_mobile=0):
+        """ Creates a pending WFH request for the caller in their company. The
+        approver is their reporting lead; without one the company's attendance
+        approvers (attendance.view_all) are notified instead. """
         result = {"error": "", "success": "", "status": 200}
-        email_content_dto = new_dto()
-        lead_name = ''
-        emp_name = ''
-        to_email = ''
         message = 'WFH Request'
-        no_days = 1
         try:
-            emp = UserDA().get_user_by_id(user_id)
-            if emp:
-                emp_name = emp.first_name + " " + emp.last_name
-
-            wfh_data = {
-                "start_date": "",
-                "end_date": "",
-                "emp_id": 0,
-                "approver_id": 0,
-                "status": 1,
-                "reason": "",
-                "notify": ""
-            }
-
-
-            lead_user = UserDA().get_my_lead(user_id)
-            if lead_user:
-                approver_id = lead_user.lead_id
-                lead=UserDA().get_user_by_id(lead_user.lead_id)
-                lead_name = lead.first_name
-                to_email = lead.email
-            else:
-                approver_id = 0
-            wfh_data['start_date'] = data.get('start_date', None)
-            wfh_data['end_date'] = data.get('end_date', None)
-            wfh_data['reason'] = data.get('reason', None)
-            wfh_data['notify'] = data.get('notify', None)
-            wfh_data['emp_id'] = user_id
-            wfh_data['status'] = 1  #Requested'
-            wfh_data['approver_id'] = approver_id
-            validation = self.wfh_date_validation(wfh_data['start_date'],wfh_data['end_date'],user_id)
-            if validation['message']:
-                result['error'] = validation['message']
-                result['status'] = 499
+            validation = self.wfh_date_validation(data.get('start_date'), data.get('end_date'), user_id)
+            if validation['message'] or validation['error']:
+                result['error'] = validation['message'] or validation['error']
+                result['status'] = 400 if validation['message'] else 499
                 return result
-            wfh_request = AttendanceDA().create_wfh_request(wfh_data)
+            notify_ids, notify_error = self.__notify_ids(user_id, data.get('notify'))
+            if notify_error:
+                result['error'] = notify_error
+                result['status'] = 400
+                return result
+
+            emp = UserDA().get_user_by_id(user_id)
+            emp_name = f"{emp.first_name} {emp.last_name}" if emp else ''
+            lead_user = UserDA().get_my_lead(user_id)
+            lead = UserDA().get_user_by_id(lead_user.lead_id) if lead_user else None
+            approver_id = lead.id if lead else 0
+            recipients = [lead] if lead else [u for u in UserDA().get_all_active_users().filter(
+                id__in=list(users_with_capability('attendance.view_all'))) if u.id != user_id]
+
+            wfh_request = AttendanceDA().create_wfh_request({
+                "start_date": data.get('start_date'),
+                "end_date": data.get('end_date'),
+                "emp_id": user_id,
+                "approver_id": approver_id,
+                "status": 1,  # Requested
+                "reason": data.get('reason') or '',
+                "notify": ','.join(str(n) for n in notify_ids),
+                "company_id": UserDA().get_user_organization(user_id),
+            })
             result['success'] = "WFH request created successfully"
 
-            # send notification mail
+            # notification mail: to the lead (or the first company approver), others in cc
+            start = datetime.strptime(wfh_request.start_date, "%Y-%m-%d")
+            end = datetime.strptime(wfh_request.end_date, "%Y-%m-%d")
+            no_of_days = (end - start).days + 1
+            email_content_dto = new_dto()
             email_content_dto.heading = "Work From Home Request"
-            email_content_dto.lead_name = lead_name
-            start_date = datetime.strptime(
-                wfh_request.start_date, "%Y-%m-%d").strftime("%d/%m/%Y")
-            end_date = datetime.strptime(
-                wfh_request.end_date, "%Y-%m-%d").strftime("%d/%m/%Y")
-            if wfh_request.start_date == wfh_request.end_date:
-                email_content_dto.request = "Please  grant me WFH on {0} ".format(start_date)
+            email_content_dto.lead_name = recipients[0].first_name if recipients else ''
+            if start == end:
+                email_content_dto.request = "Please  grant me WFH on {0} ".format(start.strftime("%d/%m/%Y"))
             else:
                 email_content_dto.request = "Please  grant me WFH  from {0} to {1} ".format(
-                    start_date, end_date)
-            date_range = datetime.strptime(wfh_request.end_date, "%Y-%m-%d") - \
-                datetime.strptime(wfh_request.start_date, "%Y-%m-%d")
-            if (date_range.days+1) == 1:
-                email_content_dto.no_of_days = 1
-            else:
-                email_content_dto.no_of_days = date_range.days + 1
-
+                    start.strftime("%d/%m/%Y"), end.strftime("%d/%m/%Y"))
+            email_content_dto.no_of_days = no_of_days
             email_content_dto.emp_name = emp_name
             email_content_dto.submitted_date = date.today().strftime("%d/%m/%Y")
             email_content_dto.status = 'Requested'
             email_content_dto.reason = wfh_request.reason
             email_content_dto.category = 'WFH'
-            email_content_dto.start_date = start_date
-            email_content_dto.end_date = end_date
+            email_content_dto.start_date = start.strftime("%d/%m/%Y")
+            email_content_dto.end_date = end.strftime("%d/%m/%Y")
             email_content_dto.link = f"{settings.BASE_URL}attendance/wfh"
             email_content_dto.message = message
-            email_msg = LeaveNotificationBL().generate_leave_email_message(email_content_dto)
-            LeaveNotificationBL().send_leave_request_notification(email_msg, emp_name, to_email, message) #TODO
-            if is_mobile:
-                approver_name = ''
-                emp_image = ''
-                approver_details = UserDA().get_user_by_id(approver_id)
-                if approver_details:
-                    approver_name = approver_details.first_name + " " + approver_details.last_name
-                    user_profile = UserDA().get_user_profile_by_id(wfh_request.emp_id)
-                if user_profile:
-                    emp_image =  f"{settings.DEFAULT_SITE_MEDIA_URL}{user_profile.profile_photo}"
+            if recipients:
+                email_msg = LeaveNotificationBL().generate_leave_email_message(email_content_dto)
+                LeaveNotificationBL().send_leave_request_notification(
+                    email_msg, emp_name, recipients[0].email, message, [u.email for u in recipients[1:]])
+
+            if is_mobile and approver_id:
+                user_profile = UserDA().get_user_profile_by_id(wfh_request.emp_id)
+                emp_image = f"{settings.DEFAULT_SITE_MEDIA_URL}{user_profile.profile_photo}" if user_profile else ''
                 title = "Notification from DM Desk"
-                msg = emp_name + " has requested work from home for " + str(email_content_dto.no_of_days) + " day."
-                if email_content_dto.no_of_days > 1:
-                    msg = emp_name + " has requested work from home for " + str(email_content_dto.no_of_days) + " days."
-                data= {
-                    "notificationType" : "WFH_REQUEST",
-                    "notificationInfo" : {
-                        "wfh_id":  wfh_request.wfh_id,
-                        "start_date":datetime.strptime(start_date, "%d/%m/%Y").strftime("%Y-%m-%d"),
-                        "end_date": datetime.strptime(end_date, "%d/%m/%Y").strftime("%Y-%m-%d"),
+                msg = emp_name + " has requested work from home for " + str(no_of_days) + \
+                    (" days." if no_of_days > 1 else " day.")
+                push_data = {
+                    "notificationType": "WFH_REQUEST",
+                    "notificationInfo": {
+                        "wfh_id": wfh_request.wfh_id,
+                        "start_date": start.strftime("%Y-%m-%d"),
+                        "end_date": end.strftime("%Y-%m-%d"),
                         "emp_name": emp_name,
                         "emp_id": user_id,
-                        "approver":approver_name,
+                        "approver": f"{lead.first_name} {lead.last_name}",
                         "status": "Requested",
                         "reason": wfh_request.reason,
                         "comment": "",
                         "created_date": date.today().strftime("%Y-%m-%d"),
-                        "no_of_days": email_content_dto.no_of_days,
+                        "no_of_days": no_of_days,
                         "is_cancel": 0,
                         "approver_id": approver_id,
                         "emp_image": emp_image
                     }
                 }
-                LeaveNotificationBL().send_single_push_notification(approver_id, title, msg, sound="default",extra_kwargs=data)
-
-
-        except Exception as err:
+                LeaveNotificationBL().send_single_push_notification(approver_id, title, msg, sound="default",
+                                                                    extra_kwargs=push_data)
+        except Exception:
             result['status'] = 499
-            result["error"] = settings.ERROR_MSG['application_error']\
-                .format(err, self.__logs.error(self.__exception.get_exception()))
+            result["error"] = "WFH request failed. LogID: {0}".format(
+                self.__logs.error(self.__exception.get_exception()))
         return result
 
+    def __company_wfh_request(self, wfh_id):
+        """ The WFH request if it belongs to the active company, else None. """
+        wfh_request = AttendanceDA().get_wfh_request_by_id(wfh_id)
+        if not wfh_request or wfh_request.company_id != get_active_company_id():
+            return None
+        return wfh_request
+
+    def __notify_ids(self, user_id, notify):
+        """ notify as a list or comma separated ids -> (ids, error). Only active
+        employees of the caller's company may be notified. """
+        if notify in (None, '', []):
+            return [], None
+        items = notify if isinstance(notify, list) else str(notify).split(',')
+        ids = []
+        for item in items:
+            try:
+                ids.append(int(item['id'] if isinstance(item, dict) else str(item).strip()))
+            except (TypeError, ValueError, KeyError):
+                return [], 'Invalid notify list'
+        if LeaveHelperBL().invalid_notify_ids(user_id, ids):
+            return [], 'Notify list can only contain active employees of your company'
+        return ids, None
 
     def update_wfh_request(self, data, user, is_mobile= 0):
         result = {"error": "", "success": "", "status": 200}
@@ -284,19 +288,31 @@ class WorkFromHomeBL():
 
             #APPROVE
             if req_type.upper() == 'APPROVE':
-                status = data.get('status', 0)
-                emp_id = data.get('emp_id', 0)
                 comment = data.get('comment', '')
-                if not UserDA().is_team_member(emp_id, user_id):
+                try:
+                    status = int(data.get('status', 0))
+                except (TypeError, ValueError):
+                    status = 0
+                if status not in (settings.WFH_REQUEST_STATUS_V1['Approved'], settings.WFH_REQUEST_STATUS_V1['Rejected']):
+                    result['error'] = "status must be 2 (Approved) or 4 (Rejected)"
+                    result['status'] = 400
+                    return result
+                wfh_request = self.__company_wfh_request(wfh_id)
+                if not wfh_request:
+                    result['error'] = "WFH request not found"
+                    result['status'] = 404
+                    return result
+                emp_id = wfh_request.emp_id
+                # the employee's lead, or a company-wide attendance approver - never yourself
+                if emp_id == user_id or not (UserDA().is_team_member(emp_id, user_id)
+                                             or data_scope(user_id, 'attendance') == SCOPE_ALL):
                     result["error"] = settings.ERROR_MSG['no_permission']
                     result['status'] = 403
                     return result
-                wfh_request = AttendanceDA().get_wfh_request_by_id(wfh_id)
-                if wfh_request:
-                    if wfh_request.status == status:
-                        result['success'] = "Nothing To Change."
-                        result['status'] = 499
-                        return result
+                if wfh_request.status == status:
+                    result['success'] = "Nothing To Change."
+                    result['status'] = 400
+                    return result
                 wfh_requests = AttendanceDA().\
                     update_wfh_request(wfh_id, {"status": status, "comment": comment, 'approver_id': user_id})
                 wfh_request = AttendanceDA().get_wfh_request_by_id(wfh_id)
@@ -361,10 +377,18 @@ class WorkFromHomeBL():
                     LeaveNotificationBL().send_single_push_notification(wfh_request.emp_id, title, msg, sound="default",extra_kwargs=data)
             #CANCEL
             elif req_type.upper() == 'CANCEL':
-                wfh_request = AttendanceDA().get_wfh_request_by_id(wfh_id)
+                wfh_request = self.__company_wfh_request(wfh_id)
+                if not wfh_request:
+                    result['error'] = "WFH request not found"
+                    result['status'] = 404
+                    return result
+                if wfh_request.emp_id != user_id:
+                    result["error"] = settings.ERROR_MSG['no_permission']
+                    result['status'] = 403
+                    return result
                 if wfh_request.status == 3:
                         result['success'] = "WFH Request Already Cancelled, Not Able To Process."
-                        result['status'] = 499
+                        result['status'] = 400
                         return result
                 comment = data.get('comment', '')
                 AttendanceDA().update_wfh_request(wfh_id, {"status": 3, "comment": comment})
@@ -372,24 +396,37 @@ class WorkFromHomeBL():
 
             #EDIT
             elif req_type.upper() == 'EDIT':
+                wfh_request = self.__company_wfh_request(wfh_id)
+                if not wfh_request:
+                    result['error'] = "WFH request not found"
+                    result['status'] = 404
+                    return result
+                if wfh_request.emp_id != user_id:
+                    result["error"] = settings.ERROR_MSG['no_permission']
+                    result['status'] = 403
+                    return result
+                if wfh_request.status != settings.WFH_REQUEST_STATUS_V1['Requested']:
+                    result['error'] = "Only pending WFH requests can be edited"
+                    result['status'] = 400
+                    return result
                 wfh_data = {"start_date": "", "end_date": "", "reason": ""}
                 wfh_data['start_date'] = data.get('start_date', None)
                 wfh_data['end_date'] = data.get('end_date', None)
-                wfh_data['reason'] = data.get('reason', None)
+                wfh_data['reason'] = data.get('reason', None) or ''
                 validation = self.wfh_date_validation(wfh_data['start_date'],wfh_data['end_date'],user_id,wfh_id)
-                if validation['message']:
-                    result['error'] = validation['message']
-                    result['status'] = 499
+                if validation['message'] or validation['error']:
+                    result['error'] = validation['message'] or validation['error']
+                    result['status'] = 400 if validation['message'] else 499
                     return result
                 AttendanceDA().update_wfh_request(wfh_id, wfh_data, user_id)
                 result['success'] = "WFH request edited successfully"
 
             # result["success"] = "Being Awesome!"
 
-        except Exception as err:
+        except Exception:
             result['status'] = 499
-            result["error"] = settings.ERROR_MSG['application_error']\
-                .format(err, self.__logs.error(self.__exception.get_exception()))
+            result["error"] = "WFH request update failed. LogID: {0}".format(
+                self.__logs.error(self.__exception.get_exception()))
         return result
 
 
@@ -420,9 +457,13 @@ class WorkFromHomeBL():
                 "message" : ''
                 }
         try:
-            start = datetime.strptime(start_date, "%Y-%m-%d")
-            end = datetime.strptime(end_date, "%Y-%m-%d")
-            duration = Utility().get_date_range(start, end)
+            try:
+                start = datetime.strptime(str(start_date), "%Y-%m-%d")
+                end = datetime.strptime(str(end_date), "%Y-%m-%d")
+            except ValueError:
+                result['message'] = "Invalid start or end date."
+                result['is_valid'] = 0
+                return result
             if start > end:
                 result['message'] = "The start date should be less than or equal to the end date."
                 result['is_valid'] = 0

@@ -90,7 +90,7 @@ class AttendanceDA:
         return WFHRequest.objects.all().order_by('-wfh_id')
 
     def get_wfh_request_by_id(self,wfh_id):
-        return WFHRequest.objects.get(wfh_id = wfh_id)
+        return WFHRequest.objects.filter(wfh_id=wfh_id).first()
 
     def get_wfh_request_date_overlap(self,start_date,end_date,user_id):
         # hard coded because in constants WFH_REQUEST_STATUS
@@ -107,6 +107,13 @@ class AttendanceDA:
             return WFHRequest.objects.filter(status = int(status)).order_by('-wfh_id')
         else:
             return WFHRequest.objects.all().order_by('-wfh_id')
+
+    def get_team_wfh_requests(self, company_id, employee_ids, statuses, start_date, end_date):
+        """ WFH requests of the company's given employees overlapping start..end. """
+        return WFHRequest.objects.filter(
+            company_id=company_id, emp_id__in=list(employee_ids), status__in=list(statuses),
+            start_date__lte=end_date, end_date__gte=start_date,
+        ).order_by('-start_date', '-wfh_id')
 
     def get_team_wfh_requests_by_status_list(self,status):
         if status:

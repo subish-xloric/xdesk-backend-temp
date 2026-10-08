@@ -18,6 +18,7 @@ from django.core.files.base import ContentFile
 
 from pTracker.common.utility import Utility
 from pTracker.common.company_context import get_active_company_id
+from pTracker.dataaccess.attendance_v2_access.org_da import OrgDA
 from pTracker.dataaccess.platform_access.tenancy_da import TenancyDA
 from pTracker.common.company_context import get_active_company
 from pTracker.common.company_authorization import has_capability
@@ -299,87 +300,77 @@ class UserManagementBL():
             return is_valid
 
 
-    def get_employee_detail_profile(self, emp_id, user_id):
+    # never sent to any client
+    PROFILE_SECRET_FIELDS = ('_state', 'password', 'last_login', 'is_superuser', 'is_staff', 'secret_key',
+                             'is_twofa_on', 'is_accout_blocked', 'reported_to', 'api_token')
+    # personal data: only for the employee themself or employee.view_pii
+    PROFILE_PII_FIELDS = ('pan', 'dob', 'father_name', 'mother_name', 'personal_email', 'home_telephone',
+                          'address_1', 'address_2', 'city_code', 'provin_code', 'district_code', 'zipcode',
+                          'permanent_address_1', 'permanent_address_2', 'permanent_city_code',
+                          'permanent_coun_code', 'permanent_provin_code', 'permanent_district_code',
+                          'permanent_zipcode')
+
+    def get_employee_detail_profile(self, emp_id, user_id, include_photo=True):
+        """ An employee's profile in the active company. Viewers: the employee,
+        their direct reporting lead (lead mapping only) or employee.view_list.
+        Personal data (PROFILE_PII_FIELDS) only for the employee or
+        employee.view_pii; PROFILE_SECRET_FIELDS never. include_photo adds the
+        base64 photo (web profile page). """
         user_da = UserDA()
         result = {"error": None, "emp_profile": None, "status": 200}
-        user_id = int(user_id)
-        emp_id = int(emp_id)
-        user_dict = {}
-        mapping_dict = {}
         try:
-            permitted = False  #xxx
-            is_team_member = UserDA().is_team_member(emp_id, user_id)
-            if emp_id == user_id:
-                permitted = True
-            elif(is_team_member):
-                permitted = True
-            if not permitted:
-                permitted = self.__utility.is_permitted(user_id, 'view_employee_detail_profile')
-            if not permitted:
+            try:
+                user_id, emp_id = int(user_id), int(emp_id)
+            except (TypeError, ValueError):
+                return {"error": "Invalid employee id", "emp_profile": None, "status": 400}
+            company_id = get_active_company_id()
+            if company_id is None or not OrgDA().is_company_member(company_id, emp_id):
+                return {"error": "Employee not found", "emp_profile": None, "status": 404}
+            is_self = emp_id == user_id
+            if not (is_self or user_da.is_direct_lead(emp_id, user_id)
+                    or has_capability(user_id, 'employee.view_list')):
                 result["error"] = settings.ERROR_MSG.get('access_denied')
                 result['status'] = 403
                 return result
-            active_users = user_da.get_all_active_users()
-            for user in active_users:
-                user_dict[user.id] = user.first_name  + " " + user.last_name
-            lead_mappings = user_da.get_all_employee_lead_mapping()
-            for each in lead_mappings:
-                mapping_dict[each.emp_id] = each.lead_id
+
             employee = user_da.get_user_by_id(emp_id)
             profile = user_da.get_user_profile_by_id(emp_id)
             emergency = user_da.get_emergency_contacts_by_id(emp_id)
-
-            if profile:
-                obj_image_name = profile.profile_photo
-                if obj_image_name:
-                    try:
-                        file_path = os.path.join(settings.MEDIA_ROOT, f'employee_profile_photo/{profile.profile_photo}')
-                        image_data = self.__file_manager.read_file(file_path)
-                        if not image_data:
-                            raise FileNotFoundError("Image not found")
-                        encoded_string = base64.b64encode(image_data)
-                        profile.profile_photo = encoded_string
-                    except Exception as e:
-                        file_path = os.path.join(settings.MEDIA_ROOT, f'employee_profile_photo/avatar.jpeg')
-                        image_data = self.__file_manager.read_file(file_path)
-                        encoded_string = base64.b64encode(image_data) if image_data else b''
-                        profile.profile_photo = encoded_string
-                    if obj_image_name.lower().endswith('png'):
-                        img_type = 'png'
-                    elif obj_image_name.lower().endswith('jpg'):
-                        img_type = 'jpeg'
-                    else:
-                        img_type = 'jpeg'
-                    profile.profile_photo = encoded_string
-                    profile.profile_data = img_type
-                else:
-                    file_path = os.path.join(settings.MEDIA_ROOT, f'employee_profile_photo/avatar.jpeg')
-                    image_data = self.__file_manager.read_file(file_path)
-                    encoded_string = base64.b64encode(image_data) if image_data else b''
-                    profile.profile_photo = encoded_string
-                    profile.profile_data = 'jpeg'
+            if profile and include_photo:
+                self.__attach_profile_photo(profile)
             if employee and profile:
                 employee.date_joined = employee.date_joined.date()
-                profile = profile.__dict__
-                employee = employee.__dict__
-                if emergency:
-                    emergency  = emergency.__dict__
-                else:
-                    emergency = {'name':None, 'mobile_no':None, 'relationship':None}
-                employee.update(emergency)
-                employee.update(profile)
-                entries_to_remove = ('_state', 'password', 'last_login', 'is_superuser', 'is_staff', 'secret_key', 'is_twofa_on', 'is_accout_blocked','reported_to')
-                for k in entries_to_remove:
-                    employee.pop(k, None)
-                lead = { 'reported_to': user_dict.get(mapping_dict.get(emp_id, 0), '')}
-                employee.update(lead)
+                employee = dict(employee.__dict__)
+                employee.update(dict(emergency.__dict__) if emergency else
+                                {'name': None, 'mobile_no': None, 'relationship': None})
+                employee.update(dict(profile.__dict__))
+                hidden = self.PROFILE_SECRET_FIELDS
+                if not (is_self or has_capability(user_id, 'employee.view_pii')):
+                    hidden = hidden + self.PROFILE_PII_FIELDS
+                for field in hidden:
+                    employee.pop(field, None)
+                lead_id = user_da.get_lead_id_by_user(emp_id)
+                lead = user_da.get_user_by_id(lead_id) if lead_id else None
+                employee['reported_to'] = f"{lead.first_name} {lead.last_name}" if lead else ''
                 result['emp_profile'] = employee
-        except Exception as err:
+        except Exception:
             result['status'] = 499
-            result["error"] = settings.ERROR_MSG['application_error']\
-                .format(err, self.__logs.error(self.__exception.get_exception()))
-        finally:
-            return result
+            result["error"] = "Employee profile failed. LogID: {0}".format(
+                self.__logs.error(self.__exception.get_exception()))
+        return result
+
+    def __attach_profile_photo(self, profile):
+        """ Replaces profile.profile_photo by the base64 image (avatar if missing). """
+        name = profile.profile_photo or ''
+        image_data = None
+        if name:
+            image_data = self.__file_manager.read_file(
+                os.path.join(settings.MEDIA_ROOT, f'employee_profile_photo/{name}'))
+        if not image_data:
+            image_data = self.__file_manager.read_file(
+                os.path.join(settings.MEDIA_ROOT, 'employee_profile_photo/avatar.jpeg'))
+        profile.profile_photo = base64.b64encode(image_data) if image_data else b''
+        profile.profile_data = 'png' if name.lower().endswith('png') else 'jpeg'
 
     def get_employee_list(self, user_id):
         user_da = UserDA()

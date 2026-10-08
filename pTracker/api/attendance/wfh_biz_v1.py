@@ -5,6 +5,9 @@ from django.db.models import Q
 
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
 from pTracker.dataaccess.ptracker_access.attendance import AttendanceDA
+from pTracker.dataaccess.ptracker_access.leave_da import LeaveDA
+from pTracker.dataaccess.attendance_v2_access.org_da import OrgDA
+from pTracker.common.company_context import get_active_company_id
 from pTracker.dataaccess.ptracker_access.holiday_da import HolidayDA
 from pTracker.api.leave.leave_helper import LeaveHelperBL
 from pTracker.common.exception_handler import ExceptionHandler
@@ -33,20 +36,76 @@ class WorkFromHomeBL_V1():
             data.pop(k, None)
         return data
 
-    def __get_image_url(self, user_id):
-        img_url = UserDA().get_user_profile_by_id(user_id)
-        if img_url:
-            return f"{settings.DEFAULT_SITE_MEDIA_URL}{img_url.profile_photo}"
-        else:
-            return None
+    TEAM_WFH_STATUSES = {'pending': (1,), 'verified': (2, 3, 4)}
+    TEAM_WFH_PAGE_SIZE = 10
 
+    def get_team_wfh_requests(self, user_id, page=1, status='pending', direct_reporting='false'):
+        """ WFH requests of the people the caller manages in the active company,
+        overlapping the company's current leave period (calendar year if none),
+        newest first. Everyone else in the company with attendance.view_all, the
+        lead-mapped team with attendance.view_team or direct_reporting=true. """
+        try:
+            page = int(page)
+            if page < 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            return {"error": "Invalid page", "status": 400}
+        statuses = self.TEAM_WFH_STATUSES.get(str(status).lower())
+        if statuses is None:
+            return {"error": "status must be pending or verified", "status": 400}
+        if str(direct_reporting).lower() not in ('true', 'false'):
+            return {"error": "includeOnlyDirectReporting must be true or false", "status": 400}
+        try:
+            scope = data_scope(user_id, 'attendance')
+            if scope not in (SCOPE_ALL, SCOPE_TEAM):
+                return {"error": settings.ERROR_MSG.get('access_denied'), "status": 403}
+            company_id = get_active_company_id()
+            if company_id is None:
+                return {"wfh_requests": [], "status": 200}
+            if scope == SCOPE_ALL and str(direct_reporting).lower() == 'false':
+                member_ids = OrgDA().get_member_ids(company_id)
+            else:
+                member_ids = OrgDA().get_member_ids(company_id, OrgDA().get_team_member_ids(user_id))
+            member_ids.discard(user_id)
+            if not member_ids:
+                return {"wfh_requests": [], "status": 200}
+
+            today = date.today()
+            period = LeaveDA().get_leave_period_by_date(today, company_id)
+            window = (period.leave_period_start_date, period.leave_period_end_date) if period \
+                else (date(today.year, 1, 1), date(today.year, 12, 31))
+            requests = AttendanceDA().get_team_wfh_requests(company_id, member_ids, statuses, *window)
+            if page:
+                start = (page - 1) * self.TEAM_WFH_PAGE_SIZE
+                requests = requests[start:start + self.TEAM_WFH_PAGE_SIZE]
+            requests = list(requests)
+            people = {r.emp_id for r in requests} | {r.approver_id for r in requests if r.approver_id}
+            names = {u.id: f"{u.first_name} {u.last_name}" for u in UserDA().get_all_users().filter(id__in=people)}
+            photos = UserDA().get_profile_photos({r.emp_id for r in requests})
+            wfh_requests = [{
+                'wfh_id': r.wfh_id,
+                'start_date': r.start_date,
+                'end_date': r.end_date,
+                'emp_name': names.get(r.emp_id, ''),
+                'emp_id': r.emp_id,
+                'approver': names.get(r.approver_id, ''),
+                'status': settings.WFH_REQUEST_STATUS[r.status],
+                'reason': r.reason,
+                'comment': r.comment,
+                'created_date': r.created_date,
+                'no_of_days': (r.end_date - r.start_date).days + 1,
+                # the requester can still cancel it (cancel works on Requested / Approved)
+                'is_cancel': 1 if r.status in (1, 2) else 0,
+                'approver_id': r.approver_id,
+                'emp_image': f"{settings.DEFAULT_SITE_MEDIA_URL}{photos[r.emp_id]}" if photos.get(r.emp_id) else "",
+            } for r in requests]
+            return {"wfh_requests": wfh_requests, "status": 200}
+        except Exception:
+            return {"error": "Team WFH requests failed. LogID: {0}".format(
+                self.__logs.error(self.__exception.get_exception())), "status": 499}
 
     def get_all_my_wfh_requests(self, user_id, page=1, team=0, status=None, emp_id =0, include_only_direct_reporting = None):
         try:
-            direct_reporting =0
-            if include_only_direct_reporting:
-                if include_only_direct_reporting.upper() == "TRUE":
-                    direct_reporting = 1
             min, max = Utility().cutomPageLimits(page)
             response = {"wfh_requests": [], "status": 200}
             if emp_id:
@@ -57,28 +116,11 @@ class WorkFromHomeBL_V1():
                     response["status"] = 403
                     return response
                 user_id = emp_id
-            if team:
-                if status=="pending":
-                    status = [1,] #1 for requested
-                elif status=="verified":
-                    status = [2, 3, 4] # except requested status
-                else:
-                    return response
-                wfh_requests = WorkFromHomeBL().get_filtered_team_wfh_requests(user_id,status=status,is_mobile=1, direct_reporting = direct_reporting)
-            else:
-                wfh_requests = WorkFromHomeBL().get_filtered_my_wfh_requests(user_id, is_mobile=1)
+            wfh_requests = WorkFromHomeBL().get_filtered_my_wfh_requests(user_id, is_mobile=1)
             request_list =  wfh_requests['wfh_requests']
             if page:
                 request_list =  wfh_requests['wfh_requests'][min:max]
-            user_dic = {}
-            team_members = UserDA().get_all_active_users()
-            for user in team_members:
-                user_dic[user.id] = user.first_name + " " + user.last_name
-            if team and request_list:
-                for row,each in  enumerate(request_list):
-                    each["emp_image"] = self.__get_image_url(each.get("emp_id",0))
-                    request_list[row] = each
-            if not team and request_list:
+            if request_list:
                 for row,each in  enumerate(request_list):
                     request_list[row] = self.__exclude_wfh_keys(each)
 
@@ -96,7 +138,8 @@ class WorkFromHomeBL_V1():
         action = data.get("action", None)
         wfh_id = data.get("wfh_id", 0)
         if action:
-            emp_id = AttendanceDA().get_wfh_request_by_id(wfh_id).emp_id
+            wfh_request = AttendanceDA().get_wfh_request_by_id(wfh_id)
+            emp_id = wfh_request.emp_id if wfh_request else 0
             if action == "APPROVED":
                 wfh_data["req_type"] = "APPROVE"
                 wfh_data["status"] = 2 #Approve status id

@@ -1,6 +1,8 @@
 from django.http.response import HttpResponse
 from dj_rest_auth.views import LoginView
 from dj_rest_auth.views import LogoutView
+from dj_rest_auth.utils import jwt_encode
+from pTracker.common.mobile_login import get_pending_login, record_failed_otp, finish_pending_login
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 from rest_framework_simplejwt.authentication import JWTAuthentication as JSONWebTokenAuthentication
 from rest_framework.permissions import IsAuthenticated
@@ -408,51 +410,48 @@ class AuthyTokenVerifyView_V1(LoginView):
     """
 
     def post(self, request, *args, **kwargs):
-        data = UserManagementBL_V1().format_verify_token_data(request.data)
-        if data.get('error'):
-            return Response(data)
+        """ Step 2 of the mobile login: {identityToken, otp}. The identityToken
+        (from step 1, password already verified) names the user; no password is
+        stored or replayed. """
+        self.request = request
+        identity_token = request.data.get("identityToken")
+        user_id = get_pending_login(identity_token)
+        user = UserDA().get_user_by_id(user_id) if user_id else None
+        if not user or not user.is_active:
+            return Response({"error": "Login session expired. Please log in again."},
+                            status=HTTP_400_BAD_REQUEST)
+        otp = request.data.get("otp")
 
-        request.data.update(data)
-        ret = super().post(request, *args, **kwargs)
-        is_valid_token = False
-        if ret.status_code == 200:
+        if TimeSheetBL_V1().prevent_login_by_timesheet(user.id):
+            return Response({"error": "Unauthorized Access Attempt"}, status=HTTP_400_BAD_REQUEST)
 
-            user = UserDA().get_user_by_email(request.data["email"])
-            if user:
-                is_prevent = TimeSheetBL_V1().prevent_login_by_timesheet(user.id)
-                if is_prevent:
-                    return Response(
-                        {"error": "Unauthorized Access Attempt"},
-                        status=HTTP_400_BAD_REQUEST,
-                    )
-            else:
-                return Response(
-                        {"error": "Unauthorized Access Attempt..."},
-                        status=HTTP_400_BAD_REQUEST,
-                    )
-            
-            is_valid_token = UserManagementBL()\
-                .verify_two_fa_token(request.data["email"], request.data["otp"])
+        is_valid_token = UserManagementBL().verify_two_fa_token(user.email, otp)
 
         """Do not remove this test case since it is play store verification account"""
         is_valid_token = True #TODO REMOVE
         if not is_valid_token:
-            test_email = ret.data['user']['email']
-            test_otp = request.data["otp"]
-            if test_email=="subish@ymail.com" and test_otp in (123456, "123456"):
+            if user.email == "subish@ymail.com" and otp in (123456, "123456"):
                 is_valid_token = True
 
         if not is_valid_token:
+            if not record_failed_otp(identity_token):
+                return Response({"error": "Too many incorrect OTPs. Please log in again."},
+                                status=HTTP_400_BAD_REQUEST)
             return Response(
                     {"error": "The OTP you entered is incorrect or expired. Please try again."},
                     status=HTTP_400_BAD_REQUEST,
                 )
 
-        if ret.data['user']['email'] != "manu@mydomain.com":
-            user = UserDA().get_user_by_email(ret.data['user']['email'])
+        if user.email != "manu@mydomain.com":
             if TimeSheetBL_V1().prevent_login_by_timesheet(user.id):
                 return Response({'error': 'Please contact Operations Manager your account has been blocked due to missing in timesheet entries'}, status=499)
 
+        finish_pending_login(identity_token)
+        self.user = user
+        self.access_token, self.refresh_token = jwt_encode(user)
+        ret = self.get_response()
+
+        request.data.update({"email": user.email})  # create_audit_log reads the email from the request
         UserManagementBL().create_audit_log(request, status = 1)
         headers = UserManagementBL_V1().save_commen_headers(ret.data, request.META)
         return ret
@@ -487,8 +486,10 @@ class EmployeeDetailsView_V1(APIView):
     authentication_classes = [JSONWebTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, emp_id):
-        profile = UserManagementBL().get_employee_detail_profile(emp_id, request.user.id)
+    def get(self, request, emp_id=None):
+        """ /<emp_id>/, or the bare URL (optionally ?emp_id=) for your own profile. """
+        emp_id = emp_id or request.query_params.get('emp_id') or request.user.id
+        profile = UserManagementBL().get_employee_detail_profile(emp_id, request.user.id, include_photo=False)
         res = UserManagementBL_V1().format_employee_profile(profile)
         return Response(res, status = res.get("status", 200))
 

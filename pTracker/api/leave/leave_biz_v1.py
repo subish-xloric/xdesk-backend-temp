@@ -30,12 +30,6 @@ class LeaveBL_V1():
         self.__exception = ExceptionHandler()
         self.__utility = Utility()
 
-    def __exclude_leave_keys(self, data):
-        entries_to_remove = ["log", "total_days", "request_id", "is_cancel", "date_applied", "leave_type"]
-        for k in entries_to_remove:
-            data.pop(k, None)
-        return data
-
     def format_leave_request_response(self, result):
         if result.get("error"):
             result = {"error": result.get("error")}
@@ -105,90 +99,88 @@ class LeaveBL_V1():
             return None
 
     def format_cancel_leave_request(self, data, type=0):
+        """ Mobile body -> update_leave_status input. type=1: approve / reject
+        ({leave_request_id, action: APPROVED|REJECTED, comment}); otherwise cancel. """
+        leave_request_id = data.get("leave_request_id")
+        if not leave_request_id:
+            return {"error": "leave_request_id is required", "status": 400}
+        if type:
+            status = {"APPROVED": 2, "REJECTED": 4}.get(str(data.get("action", "")).upper())
+            if status is None:
+                return {"error": "action must be APPROVED or REJECTED", "status": 400}
+            return {"req_id": leave_request_id, "status": status, "comment": data.get("comment", '')}
+        return {"req_id": leave_request_id, "status": 3, "comment": data.get("comment", '')}
+
+    def get_team_leave_requests(self, user_id, page=1, status='pending', direct_reporting='false'):
+        """ Leave requests of the people the caller manages in the active company,
+        in its current leave period, newest start date first. status: pending
+        (Requested) or verified (Approved / Cancelled / Rejected). Everyone else in
+        the company with leave.view_all, the lead-mapped team with leave.view_team;
+        direct_reporting=true limits it to the lead-mapped team. """
         try:
-            leave_request= LeaveDA().get_leave_request(data.get("leave_request_id"))
-
-            if type: # for approve and reject
-                action = data.get("action", '')
-                if action == "APPROVED":
-                    status = 2
-                elif action == "REJECTED":
-                    status = 4
-                data = {
-                "req_id": data.get("leave_request_id"),
-                "status":status,
-                "emp_id":leave_request.employee_id,
-                "comment":data.get("comment",''),
-            }
+            page = int(page)
+            if page < 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            return {"error": "Invalid page", "status": 400}
+        statuses = self.TEAM_REQUEST_STATUSES.get(str(status).lower())
+        if statuses is None:
+            return {"error": "status must be pending or verified", "status": 400}
+        if str(direct_reporting).lower() not in ('true', 'false'):
+            return {"error": "includeOnlyDirectReporting must be true or false", "status": 400}
+        try:
+            scope = data_scope(user_id, 'leave')
+            if scope not in (SCOPE_ALL, SCOPE_TEAM):
+                return {"error": settings.ERROR_MSG.get('access_denied'), "status": 403}
+            company_id = get_active_company_id()
+            if company_id is None:
+                return {"leaves": [], "status": 200}
+            if scope == SCOPE_ALL and str(direct_reporting).lower() == 'false':
+                member_ids = OrgDA().get_member_ids(company_id)
             else:
-                data = {
-                "req_id": data.get("leave_request_id"),
-                "status":3,
-                "emp_id":leave_request.employee_id
-            }
-            return data
-        except:
-            return None
+                member_ids = OrgDA().get_member_ids(company_id, OrgDA().get_team_member_ids(user_id))
+            member_ids.discard(user_id)
+            period = LeaveDA().get_leave_period_by_date(date.today(), company_id)
+            if not period or not member_ids:
+                return {"leaves": [], "status": 200}
 
-    def format_team_leave_request_data(self, user_id, page=1, status=None, include_only_direct_reporting = None):
-        if include_only_direct_reporting:
-            if include_only_direct_reporting.upper() == "TRUE":
-                direct_reporting = 1
-            else:
-                direct_reporting = 0
-        today = date.today()
-        start_date= date(today.year, 1, 1)
-        end_date= date(today.year, 12, 31)
-        data = {
-            "startDate": start_date,
-            "endDate": end_date,
-        }
-        res = {}
-        if status=="pending": #TODO
-            # status = 1 #requested
-            data["status"] = 1  #requested
-        elif status=="verified":
-            data["status__in"] = [2, 3, 4] #except requested
-        else:
-            res["leaves"] = []
-            return res
-        LEAVE_REQUEST_STATUS = settings.MOBILE_LEAVE_REQUEST_STATUS
-        leave_request = LeaveBL().get_team_leave_summary(user_id, data, 1, direct_reporting)
-        if leave_request:
-            user_dic = {}
-            team_members = UserDA().get_all_active_users()
-            for user in team_members:
-                user_dic[user.id] = user.first_name + " " + user.last_name
-            min, max = Utility().cutomPageLimits(page)
-            request_list = leave_request.get('leave_items', [])
-
+            requests = LeaveDA().get_team_leave_requests(period.leave_period_id, member_ids, statuses)
             if page:
-                request_list = leave_request.get('leave_items', [])[min:max]
-            for row,each in  enumerate(request_list):
-                each['duration'] = LeaveDA().get_leave_day_type( each["request_id"])
-                each['no_of_days'] = each["total_days"]
-                each["leave_request_id"] = each["request_id"]
-                each["status"] = LEAVE_REQUEST_STATUS.get(each['status'])
-                each["approver_name"] = user_dic.get(int(each["approver_id"]), "")
-                each["notify_list"] = self.convert_to_list(each["notify_list"])
-                each["leave_type_id"] = int(each.get("leave_type",0))
-                each = self.__exclude_leave_keys(each)
-                each["emp_image"] = self.__get_image_url(each.get("emp_id",0))
-                request_list[row] = each
-        # if request_list:
-        #     request_list = sorted(request_list, key = lambda i: i['status'])
-        res["leaves"] = request_list
-        if res.get("error"):
-            res = {"error": res.get("error"), "status": 499}
-        return res
+                start = (page - 1) * self.TEAM_REQUESTS_PAGE_SIZE
+                requests = requests[start:start + self.TEAM_REQUESTS_PAGE_SIZE]
+            requests = list(requests)
+            day_types = LeaveDA().get_leave_day_types([r.request_id for r in requests])
+            people = {r.employee_id for r in requests} | {int(r.approver) for r in requests if r.approver}
+            names = {u.id: f"{u.first_name} {u.last_name}" for u in UserDA().get_all_users().filter(id__in=people)}
+            photos = UserDA().get_profile_photos({r.employee_id for r in requests})
+            mobile_status = settings.MOBILE_LEAVE_REQUEST_STATUS
+            leaves = []
+            for row in requests:
+                day_type = day_types.get(row.request_id)
+                leaves.append({
+                    "leave_request_id": row.request_id,
+                    "emp_id": row.employee_id,
+                    "emp_name": names.get(row.employee_id, ""),
+                    "emp_image": f"{settings.DEFAULT_SITE_MEDIA_URL}{photos[row.employee_id]}"
+                                 if photos.get(row.employee_id) else "",
+                    "leave_type_id": int(row.type_id),
+                    "start_date": row.start_date,
+                    "end_date": row.end_date,
+                    "no_of_days": row.length_days,
+                    "duration": day_type,
+                    "leave_section": {2: "(AM)", 3: "(PM)"}.get(day_type, ""),
+                    "status": mobile_status.get(row.status),
+                    "reason": row.reason,
+                    "comment": row.comment,
+                    "approver_id": int(row.approver) if row.approver else 0,
+                    "approver_name": names.get(int(row.approver), "") if row.approver else "",
+                    "notify_list": self.convert_to_list(row.notify),
+                })
+            return {"leaves": leaves, "status": 200}
+        except Exception:
+            return {"error": "Team leave requests failed. LogID: {0}".format(
+                self.__log.error(self.__exception.get_exception())), "status": 499}
 
-    def __get_image_url(self, user_id):
-        img_url = UserDA().get_user_profile_by_id(user_id)
-        if img_url:
-            return f"{settings.DEFAULT_SITE_MEDIA_URL}{img_url.profile_photo}"
-        else:
-            return None
-    
     def format_date_validation(self, start_date, end_date):
         return {'start_date':start_date, 'end_date':end_date}
     

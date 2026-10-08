@@ -308,8 +308,13 @@ class TeamLeaveSummaryView_V1(APIView):
     authentication_classes = [JSONWebTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, page, status,includeOnlyDirectReporting):
-        result = LeaveBL_V1().format_team_leave_request_data(request.user.id, page, status, includeOnlyDirectReporting)
+    def get(self, request, page=None, status=None, includeOnlyDirectReporting=None):
+        """ /<page>/<status>/<includeOnlyDirectReporting>/, or the bare URL with optional
+        ?page=&status=&direct= (defaults: 1, pending, false). """
+        params = request.query_params
+        result = LeaveBL_V1().get_team_leave_requests(
+            request.user.id, page if page is not None else params.get('page', 1),
+            status or params.get('status', 'pending'), includeOnlyDirectReporting or params.get('direct', 'false'))
         return Response(result, status = result.get("status", 200))
 
 class LeaveDateValidation_V1(APIView):
