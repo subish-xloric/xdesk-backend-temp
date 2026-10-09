@@ -89,7 +89,7 @@ PROFILE_IMAGE_PROVISIONAL = DM_DESK_MEDIA_URL + 'profile_image_provisional'
 
 PROFILE_IMAGE_PROVISIONAL = DM_DESK_MEDIA_URL+'confidential_docs/profile_image_provisional'
 
-CONFIDENTIAL_DOCS = '/home/subish/Documents/Subish/'
+CONFIDENTIAL_DOCS = '/x_desk_backend/dm-desk-docs/confidential_docs/'
 
 FERNET_KEY = str(os.getenv('FERNET_KEY'))
 

@@ -20,6 +20,7 @@ urlpatterns = [
     path('get-timesheet-details/<int:timesheet_id>/', TimeSheetDetail_V1.as_view(), name='time_sheet_detail_v1'),
     path('my_timesheet_list/', TimeSheetList_V1.as_view(), name="time_sheet_list"),
     path('validate-date/<str:date>/', TimeSheetDateValid_V1.as_view(), name='timesheet_date_valid_v1'),
+    path('validate-date/<str:date>/<int:time_sheet_id>/', TimeSheetDateValid_V1.as_view(), name='timesheet_date_valid_edit_v1'),
     path('verify-timesheet/', TimeSheetApprove_V1.as_view(), name="time_sheet_approve_v1"),
     path('add-timesheet/', TimeSheetDetail_V1.as_view(), name="time_sheet_add"),
     

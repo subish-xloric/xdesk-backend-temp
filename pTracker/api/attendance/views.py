@@ -216,8 +216,11 @@ class MyWFHRequestListView_V1(APIView):
     authentication_classes = [JSONWebTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, page):
-        wfh_requests = WorkFromHomeBL_V1().get_all_my_wfh_requests(request.user.id, page=page)
+    def get(self, request, page=None):
+        """ /<page>/, or the bare URL with optional ?page=&emp_id= (default page 1, yourself). """
+        params = request.query_params
+        wfh_requests = WorkFromHomeBL_V1().get_my_wfh_requests(
+            request.user.id, page if page is not None else params.get('page', 1), params.get('emp_id'))
         return Response(wfh_requests, status = wfh_requests.get('status', 200))
 
 class TeamWFHRequestListView_V1(APIView):
@@ -346,7 +349,7 @@ class WFHRequestListViewByEmpId_V1(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, page, emp_id):
-        wfh_requests = WorkFromHomeBL_V1().get_all_my_wfh_requests(request.user.id, page=page, emp_id = emp_id)
+        wfh_requests = WorkFromHomeBL_V1().get_my_wfh_requests(request.user.id, page, emp_id)
         return Response(wfh_requests, status = wfh_requests.get('status', 200))
 
 

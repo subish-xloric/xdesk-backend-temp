@@ -158,12 +158,14 @@ class TimeSheetDetail_V1(APIView):
     parser_classes = [JSONParser]
 
     def get(self, request, timesheet_id):
-        # time_sheet = TimeSheetBL().get_time_sheet_detail_by_id(timesheet_id, request.user.id)
-        time_sheet=TimeSheetBL_V1().get_time_sheet_detail_by_id(timesheet_id)
+        time_sheet=TimeSheetBL_V1().get_time_sheet_detail_by_id(timesheet_id, request.user.id)
         time_sheet=TimeSheetBL_V1().format_timesheet_details(time_sheet)
         return Response(time_sheet, status = time_sheet.get("status_code", 200))
 
-    def post(self, request, format=None):
+    def post(self, request, timesheet_id=None, format=None):
+        if timesheet_id is not None:
+            # Timesheets are saved through add-timesheet/; this route is read-only.
+            return Response({"error": "Method not allowed", "status": 405}, status=405)
         data = TimeSheetBL_V1().format_add_or_edit_timesheet(request)
         result  = TimeSheetBL().create_or_update_time_sheet(data, request.user.id)
         if result[0].get("error"):

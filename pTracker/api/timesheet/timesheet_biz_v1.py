@@ -6,8 +6,6 @@ from pTracker.common.logs import Logs
 from pTracker.notification_center.email_engine import Email
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
 from pTracker.common.exception_handler import ExceptionHandler
-from pTracker.dataaccess.ptracker_access.attendance import AttendanceDA
-from pTracker.dataaccess.essl_access.attendance import  AttendanceDA as essl_AttendanceDA
 from pTracker.api.leave.leave_biz import LeaveBL
 
 from datetime import date,datetime, time
@@ -18,9 +16,11 @@ from pTracker.common.utility import Utility
 from pTracker.api.leave.leave_notification_biz import LeaveNotificationBL
 from pTracker.api.attendance.wfh_biz import WorkFromHomeBL
 from pTracker.dataaccess.ptracker_access.timesheet_da import TimeSheetDA
+from pTracker.api.timesheet.timesheet_biz import TimeSheetBL
 from pTracker.common.company_context import get_active_company_id
-from pTracker.common.company_authorization import data_scope, SCOPE_ALL
+from pTracker.common.company_authorization import data_scope, SCOPE_ALL, oversees_employee
 from pTracker.dataaccess.attendance_v2_access.daily_da import DailyDA
+from pTracker.dataaccess.platform_access.membership_da import MembershipDA
 from pTracker.dataaccess.attendance_v2_access.org_da import OrgDA
 from pTracker.dataaccess.ptracker_access.project_da import ProjectDA
 from pTracker.user_management.holiday_da import HolidayDA
@@ -104,7 +104,7 @@ class TimeSheetBL_V1():
     def format_approve_time_sheet(self, data):
         res = {}
         timesheet_id = data.get("timesheet_id", 0)
-        res["comment"] = ""
+        res["comment"] = data.get("comment", "")
         res["status"] = data.get("action")
         res["timesheet_id"] = timesheet_id
         return res
@@ -124,53 +124,51 @@ class TimeSheetBL_V1():
 
         return timesheet_details
 
-    #TODO confrm with subishettan
-
-    def get_time_sheet_detail_by_id(self, time_sheet_id):
-        timesheet_dict = {"status_code": 200}
-        item_list = []
-
-        project_dict = self.get_all_project_dict()
-        activity_dict = self.get_all_project_activity_dict()
-        module_dict = self.get_all_project_module_dict()
-
+    def get_time_sheet_detail_by_id(self, time_sheet_id, user_id):
+        """ The owner, the owner's mapped lead, or (in the active company)
+        a timesheet.view_all holder may read a timesheet. """
         time_sheet = TimeSheetDA().get_time_sheet_by_id(time_sheet_id)
-        if time_sheet:
-            items = TimeSheetDA().get_time_sheet_items_by_timesheet_id(time_sheet_id)
-            working_hours = self.get_work_hours_by_date(time_sheet.timesheet_date, time_sheet.user_id)
-            if items:
-                for item in items:
-                    hours = Utility().convert_seconds_to_hour_and_minute(item.duration)
-                    item_list.append({
-                        "module_id": item.module_id,
-                        "module_name": module_dict.get(item.module_id, ""),
-                        "project_id": item.project_id,
-                        "project_name": project_dict.get(item.project_id, "") ,
-                        "activity_id": item.activity_id,
-                        "activity_name": activity_dict.get(item.activity_id, "") ,
-                        "duration": item.duration,
-                        "hour": hours.split(":")[0],
-                        "minute": hours.split(":")[1],
-                        "comment": item.comment,
-                        "is_billable": item.is_billable,
-                        "percentage_completed": item.percentage_completed if item.percentage_completed else '-',
-                        "status": item.status if item.status else '-',
-                        "ticket_title": item.ticket_title if item.ticket_title else '-',
-                        "ticket_eta": item.ticket_eta if item.ticket_eta else '-'
-                        })
-            timesheet_dict['timesheet_id'] = time_sheet.timesheet_id
-            timesheet_dict['status'] = time_sheet.status
-            timesheet_dict['timesheet_date'] = time_sheet.timesheet_date
-            timesheet_dict['user_id'] = time_sheet.user_id
-            timesheet_dict['total_duration'] = Utility().convert_seconds_to_hour_and_minute(time_sheet.total_duration)
-            timesheet_dict['work_hours'] = working_hours
-            timesheet_dict['items'] = item_list
+        if not time_sheet:
+            return {"error": "No record found !!", "status_code": 499}
+        if time_sheet.user_id != user_id and not oversees_employee(user_id, time_sheet.user_id, module='timesheet'):
+            return {"error": "You have no permission to view this time sheet.", "status_code": 403}
 
-        if not timesheet_dict:
-            timesheet_dict['error']  = "No record found !!"
-            timesheet_dict['status_code'] = 499
-        return timesheet_dict
+        items = list(TimeSheetDA().get_time_sheet_items_by_timesheet_id(time_sheet_id))
+        project_dict = ProjectDA().get_project_names({item.project_id for item in items})
+        module_dict = ProjectDA().get_project_module_names({item.module_id for item in items})
+        activity_dict = ProjectDA().get_project_activity_names({item.activity_id for item in items})
 
+        item_list = []
+        for item in items:
+            hours = Utility().convert_seconds_to_hour_and_minute(item.duration)
+            item_list.append({
+                "module_id": item.module_id,
+                "module_name": module_dict.get(item.module_id, ""),
+                "project_id": item.project_id,
+                "project_name": project_dict.get(item.project_id, "") ,
+                "activity_id": item.activity_id,
+                "activity_name": activity_dict.get(item.activity_id, "") ,
+                "duration": item.duration,
+                "hour": hours.split(":")[0],
+                "minute": hours.split(":")[1],
+                "comment": item.comment,
+                "is_billable": item.is_billable,
+                "percentage_completed": item.percentage_completed if item.percentage_completed else '-',
+                "status": item.status if item.status else '-',
+                "ticket_title": item.ticket_title if item.ticket_title else '-',
+                "ticket_eta": item.ticket_eta if item.ticket_eta else '-'
+                })
+
+        return {
+            "status_code": 200,
+            "timesheet_id": time_sheet.timesheet_id,
+            "status": time_sheet.status,
+            "timesheet_date": time_sheet.timesheet_date,
+            "user_id": time_sheet.user_id,
+            "total_duration": Utility().convert_seconds_to_hour_and_minute(time_sheet.total_duration),
+            "work_hours": self.get_work_hours_by_date(time_sheet.timesheet_date, time_sheet.user_id),
+            "items": item_list,
+        }
 
     def get_all_project_dict(self):
         project_dict = {}
@@ -197,12 +195,7 @@ class TimeSheetBL_V1():
         return res_dict
 
     def get_work_hours_by_date(self, work_date, emp_id):
-        work_hours = "0:00"
-        emp = UserDA().get_user_by_id(emp_id)
-        res = AttendanceDA().get_attendance_by_emp_id_and_date(emp.username, work_date)
-        if res:
-            work_hours = Utility().convert_seconds_to_hour_and_minute(res.work_hours)
-        return work_hours
+        return TimeSheetBL().get_work_hours_by_date(work_date, emp_id)
 
 
     def timesheet_by_n_days(self , emp_id , current_date='' , n=5):
@@ -362,56 +355,52 @@ class TimeSheetBL_V1():
             monday, friday =  self.find_last_monday_and_friday(is_two_weeks)           
             #monday = '2025-02-27'
 
-            emp = UserDA().get_user_by_id(emp_id)
-            if emp:
-                emp_code = emp.username
-                att_days, err = essl_AttendanceDA().get_essl_attendance_by_emp_code(emp_code, monday, friday)
-                #att_days = self.__format_days(att_days)
+            # Days the employee punched in (Attendance V2). Login happens before a
+            # company is chosen, so every company the user is an active member of counts.
+            company_ids = {m.company_id for m in MembershipDA().get_active_memberships_for_user(emp_id)}
+            att_days = DailyDA().get_punched_dates(company_ids, emp_id, monday, friday)
+            if len(att_days) <= 0:
+                return prevent_login
+            
+            total_work_days = len(att_days)
 
-                
+            # obj_start_date = datetime.datetime.strptime(monday, "%Y-%m-%d").date()
+            # #obj_start_date = datetime.datetime.strptime('2025-02-27', "%Y-%m-%d").date() #27/02/2025
+            # obj_end_date = datetime.datetime.strptime(friday, "%Y-%m-%d").date()
+            # obj_leaves_dates = LeaveDA().get_employee_leave_by_date_v1(obj_start_date, obj_end_date, emp_id)
+            # total_work_days = len(att_days)  
 
-                if len(att_days) <= 0:
-                    return prevent_login
-                
-                total_work_days = len(att_days)
+            # leave_dates = []
+            # if obj_leaves_dates:  
+            #     for each_date in obj_leaves_dates:
+            #         leave_dates.append(each_date.strftime("%Y-%m-%d"))
 
-                # obj_start_date = datetime.datetime.strptime(monday, "%Y-%m-%d").date()
-                # #obj_start_date = datetime.datetime.strptime('2025-02-27', "%Y-%m-%d").date() #27/02/2025
-                # obj_end_date = datetime.datetime.strptime(friday, "%Y-%m-%d").date()
-                # obj_leaves_dates = LeaveDA().get_employee_leave_by_date_v1(obj_start_date, obj_end_date, emp_id)
-                # total_work_days = len(att_days)  
-
-                # leave_dates = []
-                # if obj_leaves_dates:  
-                #     for each_date in obj_leaves_dates:
-                #         leave_dates.append(each_date.strftime("%Y-%m-%d"))
-
-                # self.__logs.error("leave_dates found " + str(leave_dates))
+            # self.__logs.error("leave_dates found " + str(leave_dates))
 
 
-                # if obj_leaves_dates:
-                #     for each_day in att_days:
-                #         punch_date = each_day[0]
-                #         #self.__logs.error("punch_date" + str(punch_date))
-                #         #self.__logs.error("punch_date type" + str(type(punch_date)))
-                #         #self.__logs.error("obj_leaves_dates" + str(obj_leaves_dates))
+            # if obj_leaves_dates:
+            #     for each_day in att_days:
+            #         punch_date = each_day[0]
+            #         #self.__logs.error("punch_date" + str(punch_date))
+            #         #self.__logs.error("punch_date type" + str(type(punch_date)))
+            #         #self.__logs.error("obj_leaves_dates" + str(obj_leaves_dates))
 
-                #         #obj_punch_day = datetime.datetime.strptime(punch_date, '%Y-%m-%d').date()
-                #         if punch_date in obj_leaves_dates:
-                #             self.__logs.error("punch_date found" + str(punch_date))
-                #             total_work_days -= 1
+            #         #obj_punch_day = datetime.datetime.strptime(punch_date, '%Y-%m-%d').date()
+            #         if punch_date in obj_leaves_dates:
+            #             self.__logs.error("punch_date found" + str(punch_date))
+            #             total_work_days -= 1
 
-                obj_timesheet = TimeSheetDA().get_timesheet_date_range(emp_id, monday, friday)               
-                
-                if obj_timesheet :
-                    for each_timesheet in obj_timesheet :
-                        timesheet.append(each_timesheet.timesheet_id)                
-                
-                if len(timesheet) < total_work_days:
-                    prevent_login = True 
-                    #self.__logs.error("prevent_login" + str(prevent_login))                   
-                    #UserDA().update_auth_user({"is_active":0}, emp_id)
-                    return prevent_login
+            obj_timesheet = TimeSheetDA().get_timesheet_date_range(emp_id, monday, friday)               
+            
+            if obj_timesheet :
+                for each_timesheet in obj_timesheet :
+                    timesheet.append(each_timesheet.timesheet_id)                
+            
+            if len(timesheet) < total_work_days:
+                prevent_login = True 
+                #self.__logs.error("prevent_login" + str(prevent_login))                   
+                #UserDA().update_auth_user({"is_active":0}, emp_id)
+                return prevent_login
         except Exception as err:
             self.__logs.error(self.__exception.get_exception())
 

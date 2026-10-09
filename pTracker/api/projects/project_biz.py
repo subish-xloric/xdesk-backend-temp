@@ -64,9 +64,10 @@ class ProjectBL():
     def get_all_active_modules_by_project(self, project_id, user_id):
         module_list = []
         obj_project = ProjectDA()
-        if has_capability(user_id, 'project.view_all'):
-            is_access = True
-        else:
+        # Only an active project of the company the request acts for; a project
+        # of another company is reported the same as one the user can't access.
+        is_access = bool(obj_project.get_active_project_ids_in_company(get_active_company_id(), [project_id]))
+        if is_access and not has_capability(user_id, 'project.view_all'):
             is_access = obj_project.is_project_accessible(project_id, user_id)
         if not is_access:
             module_list = [{"error": "Not accessible !!!", "status": 403}]

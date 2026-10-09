@@ -53,6 +53,27 @@ class ProjectDA():
         objs = ProjectModule.objects.filter(is_deleted=0)
         return objs
 
+    def get_project_names(self, project_ids):
+        return dict(Project.objects.filter(project_id__in=list(project_ids), is_deleted=0).values_list('project_id', 'name'))
+
+    def get_project_module_names(self, module_ids):
+        return dict(ProjectModule.objects.filter(module_id__in=list(module_ids), is_deleted=0).values_list('module_id', 'name'))
+
+    def get_project_activity_names(self, activity_ids):
+        return dict(ProjectActivity.objects.filter(activity_id__in=list(activity_ids), is_deleted=0).values_list('activity_id', 'name'))
+
+    def get_active_project_ids_in_company(self, company_id, project_ids):
+        return set(filter_by_company(Project.objects.filter(project_id__in=list(project_ids), is_deleted=0), company_id)
+                   .values_list('project_id', flat=True))
+
+    def get_active_module_projects(self, module_ids):
+        """ module_id -> project_id of the given active modules. """
+        return dict(ProjectModule.objects.filter(module_id__in=list(module_ids), is_deleted=0).values_list('module_id', 'project_id'))
+
+    def get_active_activity_ids_in_company(self, company_id, activity_ids):
+        return set(filter_by_company(ProjectActivity.objects.filter(activity_id__in=list(activity_ids), is_deleted=0), company_id)
+                   .values_list('activity_id', flat=True))
+
     def get_project_module(self, module_id):
         try:
             objs = ProjectModule.objects.get(is_deleted=0, module_id=module_id)

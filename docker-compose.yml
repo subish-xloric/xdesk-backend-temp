@@ -8,7 +8,7 @@ services:
     #   - "host.docker.internal:host-gateway"
     volumes:
       - .:/x_desk_backend
-      # - /projects/in_house/pTracker/application_uploads/confidential_docs:/dmdeskbackend/dm-desk-docs/confidential_docs
+       - /home/subish/Documents/pTracker/confidential_docs:/x_desk_backend/dm-desk-docs/confidential_docs
       # - /projects/in_house/pTracker/application_uploads/confidential_docs/interview_candidate_profile:/dmdeskbackend/dm-desk-docs/confidential_docs/interview_candidate_profile
       # - /projects/in_house/pTracker/application_uploads/reports/daily:/dmdeskbackend/dm-desk-docs/reports/daily
       # - /projects/in_house/pTracker/application_uploads/reports/daily_punch_in:/dmdeskbackend/dm-desk-docs/reports/daily_punch_in

@@ -25,13 +25,6 @@ class TimeSheetDA():
     def __init__(self):
         pass
 
-    def roll_back_time_sheet_entry(self, timesheet_id):
-        self.delete_time_sheet_items(timesheet_id)
-        self.clear_time_sheet_action_log(timesheet_id)
-        time_sheet = TimeSheet.objects.filter(timesheet_id=timesheet_id)
-        if time_sheet:
-            time_sheet.delete()
-
     def get_all_time_sheet_by_user(self, user_id):
         objs = TimeSheet.objects.filter(user_id=user_id).order_by("timesheet_date")
         return objs

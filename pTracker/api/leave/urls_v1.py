@@ -21,6 +21,7 @@ urlpatterns = [
     path('request-leave/', CreateLeaveRequest_V1.as_view(), name="leave_request_create_v1"),
     path('get-all-my-leave-requests/<int:page>/<int:emp_id>/', UserLeaveSummaryViewByEmpID_V1.as_view(), name="my_leave_summary_v1"),
     path('get-all-my-leave-requests/<int:page>/', UserLeaveSummaryView_V1.as_view(), name="my_leave_summary_v1"),
+    path('get-all-my-leave-requests/', UserLeaveSummaryView_V1.as_view(), name="my_leave_requests_default_v1"),
     path('cancel-leave-request/', LeaveCancelView_V1.as_view(), name="leave_status_updater_v1"),
     path('get-team-leave-requests/<int:page>/<str:status>/<str:includeOnlyDirectReporting>/', TeamLeaveSummaryView_V1.as_view(), name="team_leave_summary"),
     path('get-team-leave-requests/', TeamLeaveSummaryView_V1.as_view(), name="team_leave_requests_default"),

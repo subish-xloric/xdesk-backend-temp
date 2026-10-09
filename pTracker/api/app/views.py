@@ -4,6 +4,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from pTracker.api.app.app_biz import AppBL
+
 from rest_framework.status import (
     HTTP_204_NO_CONTENT,
     HTTP_206_PARTIAL_CONTENT,
@@ -16,23 +18,7 @@ class GetVersionStatus(APIView):
     permission_classes = []
 
     def get(self, request):
-        result = {"isUpdateAvailable" : False,
-                "isForceUpdate" : False,
-        }
-        user_app_version = request.META.get("HTTP_APP_VERSION", "")
-        user_device_type = request.META.get("HTTP_DEVICE_TYPE", "")
-
-        if user_device_type.upper() == "ANDROID":
-            latest_version = "0.0.3"
-            release_note = "android release note"
-        else:
-            latest_version = "0.0.2"
-            release_note = "ios release note"
-
-        
-
-        result['releaseNote'] = release_note
-        result['newVersion'] = latest_version
-        result['isForceUpdate'] = False
+        result = AppBL().get_version_status(request.META.get("HTTP_APP_VERSION", ""),
+                                            request.META.get("HTTP_DEVICE_TYPE", ""))
         return Response(result, status =200)
 

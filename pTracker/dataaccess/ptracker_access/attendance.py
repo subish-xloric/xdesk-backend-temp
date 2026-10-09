@@ -37,6 +37,11 @@ class AttendanceDA:
             Utility().log(msg)
         return att_list
 
+    def get_employee_wfh_requests(self, company_id, emp_id, start_date, end_date):
+        """ One employee's WFH requests in the company overlapping start..end, newest first. """
+        return WFHRequest.objects.filter(company_id=company_id, emp_id=emp_id,
+                                         start_date__lte=end_date, end_date__gte=start_date).order_by('-wfh_id')
+
     def get_all_wfh_requests_by_user_id(self, user_id):
         return WFHRequest.objects.filter(emp_id=user_id).order_by('-wfh_id')
 

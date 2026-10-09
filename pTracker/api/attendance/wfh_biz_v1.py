@@ -4,6 +4,7 @@ from django.conf import settings
 from django.db.models import Q
 
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
+from pTracker.common.company_authorization import oversees_employee
 from pTracker.dataaccess.ptracker_access.attendance import AttendanceDA
 from pTracker.dataaccess.ptracker_access.leave_da import LeaveDA
 from pTracker.dataaccess.attendance_v2_access.org_da import OrgDA
@@ -18,6 +19,7 @@ from pTracker.api.attendance.wfh_biz import WorkFromHomeBL
 from datetime import date, timedelta, datetime
 import calendar
 from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_TEAM
+from pTracker.common.company_authorization import users_with_capability
 
 def new_dto():
     dto = SimpleNamespace()
@@ -29,12 +31,6 @@ class WorkFromHomeBL_V1():
         self.__logs = Logs()
         self.__exception = ExceptionHandler()
         self.__utility = Utility()
-
-    def __exclude_wfh_keys(self, data):
-        entries_to_remove = ["emp_name", "emp_id", "created_date" ]
-        for k in entries_to_remove:
-            data.pop(k, None)
-        return data
 
     TEAM_WFH_STATUSES = {'pending': (1,), 'verified': (2, 3, 4)}
     TEAM_WFH_PAGE_SIZE = 10
@@ -94,8 +90,8 @@ class WorkFromHomeBL_V1():
                 'comment': r.comment,
                 'created_date': r.created_date,
                 'no_of_days': (r.end_date - r.start_date).days + 1,
-                # the requester can still cancel it (cancel works on Requested / Approved)
-                'is_cancel': 1 if r.status in (1, 2) else 0,
+                # can still be cancelled: pending, or approved and not started yet
+                'is_cancel': 1 if r.status == 1 or (r.status == 2 and r.start_date > today) else 0,
                 'approver_id': r.approver_id,
                 'emp_image': f"{settings.DEFAULT_SITE_MEDIA_URL}{photos[r.emp_id]}" if photos.get(r.emp_id) else "",
             } for r in requests]
@@ -104,34 +100,71 @@ class WorkFromHomeBL_V1():
             return {"error": "Team WFH requests failed. LogID: {0}".format(
                 self.__logs.error(self.__exception.get_exception())), "status": 499}
 
-    def get_all_my_wfh_requests(self, user_id, page=1, team=0, status=None, emp_id =0, include_only_direct_reporting = None):
-        try:
-            min, max = Utility().cutomPageLimits(page)
-            response = {"wfh_requests": [], "status": 200}
-            if emp_id:
-                if(user_id == emp_id):
-                    user_id = emp_id
-                elif not UserDA().is_team_member(emp_id, user_id):
-                    response["error"] = settings.ERROR_MSG['access_denied']
-                    response["status"] = 403
-                    return response
-                user_id = emp_id
-            wfh_requests = WorkFromHomeBL().get_filtered_my_wfh_requests(user_id, is_mobile=1)
-            request_list =  wfh_requests['wfh_requests']
-            if page:
-                request_list =  wfh_requests['wfh_requests'][min:max]
-            if request_list:
-                for row,each in  enumerate(request_list):
-                    request_list[row] = self.__exclude_wfh_keys(each)
+    MY_WFH_PAGE_SIZE = 10
 
-            response["wfh_requests"] = request_list
-            return response
-        except Exception as err:
-            response = {}
-            response["status"] = 499
-            response["error"] = settings.ERROR_MSG['application_error']\
-                .format(err, self.__logs.error(self.__exception.get_exception()))
-            return response
+    def get_my_wfh_requests(self, user_id, page=1, emp_id=None):
+        """ WFH requests of an employee (default: the caller) in the active company,
+        overlapping its current leave period (calendar year if none), newest first,
+        10 per page (0 = all). Others' requests: their mapped lead or
+        attendance.view_all; employees outside the active company are "Employee
+        not found". Pending requests list who can approve them. """
+        try:
+            page = int(page)
+            emp_id = int(emp_id) if emp_id else user_id
+            if page < 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            return {"error": "Invalid page or employee", "status": 400}
+        try:
+            company_id = get_active_company_id()
+            if company_id is None or not OrgDA().is_company_member(company_id, emp_id):
+                return {"error": "Employee not found", "status": 404}
+            if emp_id != user_id and not oversees_employee(user_id, emp_id, module='attendance'):
+                return {"error": settings.ERROR_MSG['access_denied'], "status": 403}
+
+            today = date.today()
+            period = LeaveDA().get_leave_period_by_date(today, company_id)
+            window = (period.leave_period_start_date, period.leave_period_end_date) if period \
+                else (date(today.year, 1, 1), date(today.year, 12, 31))
+            requests = AttendanceDA().get_employee_wfh_requests(company_id, emp_id, *window)
+            if page:
+                start = (page - 1) * self.MY_WFH_PAGE_SIZE
+                requests = requests[start:start + self.MY_WFH_PAGE_SIZE]
+            requests = list(requests)
+
+            requested = settings.WFH_REQUEST_STATUS_V1['Requested']
+            # who can act on a pending request without a lead: the company's attendance approvers
+            fallback_ids = []
+            if any(r.status == requested and not r.approver_id for r in requests):
+                fallback_ids = [uid for uid in users_with_capability('attendance.view_all') if uid != emp_id]
+            people = {r.approver_id for r in requests if r.approver_id} | set(fallback_ids)
+            names = {u.id: f"{u.first_name} {u.last_name}" for u in UserDA().get_all_users().filter(id__in=people)}
+            fallback = [{"id": uid, "name": names[uid]} for uid in fallback_ids if uid in names]
+
+            wfh_requests = []
+            for r in requests:
+                pending = []
+                if r.status == requested:
+                    pending = [{"id": r.approver_id, "name": names.get(r.approver_id, "")}] if r.approver_id else fallback
+                wfh_requests.append({
+                    'wfh_id': r.wfh_id,
+                    'start_date': r.start_date,
+                    'end_date': r.end_date,
+                    'no_of_days': (r.end_date - r.start_date).days + 1,
+                    'status': settings.WFH_REQUEST_STATUS[r.status],
+                    'reason': r.reason,
+                    'comment': r.comment,
+                    'approver': names.get(r.approver_id, '') if r.approver_id
+                                else ", ".join(p["name"] for p in pending),
+                    'approver_id': r.approver_id,
+                    'pending_approvers': pending,
+                    # can still be cancelled: pending, or approved and not started yet
+                    'is_cancel': 1 if r.status == 1 or (r.status == 2 and r.start_date > today) else 0,
+                })
+            return {"wfh_requests": wfh_requests, "status": 200}
+        except Exception:
+            return {"error": "WFH requests failed. LogID: {0}".format(
+                self.__logs.error(self.__exception.get_exception())), "status": 499}
 
     def format_wfh_update(self, data, type=""):
         wfh_data = {}

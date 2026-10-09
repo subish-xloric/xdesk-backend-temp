@@ -287,8 +287,11 @@ class UserLeaveSummaryView_V1(APIView):
     authentication_classes = [JSONWebTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, page):
-        result = LeaveBL_V1().format_my_leave_summary(request.user.id, page)
+    def get(self, request, page=None):
+        """ /<page>/, or the bare URL with optional ?page=&emp_id= (default page 1, yourself). """
+        params = request.query_params
+        result = LeaveBL_V1().get_my_leave_requests(
+            request.user.id, page if page is not None else params.get('page', 1), params.get('emp_id'))
         return Response(result, status = result.get("status", 200))
 
 class LeaveStatusUpdateView_V1(APIView):
@@ -346,7 +349,7 @@ class UserLeaveSummaryViewByEmpID_V1(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, page, emp_id):
-        result = LeaveBL_V1().format_my_leave_summary(request.user.id, page, emp_id)
+        result = LeaveBL_V1().get_my_leave_requests(request.user.id, page, emp_id)
         return Response(result, status = result.get("status", 200))
 
 class GetUserLeaveSummaryByEmpID_V1(APIView):

@@ -10,6 +10,7 @@ from django.template import loader
 
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import oversees_employee
 from pTracker.common.company_context import get_active_company_id
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
@@ -104,11 +105,31 @@ class CompOffBL():
             leave_log = helper.get_leave_log_data_template()
             #APPROVE
             if req_type.upper() == 'APPROVE':
-                emp_id = data.get('employee_id', 0)
+                if not comp_off:
+                    response["error"] = "Compensatory leave request not found"
+                    return response
+                emp_id = comp_off.employee_id  # the request's own employee, never the client's
                 comment = data.get('comment', '')
-                status = data.get('status', '')
-                if not UserDA().is_team_member(emp_id, user_id):
+                try:
+                    status = int(data.get('status', 0))  # the app may send 2 or "2"
+                except (TypeError, ValueError):
+                    status = 0
+                if status not in (2, 4):
+                    response["error"] = "status must be 2 (Approved) or 4 (Rejected)"
+                    return response
+                # the employee's lead or a leave approver - never your own request
+                if emp_id == user_id or not oversees_employee(user_id, emp_id, capability='leave.approve'):
                     response["error"] = settings.ERROR_MSG['no_permission']
+                    return response
+                if int(comp_off.status) == 3:
+                    response["error"] = "Request already cancelled"
+                    return response
+                if int(comp_off.status) == status:
+                    response["error"] = "Nothing To Change."  # e.g. approving twice would credit the quota twice
+                    return response
+                if status == 2 and not LeaveDA().get_leave_quota(comp_off.employee_id, comp_off.leave_period_id,
+                                                                 comp_off.leave_type_id):
+                    response["error"] = "The employee has no quota for this leave type in the leave period"
                     return response
 
                 comp_off_duration = 1 #compensatory leave can be applied for 1 day only
@@ -121,16 +142,19 @@ class CompOffBL():
                     response['error'] = f'''Maximum leave duration for the
                                             selected leave type is {settings.MAXIMUM_COMP_LEAVE_DURATION}'''
                     return response
-                comp_off_request = LeaveDA().\
-                    update_comp_off_request(comp_off_id, {"status":status, "comment": comment, 'approver_id': user_id})
-                #To Do hard code to be removed
-                if comp_off.is_flag and status == '2':
-                    leave_request = self.__create_comp_off_leave_request(comp_off, emp_id, status, user_id, comp_off_id)
-                    self.__create_comp_off_leave(comp_off, leave_request, emp_id, status, comp_off_id, user_id, user_name)
+                # status, leave entry and quota credit succeed or fail together
+                with transaction.atomic():
+                    comp_off_request = LeaveDA().\
+                        update_comp_off_request(comp_off_id, {"status":status, "comment": comment, 'approver_id': user_id})
+                    #To Do hard code to be removed
+                    if comp_off.is_flag and status == 2:
+                        leave_request = self.__create_comp_off_leave_request(comp_off, emp_id, status, user_id, comp_off_id)
+                        self.__create_comp_off_leave(comp_off, leave_request, emp_id, status, comp_off_id, user_id, user_name)
+                    if status == 2:
+                        leave_qouta = LeaveDA().updateLeaveQuota(comp_off.leave_type_id,comp_off.employee_id,\
+                            comp_off_duration,comp_off.leave_period_id)
 
-                if status == '2':
-                    leave_qouta = LeaveDA().updateLeaveQuota(comp_off.leave_type_id,comp_off.employee_id,\
-                        comp_off_duration,comp_off.leave_period_id)
+                if status == 2:
                     d = datetime.now()
                     action = settings.COMP_LEAVE_ACTION_LOG[settings.LEAVE_REQUEST_STATUS['Approved']]\
                         .format(user_name, date_time)
@@ -237,11 +261,10 @@ class CompOffBL():
             comp_off_log_data['action'] = action
             comp_off_log = LeaveDA().create_comp_off_log(comp_off_log_data)
 
-        except Exception as err:
-            response["error"] = settings.ERROR_MSG['application_error']\
-                .format(err, self.__log.error(self.__exception.get_exception()))
+        except Exception:
+            response["error"] = "Compensatory leave update failed. LogID: {0}".format(
+                self.__log.error(self.__exception.get_exception()))
         return response
-
     def create_compensatory_leave(self, request, user):
         response = {"message": "", "error": ''}
         helper = LeaveHelperBL()

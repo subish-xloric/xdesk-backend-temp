@@ -1,4 +1,4 @@
-from django.db.models import Count
+from django.db.models import Count, Sum
 
 from pTracker.dataaccess.attendance_v2_access.daily_models import EmployeeDailyAttendance
 from pTracker.dataaccess.attendance_v2_access.daily_models import AttendanceSession
@@ -37,6 +37,27 @@ class DailyDA:
             setattr(daily, key, value)
         daily.save()
         return daily
+
+    def get_worked_minutes(self, company_id, employee_ids, start_date, end_date):
+        """ {(employee_id, attendance_date): total_work_minutes} of the stored days. """
+        rows = EmployeeDailyAttendance.objects.filter(
+            company_id=company_id, employee_id__in=list(employee_ids), attendance_date__range=[start_date, end_date],
+        ).values_list('employee_id', 'attendance_date', 'total_work_minutes')
+        return {(employee_id, day): minutes or 0 for employee_id, day, minutes in rows}
+
+    def get_worked_minutes_by_employee(self, company_id, start_date, end_date):
+        """ {employee_id: total worked minutes} over the date range. """
+        rows = EmployeeDailyAttendance.objects.filter(
+            company_id=company_id, attendance_date__range=[start_date, end_date],
+        ).values('employee_id').annotate(minutes=Sum('total_work_minutes')).values_list('employee_id', 'minutes')
+        return {employee_id: minutes or 0 for employee_id, minutes in rows}
+
+    def get_punched_dates(self, company_ids, employee_id, start_date, end_date):
+        """ Dates in the range on which the employee punched in, in any of the companies. """
+        return set(EmployeeDailyAttendance.objects.filter(
+            company_id__in=list(company_ids), employee_id=employee_id,
+            attendance_date__range=[start_date, end_date], first_in__isnull=False,
+        ).values_list('attendance_date', flat=True).distinct())
 
     def get_daily_list(self, company_id, employee_ids, start_date, end_date, status=None):
         rows = EmployeeDailyAttendance.objects.filter(

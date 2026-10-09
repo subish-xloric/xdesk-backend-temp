@@ -195,20 +195,14 @@ class UserDA():
         return EmployeeLeadMapping.objects.filter(emp_id=emp_id, lead_id=lead_id, is_deleted=0).exists()
 
     def is_team_member(self, user_id, lead_id):
+        """ True only if lead_id is user_id's mapped reporting lead. (It used to
+        also return True for any legacy Director / HR / Manager role - wider,
+        company-wide access now goes through capabilities, see
+        company_authorization.oversees_employee.) """
         try:
-            is_member = False
-            team_user = EmployeeLeadMapping.objects.filter(lead_id=lead_id, emp_id=user_id, is_deleted=0)
-            if team_user:
-                is_member = True
-                return is_member
-            else:
-                role_id, role_name = self.get_user_role_by_id(lead_id)
-                if role_id in (1, 2, 3):
-                    is_member = True
-                    return is_member
-        except:
-            is_member = False
-        return is_member
+            return self.is_direct_lead(int(user_id), int(lead_id))
+        except (TypeError, ValueError):
+            return False
 
 
     def get_current_team_members_by_emp_id(self, emp_id):
@@ -692,8 +686,11 @@ class UserDA():
         return UserProfileProvisional.objects.filter(status=status, emp_id__in=employee_ids)\
             .values('emp_id').distinct().count()
 
-    def get_all_profile_info_awaits_action(self, status=1):
-        return UserProfileProvisional.objects.filter(status=status)
+    def get_all_profile_info_awaits_action(self, status=1, emp_ids=None):
+        profile_changes = UserProfileProvisional.objects.filter(status=status)
+        if emp_ids is not None:
+            profile_changes = profile_changes.filter(emp_id__in=list(emp_ids))
+        return profile_changes
 
     def get_employee_profile_change_by_emp_id_and_status(self, emp_id, status=1):
         return UserProfileProvisional.objects.filter(status= status, emp_id = emp_id)

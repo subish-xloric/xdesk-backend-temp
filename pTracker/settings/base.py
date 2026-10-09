@@ -259,4 +259,19 @@ AWS_SECRET_ACCESS_KEY = str(os.getenv('AWS_SECRET_ACCESS_KEY'))
 AWS_S3_REGION_NAME = str(os.getenv('AWS_S3_REGION_NAME'))
 AWS_STORAGE_BUCKET_NAME = str(os.getenv('AWS_STORAGE_BUCKET_NAME'))
 
+# Mobile app versions reported by /v1/api/app/get-version-status/. An app below
+# min_version is told to force-update; an empty min_version never forces.
+APP_VERSIONS = {
+    'ANDROID': {
+        'latest_version': os.getenv('APP_ANDROID_LATEST_VERSION', '0.0.3'),
+        'min_version': os.getenv('APP_ANDROID_MIN_VERSION', ''),
+        'release_note': os.getenv('APP_ANDROID_RELEASE_NOTE', 'android release note'),
+    },
+    'IOS': {
+        'latest_version': os.getenv('APP_IOS_LATEST_VERSION', '0.0.2'),
+        'min_version': os.getenv('APP_IOS_MIN_VERSION', ''),
+        'release_note': os.getenv('APP_IOS_RELEASE_NOTE', 'ios release note'),
+    },
+}
+
 from .constants import *

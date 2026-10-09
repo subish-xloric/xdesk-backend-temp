@@ -20,6 +20,7 @@ from pTracker.api.attendance.views import  VersionExpiredView
 urlpatterns = [
     path('get-all-my-wfh-requests/<int:page>/<int:emp_id>/', WFHRequestListViewByEmpId_V1.as_view(), name='get_all_my_wfh_requests_v1'),
     path('get-all-my-wfh-requests/<int:page>/', MyWFHRequestListView_V1.as_view(), name='get_all_my_wfh_requests_v1'),
+    path('get-all-my-wfh-requests/', MyWFHRequestListView_V1.as_view(), name='get_my_wfh_requests_default_v1'),
     # path('get-all-team-wfh-requests/<int:page>/', TeamWFHRequestListView_V1.as_view(), name='get_all_team_wfh_requests_v1'),
     path('get-all-team-wfh-requests/<int:page>/<str:status>/<str:includeOnlyDirectReporting>/', TeamWFHRequestListView_V1.as_view(), name='get_all_team_wfh_requests_v1'),
     path('get-all-team-wfh-requests/', TeamWFHRequestListView_V1.as_view(), name='get_all_team_wfh_requests_default_v1'),

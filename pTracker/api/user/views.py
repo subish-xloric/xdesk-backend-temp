@@ -604,7 +604,7 @@ class GetAllEmployeeProfilesWaitingAction_v1(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        response = UserManagementBL().get_all_employee_details_waiting_action(request.user.id, is_mobile =1)
+        response = UserManagementBL().get_all_employee_details_waiting_action(request.user.id)
         return Response(response, status = response.get("status", 200))
 
 class GetEmployeeProfileInfoAwaitsAction_v1(APIView):
@@ -612,9 +612,9 @@ class GetEmployeeProfileInfoAwaitsAction_v1(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, emp_id):
-        result = UserManagementBL().get_employee_profile_info_waiting_action(request.user.id, emp_id, is_mobile =1)
+        result = UserManagementBL().get_employee_profile_info_waiting_action(request.user.id, emp_id)
         # response = UserManagementBL_V1().format_get_employee_profile_info_waiting_action(result)
-        return Response(result, status = result.get("status_code", 200))
+        return Response(result, status = result.get("status", 200))
 
 class ApplyActionOnProfileChange_v1(APIView):
     authentication_classes = [JSONWebTokenAuthentication]

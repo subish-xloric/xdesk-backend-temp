@@ -16,6 +16,7 @@ from pTracker.common.utility import Utility
 from pTracker.api.leave.leave_notification_biz import LeaveNotificationBL
 from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_TEAM
 from pTracker.common.company_authorization import users_with_capability
+from pTracker.common.company_authorization import oversees_employee
 from pTracker.common.company_context import get_active_company_id
 
 def new_dto():
@@ -244,6 +245,34 @@ class WorkFromHomeBL():
                 self.__logs.error(self.__exception.get_exception()))
         return result
 
+    def __notify_wfh_cancelled(self, wfh_request, user, comment, message):
+        """ Cancelled by the employee -> tell the approver (else their lead, else
+        the company's attendance approvers); cancelled by an approver -> tell the
+        employee. """
+        employee = UserDA().get_user_by_id(wfh_request.emp_id)
+        if user.id == wfh_request.emp_id:
+            approver_id = wfh_request.approver_id or UserDA().get_lead_id_by_user(wfh_request.emp_id)
+            recipient_ids = [approver_id] if approver_id else \
+                [uid for uid in users_with_capability('attendance.view_all') if uid != wfh_request.emp_id]
+        else:
+            recipient_ids = [wfh_request.emp_id]
+        recipients = list(UserDA().get_all_active_users().filter(id__in=recipient_ids))
+        if not recipients or not employee:
+            return
+        days = (wfh_request.end_date - wfh_request.start_date).days + 1
+        dto = new_dto()
+        dto.heading = 'WFH Request Cancelled'
+        dto.status = 'cancelled'
+        dto.lead_name = f"{user.first_name} {user.last_name}"
+        dto.emp_name = f"{employee.first_name} {employee.last_name}"
+        dto.start_date = wfh_request.start_date.strftime("%d/%m/%Y")
+        dto.no_of_days = '1 day' if days == 1 else f'{days} days'
+        dto.comment = comment
+        dto.message = message
+        email_msg = LeaveNotificationBL().generate_email_message(dto)
+        LeaveNotificationBL().send_leave_request_update_notification(
+            email_msg, dto.lead_name, recipients[0].email, dto.heading, [r.email for r in recipients[1:]])
+
     def __company_wfh_request(self, wfh_id):
         """ The WFH request if it belongs to the active company, else None. """
         wfh_request = AttendanceDA().get_wfh_request_by_id(wfh_id)
@@ -377,22 +406,33 @@ class WorkFromHomeBL():
                     LeaveNotificationBL().send_single_push_notification(wfh_request.emp_id, title, msg, sound="default",extra_kwargs=data)
             #CANCEL
             elif req_type.upper() == 'CANCEL':
+                if not wfh_id:
+                    result['error'] = "wfh_id is required"
+                    result['status'] = 400
+                    return result
                 wfh_request = self.__company_wfh_request(wfh_id)
                 if not wfh_request:
                     result['error'] = "WFH request not found"
                     result['status'] = 404
                     return result
-                if wfh_request.emp_id != user_id:
+                # the requester, or an approver: their lead or attendance.view_all
+                if wfh_request.emp_id != user_id and \
+                        not oversees_employee(user_id, wfh_request.emp_id, module='attendance'):
                     result["error"] = settings.ERROR_MSG['no_permission']
                     result['status'] = 403
                     return result
                 if wfh_request.status == 3:
-                        result['success'] = "WFH Request Already Cancelled, Not Able To Process."
-                        result['status'] = 400
-                        return result
-                comment = data.get('comment', '')
+                    result['error'] = "WFH Request Already Cancelled, Not Able To Process."
+                    result['status'] = 400
+                    return result
+                if wfh_request.status == 4 or (wfh_request.status == 2 and wfh_request.start_date <= date.today()):
+                    result['error'] = "Only pending WFH, or approved WFH that has not started yet, can be cancelled"
+                    result['status'] = 400
+                    return result
+                comment = data.get('comment', '') or ''
                 AttendanceDA().update_wfh_request(wfh_id, {"status": 3, "comment": comment})
                 result['success'] = "WFH request cancelled successfully"
+                self.__notify_wfh_cancelled(wfh_request, user, comment, message)
 
             #EDIT
             elif req_type.upper() == 'EDIT':

@@ -10,6 +10,7 @@ from django.http import response
 from django.template import loader
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import oversees_employee
 from pTracker.common.company_context import get_active_company_id
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
@@ -321,6 +322,11 @@ class LeaveBL():
             if leave_request.status == status_id:
                 result.update(error="Nothing To Change.", status=400)
                 return result
+            if status_id == 3 and (leave_request.status == 4 or
+                                   (leave_request.status == 2 and leave_request.start_date <= date.today())):
+                result.update(error="Only pending leave, or approved leave that has not started yet, "
+                                    "can be cancelled", status=400)
+                return result
             if status_id == 2:
                 balance = LeaveHelperBL().get_user_leave_balance(leave_request.type_id, emp_id,
                                                                  leave_request.leave_period_id, req_id)
@@ -359,6 +365,9 @@ class LeaveBL():
                     no_days = '.5 day'
 
                 email_content_dto.no_of_days = no_days
+                if status_id == 3:
+                    self.__notify_leave_cancelled(leave_request, employee, user_id, user_name,
+                                                  email_content_dto, cc_adresses, message)
                 #TODO Confirm with Dev
                 if status_id in (2, 4, '2', '4'):
                     if status_id == 2:
@@ -609,7 +618,7 @@ class LeaveBL():
             if period:
                 period = period.leave_period_id
                 if emp_id:
-                    if not UserDA().is_team_member(emp_id, user_id):
+                    if not oversees_employee(user_id, emp_id, module='leave'):
                         result["error"] = settings.ERROR_MSG.get('access_denied')
                         return result
 
@@ -694,6 +703,29 @@ class LeaveBL():
             result["error"] = str(settings.ERROR_MSG['application_error'])\
                 .format(str(err), str(self.__log.error(self.__exception.get_exception())))
         return result
+
+    def __notify_leave_cancelled(self, leave_request, employee, user_id, user_name, email_content_dto,
+                                 cc_adresses, message):
+        """ Cancelled by the employee -> tell whoever approves / approved it (the
+        approver, else the reporting lead, else the company's leave approvers);
+        cancelled by an approver -> tell the employee. Notify list in cc. """
+        if user_id == employee.id:
+            approver_id = int(leave_request.approver or 0) or UserDA().get_lead_id_by_user(employee.id)
+            recipient_ids = [approver_id] if approver_id else \
+                [uid for uid in users_with_capability('leave.approve') if uid != employee.id]
+        else:
+            recipient_ids = [employee.id]
+        recipients = list(UserDA().get_all_active_users().filter(id__in=recipient_ids))
+        if not recipients:
+            return
+        email_content_dto.heading = 'Leave Request Cancelled'
+        email_content_dto.status = 'cancelled'
+        email_content_dto.message = message
+        email_msg = LeaveNotificationBL().generate_email_message(email_content_dto)
+        cc = [email for email in cc_adresses if email not in {r.email for r in recipients}] + \
+            [r.email for r in recipients[1:]]
+        LeaveNotificationBL().send_leave_request_update_notification(
+            email_msg, user_name, recipients[0].email, email_content_dto.heading, cc)
 
     def __check_status_change_permission(self, user_id, status_id, emp_id):
         """ Cancel (3): the employee themself or an approver. Approve / reject:

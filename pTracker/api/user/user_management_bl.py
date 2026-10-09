@@ -1,3 +1,4 @@
+import re
 from functools import wraps
 from multiprocessing.sharedctypes import Value
 import pyotp
@@ -6,9 +7,11 @@ import os
 import secrets
 from io import BytesIO
 from types import SimpleNamespace
-from  datetime import datetime, timedelta
+from  datetime import datetime, timedelta, date
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.template.loader import get_template
 from django.core.mail import EmailMessage
 
@@ -595,23 +598,30 @@ class UserManagementBL():
         edit_data_list = []
         editing_fields = []
         try:
-            emp_id = profile_changes.get("emp_id", None)
+            try:
+                emp_id = int(profile_changes.get("emp_id"))
+            except (TypeError, ValueError):
+                return {"error": "emp_id is required", "status": 400}
+            company_id = get_active_company_id()
             employee = UserDA().get_user_by_id(emp_id)
-
-            if employee is None:
-                result["error"] = "User does not exist ."
-                result['status'] = 499
-                return result
-            is_permitted = self.is_permmitted_to_edit(user_id, emp_id)
-            if not is_permitted:
+            if employee is None or company_id is None or not OrgDA().is_company_member(company_id, emp_id):
+                return {"error": "Employee not found", "status": 404}
+            if not self.is_permmitted_to_edit(user_id, emp_id):
                 result["error"] = settings.ERROR_MSG.get('access_denied')
                 result['status'] = 403
                 return result
+            # employee.manage applies changes directly; everyone else (only their own
+            # profile) submits them for approval - capability based, no role checks
+            can_manage = has_capability(user_id, 'employee.manage')
+            error = self.validate_profile_changes(profile_changes, company_id, can_manage)
+            if error:
+                return {"error": error, "status": 400}
 
             edited_fields = profile_changes.keys()
 
-            if has_capability(user_id, 'employee.manage'):
+            if can_manage:
                 UserManagementBL_V1().update_user_profile_changes(profile_changes)
+                return {"error": '', "status": 200, "message": "Employee profile updated.", "pending_approval": False}
 
             elif int(user_id) == int(emp_id):
                 for each_key in edited_fields:
@@ -693,13 +703,13 @@ class UserManagementBL():
                     UserDA().delete_user_profile_provisional_entries_field_list(emp_id,editing_fields)
                     UserDA().create_emp_profile_changes(edit_data_list)
 
-
-            result['message'] = "Employee Profile Updated Successfully ."
+            result['message'] = "Profile changes submitted for approval."
+            result['pending_approval'] = True
             result['status'] = 200
-        except Exception as err:
+        except Exception:
             result['status'] = 499
-            result["error"] = settings.ERROR_MSG['application_error']\
-                .format(err, self.__logs.error(self.__exception.get_exception()))
+            result["error"] = "Saving the profile failed. LogID: {0}".format(
+                self.__logs.error(self.__exception.get_exception()))
         return result
 
 
@@ -850,16 +860,18 @@ class UserManagementBL():
         return emergency_contact
 
 
-    def get_all_employee_details_waiting_action(self, user_id, is_mobile =0):
+    def get_all_employee_details_waiting_action(self, user_id):
         result = {"error": '', "team_members": [], "status": 200}
         try:
             change_list = []
-            if not has_capability(user_id, 'employee.approve_profile_changes'):
+            company_id = get_active_company_id()
+            if company_id is None or not has_capability(user_id, 'employee.approve_profile_changes'):
                 result["error"] = settings.ERROR_MSG.get('access_denied')
                 result['status'] = 403
                 return result
             status =1 # for pending approvals
-            profile_changes = UserDA().get_all_profile_info_awaits_action(status)
+            member_ids = OrgDA().get_member_ids(company_id)
+            profile_changes = UserDA().get_all_profile_info_awaits_action(status, emp_ids=member_ids)
 
 
             if profile_changes:
@@ -887,18 +899,18 @@ class UserManagementBL():
                 .format(err, self.__logs.error(self.__exception.get_exception()))
         return result
 
-    def get_employee_profile_info_waiting_action(self,user_id, emp_id, is_mobile=0 ):
+    def get_employee_profile_info_waiting_action(self, user_id, emp_id):
         result = {"error": '', "status": 200}
         try:
+            # Checked before the lookup so the answer never reveals whether
+            # an employee the caller may not see has pending changes.
+            if not self.is_permitted_to_view_pending_profile_changes(user_id, emp_id):
+                result["error"] = settings.ERROR_MSG.get('access_denied')
+                result['status'] = 403
+                return result
 
             change_in_profile_info = UserDA().get_employee_profile_change_by_emp_id_and_status(emp_id)
             if change_in_profile_info:
-                is_permitted = self.is_permitted_to_view_pending_profile_changes(user_id, change_in_profile_info)
-                if not is_permitted:
-                    result["error"] = settings.ERROR_MSG.get('access_denied')
-                    result['status'] = 403
-                    return result
-
 
                 for each_change in change_in_profile_info:
                     if each_change.field == "emp_image":
@@ -933,64 +945,66 @@ class UserManagementBL():
                 .format(err, self.__logs.error(self.__exception.get_exception()))
         return result
 
+    PROFILE_CHANGE_ACTIONS = ('APPROVED', 'REJECTED', 'CANCELLED')
+
     def apply_action_on_profile_changes(self, user_id, request):
         result = {}
 
         try:
-            emp_id = request.get("emp_id", None)
-            action = request.get("action", None)
+            try:
+                emp_id = int(request.get("emp_id"))
+            except (TypeError, ValueError):
+                return {"error": "emp_id must be an employee id", "status": 400}
+            action = str(request.get("action") or "").upper()
+            if action not in self.PROFILE_CHANGE_ACTIONS:
+                return {"error": "action must be one of " + ", ".join(self.PROFILE_CHANGE_ACTIONS), "status": 400}
             field = request.get("field", None)
+            if not field:
+                return {"error": "field is required", "status": 400}
 
+            # Employees may cancel their own request; everything else is an
+            # approver's job (an approver may also approve their own changes,
+            # so a company with a single approver is never stuck).
+            is_own_cancel = action == "CANCELLED" and emp_id == user_id
+            if not is_own_cancel and not self.__can_approve_profile_changes_of(user_id, emp_id):
+                result["error"] = settings.ERROR_MSG.get('access_denied')
+                result['status'] = 403
+                return result
 
-            if (action.upper() == "CANCELLED" and emp_id == user_id):
-                pass
-            else:
-                if not has_capability(user_id, 'employee.approve_profile_changes'):
-                    result["error"] = settings.ERROR_MSG.get('access_denied')
-                    result['status'] = 403
-                    return result
-
-
-            update_data = {}
-            action = action.upper()
-            employee =  UserDA().get_user_by_id(emp_id)
-
+            employee = UserDA().get_user_by_id(emp_id)
             change_in_profile_info = UserDA().get_employee_profile_change_by_emp_id_and_status_and_field(emp_id, field)
-
-
-
-            if employee and action and change_in_profile_info:
-                if action == "APPROVED":
-
-                    update_data['status'] = 2 #for approve
-
-                    auth_user_edit_data = self._format_auth_user_update_data(change_in_profile_info)
-
-                    user_profile_edit_data = self._format_user_profile_update_data(change_in_profile_info)
-
-                    emergency_details_edit_data = self._format_emergency_contact_update_data(change_in_profile_info)
-
-
-                    with transaction.atomic():
-                        if auth_user_edit_data:
-                            UserDA().update_auth_user(auth_user_edit_data, emp_id)
-                        if user_profile_edit_data:
-                            UserDA().update_user_profile(emp_id, user_profile_edit_data )
-                        if emergency_details_edit_data:
-                            UserDA().update_emergency_contact( emergency_details_edit_data, emp_id)
-                        if "profile_photo" in user_profile_edit_data.keys():
-                            self.replace_old_profile_image_with_new(user_profile_edit_data['profile_photo'], emp_id)
-
-                    UserDA().delete_user_profile_provisional_entries(emp_id,field)
-
-                if action == "REJECTED":
-                    UserDA().delete_user_profile_provisional_entries(emp_id,field)
-
-                if action == "CANCELLED":
-                    UserDA().delete_user_profile_provisional_entries(emp_id,field)
-                result['message'] = "Changes applied"
-            else:
+            if not (employee and change_in_profile_info):
                 result['message'] = "Nothing to Change"
+                return result
+
+            if action == "APPROVED":
+                auth_user_edit_data = self._format_auth_user_update_data(change_in_profile_info)
+                user_profile_edit_data = self._format_user_profile_update_data(change_in_profile_info)
+                emergency_details_edit_data = self._format_emergency_contact_update_data(change_in_profile_info)
+
+                new_photo = user_profile_edit_data.get('profile_photo')
+                old_photo = None
+                if new_photo:
+                    current_profile = UserDA().get_user_profile_by_id(emp_id)
+                    old_photo = current_profile.profile_photo if current_profile else None
+                    # Copied before the transaction: if it fails nothing is
+                    # applied, and if the transaction fails only a copy is left.
+                    if not self.__publish_provisional_profile_image(new_photo):
+                        return {"error": "The new profile image could not be found", "status": 499}
+
+                with transaction.atomic():
+                    if auth_user_edit_data:
+                        UserDA().update_auth_user(auth_user_edit_data, emp_id)
+                    if user_profile_edit_data:
+                        UserDA().update_user_profile(emp_id, user_profile_edit_data)
+                    if emergency_details_edit_data:
+                        UserDA().update_emergency_contact(emergency_details_edit_data, emp_id)
+                    UserDA().delete_user_profile_provisional_entries(emp_id, field)
+                    if new_photo:
+                        transaction.on_commit(lambda: self.__remove_replaced_profile_images(new_photo, old_photo))
+            else:
+                UserDA().delete_user_profile_provisional_entries(emp_id, field)
+            result['message'] = "Changes applied"
         except Exception as err:
             result['status'] = 499
             result["error"] = settings.ERROR_MSG['application_error']\
@@ -1041,43 +1055,142 @@ class UserManagementBL():
         except:
             return ""
 
-    def replace_old_profile_image_with_new(self, new_image, emp_id):
+    def __publish_provisional_profile_image(self, new_image):
+        """ Copies an approved pending image to the live profile photo folder. """
+        image_data = self.__file_manager.read_file(
+            f'{settings.MEDIA_ROOT}confidential_docs/profile_image_provisional/{new_image}')
+        if not image_data:
+            return False
+        return self.__file_manager.upload_file(f'{settings.MEDIA_ROOT}employee_profile_photo/{new_image}', image_data)
 
-        user_profile = UserDA().get_user_profile_by_id(emp_id)
-        try:
-            try:
-                self.__file_manager.delete_file(f'{settings.MEDIA_ROOT}employee_profile_photo/{user_profile.profile_photo}')
-            except:
-                pass
-            
-            provisional_path = f'{settings.MEDIA_ROOT}confidential_docs/profile_image_provisional/{new_image}'
-            image_data = self.__file_manager.read_file(provisional_path)
-            
-            if image_data:
-                target_path = f"{settings.MEDIA_ROOT}employee_profile_photo/{new_image}"
-                self.__file_manager.upload_file(target_path, image_data)
-                
-            self.__file_manager.delete_file(provisional_path)
-
-        except Exception as err:
-            settings.ERROR_MSG['application_error']\
-                .format(err, self.__logs.error(self.__exception.get_exception()))
+    def __remove_replaced_profile_images(self, new_image, old_image):
+        """ After the approval is committed: drop the pending copy and the old photo. """
+        self.__file_manager.delete_file(f'{settings.MEDIA_ROOT}confidential_docs/profile_image_provisional/{new_image}')
+        if old_image and old_image != new_image:
+            self.__file_manager.delete_file(f'{settings.MEDIA_ROOT}employee_profile_photo/{old_image}')
 
     def pending_profile_field_change(self, emp_id, field):
         profile_change = UserDA().get_pending_profile_field_change(emp_id, field)
         return profile_change
 
 
-    def is_permitted_to_view_pending_profile_changes(self, user_id, pending_change_obj):
-        permitted = False
-        if has_capability(user_id, 'employee.approve_profile_changes'):
-            permitted = True
-            return permitted
-        if pending_change_obj[0].emp_id == user_id:
-            permitted = True
-            return permitted
+    def is_permitted_to_view_pending_profile_changes(self, user_id, emp_id):
+        return emp_id == user_id or self.__can_approve_profile_changes_of(user_id, emp_id)
 
-        return permitted
+    def __can_approve_profile_changes_of(self, user_id, emp_id):
+        """ Approvers act only on active members of the company the request is for. """
+        company_id = get_active_company_id()
+        return (company_id is not None
+                and has_capability(user_id, 'employee.approve_profile_changes')
+                and OrgDA().is_company_member(company_id, emp_id))
+
+    PROFILE_GENDERS = ('Male', 'Female', 'Other')
+    PROFILE_MARITAL_STATUSES = ('Single', 'Married', 'Divorced', 'Widowed')
+    PROFILE_BLOOD_GROUPS = ('A+ve', 'A-ve', 'B+ve', 'B-ve', 'AB+ve', 'AB-ve', 'O+ve', 'O-ve')
+    PROFILE_SELF_SERVICE_FIELDS = ('first_name', 'last_name', 'dob', 'gender', 'marital_status', 'home_telephone',
+                                   'mobile', 'personal_email', 'blood_group', 'current_address',
+                                   'permanent_address', 'emergency_contact')
+    PROFILE_MANAGED_FIELDS = PROFILE_SELF_SERVICE_FIELDS + ('job_title_id', 'job_status_id')
+    PROFILE_ADDRESS_KEYS = ('address_1', 'address_2', 'provin_code', 'districtId', 'city', 'stateId', 'zipcode')
+    PROFILE_EMERGENCY_KEYS = ('contact_person', 'relationship', 'phone_number')
+
+    def validate_profile_changes(self, data, company_id, can_manage):
+        """ An error message for an invalid profile change request, or None. """
+        changes = {k: v for k, v in data.items() if k != 'emp_id'}
+        if not changes:
+            return "No profile fields to update"
+        if 'company_id' in changes:
+            return "company_id cannot be changed here; company moves are done through company membership"
+        allowed = self.PROFILE_MANAGED_FIELDS if can_manage else self.PROFILE_SELF_SERVICE_FIELDS
+        for field in changes:
+            if field not in self.PROFILE_MANAGED_FIELDS:
+                return f"{field} is not a profile field"
+            if field not in allowed:
+                return f"{field} cannot be changed by the employee; ask HR"
+
+        def text(name, value, max_length, required=False):
+            if value is None or (isinstance(value, str) and not value.strip()):
+                return f"{name} is required" if required else None
+            if not isinstance(value, (str, int)) or len(str(value)) > max_length:
+                return f"{name} must be text of at most {max_length} characters"
+            return None
+
+        def phone(name, value, required=False):
+            if value in (None, ''):
+                return f"{name} is required" if required else None
+            digits = re.sub(r'[\s+\-()]', '', str(value))
+            if not digits.isdigit() or not 6 <= len(digits) <= 15:
+                return f"{name} must be a phone number (6 to 15 digits)"
+            return None
+
+        def choice(name, value, options):
+            return None if value in options else f"{name} must be one of: {', '.join(options)}"
+
+        checks = []
+        if 'first_name' in changes:
+            checks.append(text('first_name', changes['first_name'], 150, required=True))
+        if 'last_name' in changes:
+            checks.append(text('last_name', changes['last_name'], 150))
+        if 'dob' in changes:
+            try:
+                dob = datetime.strptime(str(changes['dob']), '%Y-%m-%d').date()
+                checks.append("dob cannot be in the future" if dob > date.today() else None)
+            except ValueError:
+                checks.append("dob must be a date (YYYY-MM-DD)")
+        if 'gender' in changes:
+            checks.append(choice('gender', changes['gender'], self.PROFILE_GENDERS))
+        if 'marital_status' in changes:
+            checks.append(choice('marital_status', changes['marital_status'], self.PROFILE_MARITAL_STATUSES))
+        if 'blood_group' in changes:
+            checks.append(choice('blood_group', changes['blood_group'], self.PROFILE_BLOOD_GROUPS))
+        if 'mobile' in changes:
+            checks.append(phone('mobile', changes['mobile'], required=True))
+        if 'home_telephone' in changes:
+            checks.append(phone('home_telephone', changes['home_telephone']))
+        if changes.get('personal_email'):
+            try:
+                validate_email(changes['personal_email'])
+                checks.append(text('personal_email', changes['personal_email'], 100))
+            except ValidationError:
+                checks.append("personal_email must be a valid email address")
+        for node in ('current_address', 'permanent_address'):
+            if node in changes:
+                address = changes[node]
+                if not isinstance(address, dict):
+                    checks.append(f"{node} must be an object")
+                    continue
+                for key in address:
+                    if key not in self.PROFILE_ADDRESS_KEYS:
+                        checks.append(f"{node}.{key} is not an address field")
+                for key in ('address_1', 'address_2', 'city'):
+                    if key in address:
+                        checks.append(text(f"{node}.{key}", address[key], 250))
+                for key, table in (('districtId', settings.DISTRICTS), ('stateId', settings.STATES)):
+                    if address.get(key) not in (None, ''):
+                        try:
+                            checks.append(None if int(address[key]) in table else f"{node}.{key} is not a known code")
+                        except (TypeError, ValueError):
+                            checks.append(f"{node}.{key} must be a number")
+                if address.get('zipcode') not in (None, ''):
+                    zipcode = str(address['zipcode']).strip()
+                    checks.append(None if zipcode.isdigit() and 4 <= len(zipcode) <= 10
+                                  else f"{node}.zipcode must be 4 to 10 digits")
+        if 'emergency_contact' in changes:
+            contact = changes['emergency_contact']
+            if not isinstance(contact, dict):
+                checks.append("emergency_contact must be an object")
+            else:
+                for key in contact:
+                    if key not in self.PROFILE_EMERGENCY_KEYS:
+                        checks.append(f"emergency_contact.{key} is not a contact field")
+                checks.append(text('emergency_contact.contact_person', contact.get('contact_person'), 150))
+                checks.append(text('emergency_contact.relationship', contact.get('relationship'), 50))
+                checks.append(phone('emergency_contact.phone_number', contact.get('phone_number')))
+        if 'job_title_id' in changes and not UserDA().get_company_job_title(company_id, changes['job_title_id']):
+            checks.append("job_title_id is not a job title of this company")
+        if 'job_status_id' in changes and not UserDA().get_company_employment_status(company_id, changes['job_status_id']):
+            checks.append("job_status_id is not an employment status of this company")
+        return next((c for c in checks if c), None)
 
     def is_editable_field(self, field):
         permitted = True

@@ -7,6 +7,7 @@ from calendar import monthrange
 from django.http.response import HttpResponse
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import oversees_employee
 from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_TEAM
 from pTracker.common.company_context import get_active_company_id
 from pTracker.common.logs import Logs
@@ -14,7 +15,7 @@ from pTracker.dataaccess.ptracker_access.timesheet_da import  TimeSheetDA
 from pTracker.dataaccess.ptracker_access.project_da import  ProjectDA
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
 from pTracker.dataaccess.ptracker_access.leave_da import LeaveDA
-from pTracker.dataaccess.ptracker_access.attendance import AttendanceDA
+from pTracker.dataaccess.attendance_v2_access.daily_da import DailyDA
 from pTracker.wiki.utils.exception import ExceptionHandler
 from pTracker.user_management.holiday_da import HolidayDA
 from pTracker.user_management.employee import Employee
@@ -317,7 +318,7 @@ class TimesheetReportBL():
                 'user' : user_name,
                 'submitted_cnt': 0,
                 'approved_cnt': 0,
-                'missing_cnt' : user_working_days,
+                'missing_cnt' : missed_emp_hrs,
                 'submitted_per' : 0,
                 'approved_per': 0,
                 'missing_per': 100,
@@ -357,7 +358,7 @@ class TimesheetReportBL():
         if emp_id == user_id:
             is_accessible = True
         else:
-            if UserDA().is_team_member(emp_id, user_id):
+            if oversees_employee(user_id, emp_id, module='timesheet'):
                 is_accessible = True
         return is_accessible
 
@@ -580,25 +581,12 @@ class TimesheetReportBL():
 
 
     def get_actual_wrk_hr_employee_dict(self, start_date_obj, end_date_obj):
-        att_list = AttendanceDA().get_attendance_by_range(start_date_obj, end_date_obj)
-        work_hr = {}
-        emp_code_dict = self.emp_code_dict()
-        for attendance in att_list:
-            emp_id = emp_code_dict.get(attendance.emp_code, None)
-            if emp_id:
-                if emp_id in work_hr.keys():
-                    work_hr[emp_id] = work_hr[emp_id] + attendance.work_hours
-                else:
-                    work_hr[emp_id] = attendance.work_hours
-        return work_hr
-
-    def emp_code_dict(self):
-        emp_dict = {}
-        employees = UserDA().get_all_users()
-        for employee in employees:
-            emp_dict[employee.username] = employee.id
-        return emp_dict
-
+        """ {user_id: seconds worked} over the range, from Attendance V2 in the active company. """
+        company_id = get_active_company_id()
+        if company_id is None:
+            return {}
+        minutes = DailyDA().get_worked_minutes_by_employee(company_id, start_date_obj, end_date_obj)
+        return {emp_id: value * 60 for emp_id, value in minutes.items()}
 
     def holiday_count_excluding_week_days(self, start_date_obj, end_date_obj):
         holidays = HolidayDA().get_all_holidays(start_date_obj, end_date_obj)

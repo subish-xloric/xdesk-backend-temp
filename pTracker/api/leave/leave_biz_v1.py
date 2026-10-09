@@ -6,6 +6,8 @@ from datetime import datetime, date, timedelta
 from django.conf import settings
 
 from pTracker.common.utility import Utility
+from pTracker.common.company_authorization import oversees_employee
+from pTracker.common.company_authorization import users_with_capability
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
 
@@ -37,52 +39,76 @@ class LeaveBL_V1():
             result = {"message": result.get("status")}
         return result
 
-    def format_my_leave_summary(self, user_id, page=1, emp_id=0):
-        leaves = []
-        result = {"status": 200}
-        try:
-            # get leave details
-            if(emp_id):
-                if(emp_id == user_id):
-                    user_id = emp_id
-                elif not UserDA().is_team_member(emp_id, user_id):
-                    result["error"] = "You have no permission."
-                    result['status'] = 403
-                    return result
-                user_id = emp_id
-            current_date = date.today()
-            period = LeaveDA().get_employee_leave_period(user_id, current_date)
-            if not period:
-                result['error'] = "Invalid leave period."
-                result['status'] = 499
-                return result
-            period = period.leave_period_id
+    MY_REQUESTS_PAGE_SIZE = 10
 
-            leave_requests = LeaveDA().get_leave_requests_by_user_id(user_id, period)
-            # "notify_list": [2,3,4]
-            LEAVE_REQUEST_STATUS = settings.MOBILE_LEAVE_REQUEST_STATUS
-            min, max = Utility().cutomPageLimits(page)
-            for leave_request in leave_requests[min:max]:
-                temp = {}
-                temp["duration"] = LeaveDA().get_leave_day_type(int(leave_request.request_id))
-                temp['comment'] = leave_request.comment
-                temp["leave_type_id"] = int(leave_request.type_id)
-                temp['start_date'] = leave_request.start_date
-                temp['end_date'] = leave_request.end_date
-                temp['status'] = LEAVE_REQUEST_STATUS.get(leave_request.status)
-                temp['no_of_days'] = leave_request.length_days
-                temp['reason'] = leave_request.reason
-                temp['leave_request_id'] = leave_request.request_id
-                temp['approver_id'] = int(leave_request.approver)
-                temp['approver_name'] = self.get_full_name_by_user_id(leave_request.approver)
-                temp['notify_list'] = self.convert_to_list(leave_request.notify)
-                leaves.append(temp)
-            result["leaves"] = leaves
-        except Exception as err:
-            result['status'] = 499
-            result["error"] = settings.ERROR_MSG['application_error']\
-                .format(str(err), self.__log.error(self.__exception.get_exception()))
-        return result
+    def get_my_leave_requests(self, user_id, page=1, emp_id=None):
+        """ Leave requests of an employee (default: the caller) in the active
+        company's current leave period, newest first, 10 per page (0 = all).
+        Others' requests: their mapped lead or leave.view_all; employees outside
+        the active company are "Employee not found". Pending requests list who
+        can approve them (pending_approvers). """
+        try:
+            page = int(page)
+            emp_id = int(emp_id) if emp_id else user_id
+            if page < 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            return {"error": "Invalid page or employee", "status": 400}
+        try:
+            company_id = get_active_company_id()
+            if company_id is None or not OrgDA().is_company_member(company_id, emp_id):
+                return {"error": "Employee not found", "status": 404}
+            if emp_id != user_id and not oversees_employee(user_id, emp_id, module='leave'):
+                return {"error": "You have no permission.", "status": 403}
+
+            period = LeaveDA().get_leave_period_by_date(date.today(), company_id)
+            if not period:
+                return {"leaves": [], "status": 200}
+            requests = LeaveDA().get_leave_requests_by_user_id(emp_id, period.leave_period_id)
+            if page:
+                start = (page - 1) * self.MY_REQUESTS_PAGE_SIZE
+                requests = requests[start:start + self.MY_REQUESTS_PAGE_SIZE]
+            requests = list(requests)
+
+            day_types = LeaveDA().get_leave_day_types([r.request_id for r in requests])
+            requested = settings.LEAVE_REQUEST_STATUS['Requested']
+            # who can act on a pending request without a lead: the company's leave approvers
+            fallback_approvers = []
+            if any(r.status == requested and not int(r.approver or 0) for r in requests):
+                fallback_approvers = [uid for uid in users_with_capability('leave.approve') if uid != emp_id]
+            people = {int(r.approver) for r in requests if int(r.approver or 0)} | set(fallback_approvers)
+            names = {u.id: f"{u.first_name} {u.last_name}" for u in UserDA().get_all_users().filter(id__in=people)}
+            fallback = [{"id": uid, "name": names.get(uid, "")} for uid in fallback_approvers if uid in names]
+            mobile_status = settings.MOBILE_LEAVE_REQUEST_STATUS
+
+            leaves = []
+            for r in requests:
+                approver_id = int(r.approver or 0)
+                day_type = day_types.get(r.request_id)
+                pending = []
+                if r.status == requested:
+                    pending = [{"id": approver_id, "name": names.get(approver_id, "")}] if approver_id else fallback
+                leaves.append({
+                    "leave_request_id": r.request_id,
+                    "leave_type_id": int(r.type_id),
+                    "start_date": r.start_date,
+                    "end_date": r.end_date,
+                    "no_of_days": r.length_days,
+                    "duration": day_type,
+                    "leave_section": {2: "(AM)", 3: "(PM)"}.get(day_type, ""),
+                    "status": mobile_status.get(r.status),
+                    "reason": r.reason,
+                    "comment": r.comment,
+                    "approver_id": approver_id,
+                    "approver_name": names.get(approver_id) if approver_id
+                                     else ", ".join(p["name"] for p in pending) or None,
+                    "pending_approvers": pending,
+                    "notify_list": self.convert_to_list(r.notify),
+                })
+            return {"leaves": leaves, "status": 200}
+        except Exception:
+            return {"error": "Leave requests failed. LogID: {0}".format(
+                self.__log.error(self.__exception.get_exception())), "status": 499}
 
     def convert_to_list(self, data):
         li = []
@@ -90,13 +116,6 @@ class LeaveBL_V1():
             li = list((data).split(','))
             li = [int(x) for x in li]
         return li
-
-    def get_full_name_by_user_id(self, user_id):
-        user = UserDA().get_user_by_id(user_id)
-        if user:
-            return user.first_name + ' ' + user.last_name
-        else:
-            return None
 
     def format_cancel_leave_request(self, data, type=0):
         """ Mobile body -> update_leave_status input. type=1: approve / reject

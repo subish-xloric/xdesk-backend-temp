@@ -46,6 +46,26 @@ def users_with_capability(capability_code, company_id=None):
     return MembershipDA().get_user_ids_with_capability(company_id, capability_code)
 
 
+def oversees_employee(user_id, emp_id, module=None, capability=None):
+    """ May user_id act on emp_id's records? Yes for emp_id's mapped reporting
+    lead; otherwise only for an active member of the active company and only
+    with <module>.view_all (module) or the given capability. """
+    from pTracker.dataaccess.ptracker_access.user_da import UserDA
+    from pTracker.dataaccess.attendance_v2_access.org_da import OrgDA
+    try:
+        user_id, emp_id = int(user_id), int(emp_id)
+    except (TypeError, ValueError):
+        return False
+    if UserDA().is_direct_lead(emp_id, user_id):
+        return True
+    active = get_active_company()
+    if active is None or active.user_id != user_id or not OrgDA().is_company_member(active.company_id, emp_id):
+        return False
+    if module and data_scope(user_id, module) == SCOPE_ALL:
+        return True
+    return bool(capability) and has_capability(user_id, capability)
+
+
 def _effective_capabilities(user_id, company_id):
     """ Loaded once per request per (user, company): biz code checks in loops. """
     memo = get_request_memo()
