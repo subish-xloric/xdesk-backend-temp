@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Confidential/company document storage (bind-mounted at runtime, never committed)
+dm-desk-docs/

@@ -12,6 +12,7 @@ def _company_summary(memberships):
     company = memberships[0].company
     return {
         'id': company.id,
+        'uuid': str(company.uuid),
         'name': company.short_name,
         'roles': sorted({m.role.name for m in memberships}),
         'is_primary': any(m.is_primary for m in memberships),
@@ -41,7 +42,7 @@ class AccessBL():
             'manage_assessment_menu': bool(
                 single_id and has_capability(user_id, 'payroll.view_tax_periods', single_id)),
             'companies': companies,
-            'active_company': {'id': single['id'], 'name': single['name']} if single else None,
+            'active_company': {'id': single['id'], 'uuid': single['uuid'], 'name': single['name']} if single else None,
             'company_selection_required': len(companies) > 1,
             'enabled_modules': sorted(get_enabled_module_codes(single['id'])) if single else [],
         }
@@ -58,6 +59,7 @@ class AccessBL():
             return result
 
         memberships = grouped[active.company_id]
+        company = memberships[0].company
         modules = get_enabled_module_codes(active.company_id)
         # Same rule as has_capability: a catalog module's capabilities count only
         # if the company enabled it; prefixes that are not modules (e.g. 'company') are kept.
@@ -66,7 +68,7 @@ class AccessBL():
             code for code in self.__da.get_effective_capability_codes(user_id, active.company_id)
             if (code.split('.')[0] not in catalog) or (code.split('.')[0] in modules))
         return {
-            'company': {'id': active.company_id, 'name': active.company_name},
+            'company': {'id': active.company_id, 'uuid': str(company.uuid), 'name': active.company_name},
             'companies': companies,
             'memberships': [
                 {'id': m.id, 'role': {'id': m.role_id, 'name': m.role.name},

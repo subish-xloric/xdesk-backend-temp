@@ -37,6 +37,7 @@ PACKAGE_TO_MODULE = {
 # check then fails closed on its own), so logout/password change keep working.
 CONTEXT_ONLY_PACKAGES = (
     'pTracker.api.user',
+    'pTracker.api.company_documents',
 )
 
 

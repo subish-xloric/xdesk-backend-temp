@@ -87,5 +87,9 @@ PROFILE_IMAGE_PROVISIONAL = DM_DESK_MEDIA_URL + 'confidential_docs/profile_image
 
 CONFIDENTIAL_DOCS = '/var/www/dm_ptracker/confidential_docs/'
 
+# Company confidential storage: <root>/<company uuid>/<category>/<generated name>.
+# The path inside the container/server, never the Docker host path.
+COMPANY_DOCUMENT_STORAGE_ROOT = os.getenv('COMPANY_DOCUMENT_STORAGE_ROOT', CONFIDENTIAL_DOCS)
+
 # PROFILE_IMAGE_PROVISIONAL = CONFIDENTIAL_MEDIA+'profile_image_provisional'
 

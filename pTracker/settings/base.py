@@ -254,6 +254,10 @@ EMAIL_ADDRESS={
 }
 
 FILE_UPLOAD_MODE = "LOCAL"
+
+# Company document uploads (pTracker/api/company_documents). Sizes in bytes.
+COMPANY_DOCUMENT_MAX_UPLOAD_BYTES = int(os.getenv('COMPANY_DOCUMENT_MAX_UPLOAD_BYTES', 20 * 1024 * 1024))
+COMPANY_LOGO_MAX_UPLOAD_BYTES = int(os.getenv('COMPANY_LOGO_MAX_UPLOAD_BYTES', 5 * 1024 * 1024))
 AWS_ACCESS_KEY_ID = str(os.getenv('AWS_ACCESS_KEY_ID'))
 AWS_SECRET_ACCESS_KEY = str(os.getenv('AWS_SECRET_ACCESS_KEY'))
 AWS_S3_REGION_NAME = str(os.getenv('AWS_S3_REGION_NAME'))

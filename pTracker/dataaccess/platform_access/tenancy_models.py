@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 """ The following tables are created here
 Tenant
@@ -32,6 +34,9 @@ class Company(models.Model):
     tenant = models.ForeignKey(Tenant, on_delete=models.PROTECT, related_name='companies')
     parent_company = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='subsidiaries')
+    # Stable public identifier; also names the company's confidential storage
+    # directory. Generated server-side and never changed afterwards.
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     legal_name = models.CharField(max_length=250)
     short_name = models.CharField(max_length=100)
     legacy_company_id = models.IntegerField(null=True, blank=True, unique=True,

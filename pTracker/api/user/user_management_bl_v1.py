@@ -12,7 +12,6 @@ from django.core.mail import EmailMessage
 from django.db import DatabaseError, transaction
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
-from django.core.files.images import get_image_dimensions
 
 from pTracker.common.utility import Utility
 from pTracker.common.company_context import get_active_company_id
@@ -25,6 +24,7 @@ from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
 from pTracker.common.mobile_login import start_pending_login
 from pTracker.common.file_manager import FileManager
+from pTracker.common.upload_validation import JPEG, PNG, UploadRejected, validate_upload
 from pTracker.api.user.access_biz import AccessBL
 
 from pTracker.notification_center.email_engine import Email
@@ -470,7 +470,12 @@ class UserManagementBL_V1():
         edit_data_list = []
         try:
             image = request.FILES.get("image", None)
-            emp_id = request.data['emp_id']
+            emp_id = str(request.data.get('emp_id', '')).strip()
+            if not emp_id.isdigit():
+                result["error"] = "emp_id is required and must be a valid employee id."
+                result['status'] = 499
+                return result
+            emp_id = int(emp_id)
 
             employee = UserDA().get_user_by_id(emp_id)
 
@@ -485,12 +490,12 @@ class UserManagementBL_V1():
                 return result
 
             if image:
-                is_image_valid = self.is_profile_image_valid(image)
+                image_extension, image_error = self.validate_profile_image(image)
 
-                if is_image_valid:
+                if image_extension:
 
                     if has_capability(user_id, 'employee.manage'):
-                        profile_image_name = self.update_user_profile_image(image, employee.username)
+                        profile_image_name = self.update_user_profile_image(image, employee.username, image_extension)
                         user_profile_update_data = {}
                         user_profile_update_data['profile_photo'] = profile_image_name
                         UserDA().update_user_profile(employee.id, user_profile_update_data)
@@ -503,7 +508,7 @@ class UserManagementBL_V1():
                             self.delete_pending_profile_image(pending_image_change[0].value)
                             UserDA().delete_user_profile_provisional_entries(emp_id, "emp_image")
 
-                        value = self.upload_profile_provisional_image(image, employee.username)
+                        value = self.upload_profile_provisional_image(image, employee.username, image_extension)
                         field = "emp_image"
                         user_profile_provisional_obj = UserDA().create_user_profile_provisional_object(user_id, emp_id, field, value)
                         edit_data_list.append(user_profile_provisional_obj)
@@ -513,7 +518,7 @@ class UserManagementBL_V1():
                         result['message'] = "Profile image uploaded successfully"
 
                 else:
-                    result["error"] = "Invalid image ."
+                    result["error"] = image_error
                     result['status'] = 499
                     return result
             else:
@@ -530,26 +535,19 @@ class UserManagementBL_V1():
 
 
     def is_permmitted_to_edit(self, user_id, emp_id):
-        permitted = False
+        """ Self, or employee.manage in the active company for an employee who
+        is an active member of that same company. """
         if int(user_id) == int(emp_id):
-            permitted = True
-            return permitted
-        if has_capability(user_id, 'employee.manage'):
-            permitted = True
-            return permitted
-        return permitted
+            return True
+        if not has_capability(user_id, 'employee.manage'):
+            return False
+        active = get_active_company()
+        return active is not None and OrgDA().is_company_member(active.company_id, emp_id)
 
-    def upload_profile_provisional_image(self, image, emp_code):
+    def upload_profile_provisional_image(self, image, emp_code, extension):
 
         try:
-            if image.content_type == "image/jpeg":
-                name = str(emp_code)+".jpeg"
-
-            if image.content_type == "image/png":
-                name = str(emp_code)+".png"
-
-            if image.content_type == "image/jpg":
-                name = str(emp_code)+".jpg"
+            name = f"{emp_code}.{extension}"
             file_path = f"{settings.MEDIA_ROOT}confidential_docs/profile_image_provisional/{name}"
             self.__logs.debug(file_path)
             self.__file_manager.upload_file(file_path, image.read())
@@ -559,19 +557,16 @@ class UserManagementBL_V1():
             settings.ERROR_MSG['application_error']\
                 .format(err, self.__logs.error(self.__exception.get_exception()))
 
-    def is_profile_image_valid(self, image):
-        is_valid = True
+    PROFILE_IMAGE_MAX_BYTES = 2 * 1024 * 1024
 
-        allowed_image_types = ["image/jpeg", "image/png", "image/jpg"]
-        width, height = get_image_dimensions(image)
-
-        if image.content_type not in allowed_image_types:
-            is_valid = False
-
-        # if image.size > 10000000 or image.size <40000:
-        #     is_valid = False
-
-        return is_valid
+    def validate_profile_image(self, image):
+        """ Returns (extension, None) for a valid .jpg/.jpeg/.png image of at
+        most 2 MB, checked from the file's content, else (None, error). """
+        try:
+            validate_upload(image, (JPEG, PNG), self.PROFILE_IMAGE_MAX_BYTES)
+        except UploadRejected as rejected:
+            return None, str(rejected)
+        return os.path.splitext(image.name)[1].lower().lstrip('.'), None
 
     def pending_profile_image_change(self, emp_id):
 
@@ -691,17 +686,9 @@ class UserManagementBL_V1():
             else:
                 return field
 
-    def update_user_profile_image(self,image, emp_code):
+    def update_user_profile_image(self, image, emp_code, extension):
         try:
-            if image.content_type == "image/jpeg":
-                name = str(emp_code)+".jpeg"
-
-            if image.content_type == "image/png":
-                name = str(emp_code)+".png"
-
-            if image.content_type == "image/jpg":
-                name = str(emp_code)+".jpg"
-            
+            name = f"{emp_code}.{extension}"
             file_path = f"{settings.MEDIA_ROOT}employee_profile_photo/{name}"
             self.__file_manager.upload_file(file_path, image.read())
 

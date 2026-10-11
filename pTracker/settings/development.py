@@ -91,6 +91,10 @@ PROFILE_IMAGE_PROVISIONAL = DM_DESK_MEDIA_URL+'confidential_docs/profile_image_p
 
 CONFIDENTIAL_DOCS = '/x_desk_backend/dm-desk-docs/confidential_docs/'
 
+# Company confidential storage: <root>/<company uuid>/<category>/<generated name>.
+# The path inside the container/server, never the Docker host path.
+COMPANY_DOCUMENT_STORAGE_ROOT = os.getenv('COMPANY_DOCUMENT_STORAGE_ROOT', CONFIDENTIAL_DOCS)
+
 FERNET_KEY = str(os.getenv('FERNET_KEY'))
 
 

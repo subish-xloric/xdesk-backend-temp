@@ -26,6 +26,7 @@ def _tenant_dict(tenant):
 def _company_dict(company):
     return {
         'id': company.id,
+        'uuid': str(company.uuid),
         'tenant_id': company.tenant_id,
         'parent_company_id': company.parent_company_id,
         'legal_name': company.legal_name,

@@ -44,6 +44,7 @@ urlpatterns = [
     path('api/resource/',include('pTracker.api.resource.urls')),
 
     path('api/platform/',include('pTracker.api.platform.urls')),
+    path('api/companies/', include('pTracker.api.company_documents.urls')),
     
     path('api/tax/',include('pTracker.api.finance.urls')),
     
