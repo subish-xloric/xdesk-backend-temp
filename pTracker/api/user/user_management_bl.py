@@ -16,6 +16,8 @@ from django.template.loader import get_template
 from django.core.mail import EmailMessage
 
 from django.db import DatabaseError, transaction
+from django.http import HttpResponse
+from django.urls import reverse
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 
@@ -28,6 +30,11 @@ from pTracker.common.company_authorization import has_capability
 from pTracker.common.exception_handler import ExceptionHandler
 from pTracker.common.logs import Logs
 from pTracker.common.file_manager import FileManager
+from pTracker.common.confidential_storage import StorageError
+from pTracker.common.confidential_storage import StoredFileMissing
+from pTracker.api.user.profile_image_biz import ProvisionalProfileImageBL
+from pTracker.common.profile_photo import ProfilePhotoStore
+from pTracker.common.upload_validation import UploadRejected
 
 
 from pTracker.notification_center.email_engine import Email
@@ -39,6 +46,7 @@ from pTracker.api.induction.induction_biz import InductionBL
 from pTracker.wiki.data_access.master.logs_da import LogsDA
 from pTracker.dataaccess.ptracker_access.user_models import UserProfileProvisional
 from pTracker.common.company_authorization import has_capability
+from pTracker.common.profile_photo import profile_photo_url
 
 
 def new_dto():
@@ -105,6 +113,7 @@ class UserManagementBL():
 
     def create_new_user(self, data, user_id):
         result = {"error": "", "success": ""}
+        photo_value = None
         try:
             #TODO  Permission checking
             if not self.__is_create_new_user_access(user_id):
@@ -130,21 +139,11 @@ class UserManagementBL():
             dto.date_joined = date_joined.strftime("%Y-%m-%d")
             initiate_induction = data.get('induction', False)
 
-            obj_image_name = data.get('profile_photo')
-            if obj_image_name is not None:
-                if obj_image_name.lower().endswith('png'):
-                    img_type = 'png'
-                elif obj_image_name.lower().endswith('jpg'):
-                    img_type = 'jpeg'
-                else:
-                    img_type = 'jpeg'
+            photo_value = self.__store_profile_photo_data(data.get('profile_data'))
             with transaction.atomic():
                 user = UserDA().create_user(dto)
                 if user:
                     #TODO create user profile
-                    obj_photo = str(data.get('profile_data')).replace(f"data:image/{img_type};base64,","")
-                    file_path = os.path.join(settings.MEDIA_ROOT, f"employee_profile_photo/{user.username}.{img_type}")
-                    self.__file_manager.upload_file(file_path, base64.b64decode(obj_photo))
                     emergency_data = self.__clean_emergency_data(data, user.id)
                     profile_data = self.__clean_profile_data(data)
                     secret_key = pyotp.random_base32()
@@ -156,8 +155,9 @@ class UserManagementBL():
                     }
                     profile_data.update(temp_data)
                     user_profile = UserDA().create_user_profile(profile_data)
-                    user_profile.profile_photo = f'{user.username}.{img_type}'
-                    user_profile.save()
+                    if photo_value:
+                        user_profile.profile_photo = photo_value
+                        user_profile.save()
                     emergency_contact = UserDA().create_emergency_contacts(emergency_data)
                     emergency_contact.save()
                     #Assign reporting person
@@ -175,38 +175,32 @@ class UserManagementBL():
                     result['success'] = msg
                     return [result]
                 else:
+                    if photo_value:
+                        ProfilePhotoStore().delete(photo_value)
                     result["error"] = "We got an error while creating User."
                     return [result]
 
         except Exception as error:
+            if photo_value:
+                ProfilePhotoStore().delete(photo_value)
             result["error"] = str(error)
             return [result]
 
 
     def update_user(self, data, user_id):
         result = {"error": None, "success": None}
+        photo_value = None
         try:
             # Permission checking
             if not self.__is_create_new_user_access(user_id):
                 result["error"] = "You have no permission to update details"
                 return [result]
+            photo_value = self.__store_profile_photo_data(data.get('profile_data'))
             with transaction.atomic():
-                obj_image_name = data.get('profile_photo')
-                if obj_image_name:
-                    if obj_image_name.lower().endswith('png'):
-                        img_type = 'png'
-                    elif obj_image_name.lower().endswith('jpg'):
-                        img_type = 'jpeg'
-                    else:
-                        img_type = 'jpeg'
                 auth_data = self.__clean_auth_data(data)
                 # Update auth user table
                 user = UserDA().update_auth_user(auth_data, data.get('user_id'))
                 if user:
-                    obj_photo = str(data.get('profile_data')).replace(f"data:image/{img_type};base64,","")
-                    img_name = data.get('employee_id')
-                    file_path = os.path.join(settings.MEDIA_ROOT, f"employee_profile_photo/{img_name}.{img_type}")
-                    self.__file_manager.upload_file(file_path, base64.b64decode(obj_photo))
                     report_to = data.get('reported_to', 0)
                     if report_to:
                         UserDA().update_employee_lead_mapping(data.get('user_id'), report_to)
@@ -214,13 +208,25 @@ class UserManagementBL():
                     profile_data = self.__clean_profile_data(data)
                     # Update user profile table
                     UserDA().update_emergency_contact(emergency_data, user.id)
+                    old_photo = UserDA().get_user_profile_by_id(int(profile_data['user_id']))
+                    old_photo = old_photo.profile_photo if old_photo else None
                     user_profile = UserDA().update_user_profile(int(profile_data['user_id']),profile_data)
-                    user_profile.profile_photo = f'{img_name}.{img_type}'
-                    user_profile.save()
+                    if photo_value:
+                        user_profile.profile_photo = photo_value
+                        user_profile.save()
+                        if old_photo and old_photo != photo_value:
+                            transaction.on_commit(lambda: ProfilePhotoStore().delete(old_photo))
+                elif photo_value:
+                    ProfilePhotoStore().delete(photo_value)
                 msg = 'User updated successfully !'
                 result['success'] = msg
                 return [result]
         except Exception as error:
+            if photo_value:
+                ProfilePhotoStore().delete(photo_value)
+            if isinstance(error, UploadRejected):
+                result["error"] = str(error)
+                return [result]
             result["error"] = settings.ERROR_MSG['application_error']\
                 .format(error, self.__logs.error(self.__exception.get_exception()))
             return [result]
@@ -365,10 +371,7 @@ class UserManagementBL():
     def __attach_profile_photo(self, profile):
         """ Replaces profile.profile_photo by the base64 image (avatar if missing). """
         name = profile.profile_photo or ''
-        image_data = None
-        if name:
-            image_data = self.__file_manager.read_file(
-                os.path.join(settings.MEDIA_ROOT, f'employee_profile_photo/{name}'))
+        image_data = ProfilePhotoStore().read_or_none(name) if name else None
         if not image_data:
             image_data = self.__file_manager.read_file(
                 os.path.join(settings.MEDIA_ROOT, 'employee_profile_photo/avatar.jpeg'))
@@ -800,7 +803,7 @@ class UserManagementBL():
         try:
             img_url = UserDA().get_user_profile_by_id(user_id)
             if img_url:
-                return f"{settings.DEFAULT_SITE_MEDIA_URL}{img_url.profile_photo}"
+                return profile_photo_url(user_id, img_url.profile_photo)
             else:
                 return ""
         except:
@@ -915,7 +918,7 @@ class UserManagementBL():
                 for each_change in change_in_profile_info:
                     if each_change.field == "emp_image":
 
-                        profile_image_url = self.get_pending_profile_image_change_url(each_change.value)
+                        profile_image_url = self.get_pending_profile_image_change_url(emp_id, each_change.value)
                         result['emp_image'] = profile_image_url
                     else:
                         result[each_change.field] = each_change.value
@@ -983,27 +986,43 @@ class UserManagementBL():
                 emergency_details_edit_data = self._format_emergency_contact_update_data(change_in_profile_info)
 
                 new_photo = user_profile_edit_data.get('profile_photo')
-                old_photo = None
+                old_photo = live_photo = None
                 if new_photo:
                     current_profile = UserDA().get_user_profile_by_id(emp_id)
                     old_photo = current_profile.profile_photo if current_profile else None
                     # Copied before the transaction: if it fails nothing is
-                    # applied, and if the transaction fails only a copy is left.
-                    if not self.__publish_provisional_profile_image(new_photo):
+                    # applied, and if the transaction fails the copy is removed.
+                    live_photo = self.__publish_provisional_profile_image(new_photo)
+                    if not live_photo:
                         return {"error": "The new profile image could not be found", "status": 499}
+                    user_profile_edit_data['profile_photo'] = live_photo
 
-                with transaction.atomic():
-                    if auth_user_edit_data:
-                        UserDA().update_auth_user(auth_user_edit_data, emp_id)
-                    if user_profile_edit_data:
-                        UserDA().update_user_profile(emp_id, user_profile_edit_data)
-                    if emergency_details_edit_data:
-                        UserDA().update_emergency_contact(emergency_details_edit_data, emp_id)
-                    UserDA().delete_user_profile_provisional_entries(emp_id, field)
-                    if new_photo:
-                        transaction.on_commit(lambda: self.__remove_replaced_profile_images(new_photo, old_photo))
+                try:
+                    with transaction.atomic():
+                        if auth_user_edit_data:
+                            UserDA().update_auth_user(auth_user_edit_data, emp_id)
+                        if user_profile_edit_data:
+                            UserDA().update_user_profile(emp_id, user_profile_edit_data)
+                        if emergency_details_edit_data:
+                            UserDA().update_emergency_contact(emergency_details_edit_data, emp_id)
+                        UserDA().delete_user_profile_provisional_entries(emp_id, field)
+                        if new_photo:
+                            transaction.on_commit(
+                                lambda: self.__remove_replaced_profile_images(new_photo, live_photo, old_photo))
+                except Exception:
+                    if live_photo:
+                        ProfilePhotoStore().delete(live_photo)
+                    raise
             else:
-                UserDA().delete_user_profile_provisional_entries(emp_id, field)
+                # Rejected/cancelled photos stored per company go with their row;
+                # legacy files are left where they are, as before.
+                images = ProvisionalProfileImageBL()
+                discarded = [change.value for change in change_in_profile_info
+                             if change.field == "emp_image" and images.is_company_stored(change.value)]
+                with transaction.atomic():
+                    UserDA().delete_user_profile_provisional_entries(emp_id, field)
+                    if discarded:
+                        transaction.on_commit(lambda: [images.delete(value) for value in discarded])
             result['message'] = "Changes applied"
         except Exception as err:
             result['status'] = 499
@@ -1049,25 +1068,77 @@ class UserManagementBL():
 
         return user_profile_update_data
 
-    def get_pending_profile_image_change_url(self, image_name):
-        try:
-            return f"{settings.PROFILE_IMAGE_PROVISIONAL}/{image_name}"
-        except:
+    def get_pending_profile_image_change_url(self, emp_id, image_value):
+        """ Authenticated endpoint that streams the pending photo; the storage
+        location is never exposed. """
+        if not image_value:
             return ""
+        return reverse('pending_profile_image', kwargs={'emp_id': emp_id})
+
+    def get_pending_profile_image_content(self, user_id, emp_id):
+        """ The employee's pending photo as an inline image: for the employee
+        themself or an approver of their changes, and only from the caller's
+        active company. An HttpResponse with the image, or a response dict. """
+        try:
+            if not self.is_permitted_to_view_pending_profile_changes(user_id, emp_id):
+                return {"error": settings.ERROR_MSG.get('access_denied'), "status": 403}
+            company = self.__active_company()
+            if company is None:
+                return {"error": "Select a company first (X-Company-Id header)", "status": 403}
+
+            pending = self.pending_profile_field_change(emp_id, "emp_image")
+            value = pending[0].value if pending else None
+            try:
+                content, content_type = ProvisionalProfileImageBL().read(value, company.uuid)
+            except StoredFileMissing:
+                return {"error": "No pending profile image", "status": 404}
+            except StorageError as error:
+                self.__logs.error(f'Pending profile image read failed: emp={emp_id}: {error}')
+                return {"error": "Image storage is temporarily unavailable", "status": 503}
+
+            response = HttpResponse(content, content_type=content_type)
+            response['X-Content-Type-Options'] = 'nosniff'
+            response['Cache-Control'] = 'private, no-store'
+            response['Content-Security-Policy'] = "default-src 'none'; sandbox"
+            return response
+        except Exception as err:
+            return {"error": settings.ERROR_MSG['application_error']
+                    .format(err, self.__logs.error(self.__exception.get_exception())), "status": 499}
+
+    def __active_company(self):
+        company_id = get_active_company_id()
+        return TenancyDA().get_company_by_id(company_id) if company_id is not None else None
 
     def __publish_provisional_profile_image(self, new_image):
-        """ Copies an approved pending image to the live profile photo folder. """
-        image_data = self.__file_manager.read_file(
-            f'{settings.MEDIA_ROOT}confidential_docs/profile_image_provisional/{new_image}')
-        if not image_data:
-            return False
-        return self.__file_manager.upload_file(f'{settings.MEDIA_ROOT}employee_profile_photo/{new_image}', image_data)
+        """ Copies an approved pending image into the active company's live
+        photo storage; returns the new profile_photo value, or None. A pending
+        photo stored per company is only read for the active company. """
+        company = self.__active_company()
+        if company is None:
+            return None
+        try:
+            image_data, _ = ProvisionalProfileImageBL().read(new_image, company.uuid)
+            return ProfilePhotoStore().save_bytes(company, image_data)
+        except (StorageError, UploadRejected) as error:
+            self.__logs.error(f'Pending profile image publish failed: {error}')
+            return None
 
-    def __remove_replaced_profile_images(self, new_image, old_image):
+    def __remove_replaced_profile_images(self, new_image, live_image, old_image):
         """ After the approval is committed: drop the pending copy and the old photo. """
-        self.__file_manager.delete_file(f'{settings.MEDIA_ROOT}confidential_docs/profile_image_provisional/{new_image}')
-        if old_image and old_image != new_image:
-            self.__file_manager.delete_file(f'{settings.MEDIA_ROOT}employee_profile_photo/{old_image}')
+        ProvisionalProfileImageBL().delete(new_image)
+        if old_image and old_image != live_image:
+            ProfilePhotoStore().delete(old_image)
+
+    def __store_profile_photo_data(self, data):
+        """ Stores a base64 / data-URL photo sent with a create/update form in
+        the active company's storage; None when no photo was sent. Raises
+        UploadRejected for an invalid image or when there is no active company. """
+        if not data or str(data) == 'None':
+            return None
+        company = self.__active_company()
+        if company is None:
+            raise UploadRejected('Select a company first (X-Company-Id header)')
+        return ProfilePhotoStore().save_base64(company, data)
 
     def pending_profile_field_change(self, emp_id, field):
         profile_change = UserDA().get_pending_profile_field_change(emp_id, field)

@@ -2,6 +2,11 @@
 
 Layout: <COMPANY_DOCUMENT_STORAGE_ROOT>/<company uuid>/<category>/<32 hex>.<ext>
 
+Categories: profile/documents/other hold platform_company_document files;
+profile_image_provisional and employee_profile_photo hold employees' pending
+and approved profile photos, which are tracked by user_profile_provisional and
+user_profile.profile_photo instead (see pTracker/common/profile_photo.py).
+
 Callers only ever handle the relative storage key "<category>/<32 hex>.<ext>";
 the absolute path is built here and never returned. Every path is rebuilt from
 a parsed UUID and a key that must match KEY_PATTERN, so client input (company
@@ -24,8 +29,12 @@ import uuid
 
 from django.conf import settings
 
-CATEGORIES = ('profile', 'documents', 'other')
-KEY_PATTERN = re.compile(r'^(profile|documents|other)/([0-9a-f]{32})\.([a-z0-9]{1,8})$')
+DOCUMENT_CATEGORIES = ('profile', 'documents', 'other')
+PROVISIONAL_PROFILE_IMAGE = 'profile_image_provisional'
+EMPLOYEE_PROFILE_PHOTO = 'employee_profile_photo'
+CATEGORIES = DOCUMENT_CATEGORIES + (PROVISIONAL_PROFILE_IMAGE, EMPLOYEE_PROFILE_PHOTO)
+KEY_PATTERN = re.compile(
+    r'^(profile|documents|other|profile_image_provisional|employee_profile_photo)/([0-9a-f]{32})\.([a-z0-9]{1,8})$')
 PARTIAL_SUFFIX = '.part'
 DIR_MODE = 0o750
 FILE_MODE = 0o640
@@ -130,10 +139,11 @@ class CompanyFileStorage():
         except OSError as error:
             raise StorageError(f'Could not delete file ({errno.errorcode.get(error.errno, error.errno)})') from None
 
-    def list_keys(self, company_uuid):
-        """ Storage keys of the finished files in one company's directory. """
+    def list_keys(self, company_uuid, categories=DOCUMENT_CATEGORIES):
+        """ Storage keys of the finished files in one company's directory
+        (document categories unless told otherwise). """
         keys = set()
-        for category in CATEGORIES:
+        for category in categories:
             try:
                 directory = self.__directory(company_uuid, category, create=False)
             except StoredFileMissing:

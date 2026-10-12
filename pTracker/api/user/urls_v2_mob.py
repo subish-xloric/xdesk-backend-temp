@@ -24,6 +24,7 @@ from pTracker.api.user.views import GetEmployeeProfileInfoAwaitsAction_v1
 from pTracker.api.user.views import ApplyActionOnProfileChange_v1
 from pTracker.api.user.views import BiometricRegistrationView
 from pTracker.api.user.views import BiometricLoginView
+from pTracker.api.user.views import BiometricChallengeView
 from pTracker.api.user.views import SaveEmployeeProfileImage_v1
 
 
@@ -52,6 +53,7 @@ urlpatterns = [
      path('get-profile-info-awaiting-approval/<int:emp_id>/', GetEmployeeProfileInfoAwaitsAction_v1.as_view(),name='get_profile_info_awaiting_approval'),
      path('apply-action-on-profile-field/', ApplyActionOnProfileChange_v1.as_view(),name='apply_action_on_profile_field'),
 
+     path('biometric-challenge/', BiometricChallengeView.as_view(), name='biometric_challenge'),
      path('biometric-authentication/', BiometricLoginView.as_view(), name='biometric_authentication'),
      path('register-for-biometric-authentication/', BiometricRegistrationView.as_view(),name='biometric_authentication'),
 

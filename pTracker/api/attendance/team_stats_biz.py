@@ -27,6 +27,7 @@ from pTracker.dataaccess.attendance_v2_access.org_da import OrgDA
 from pTracker.dataaccess.attendance_v2_access.punch_da import PunchDA
 from pTracker.dataaccess.ptracker_access.user_models import UserProfile
 from pTracker.user_management.employee import Employee
+from pTracker.common.profile_photo import profile_photo_url
 
 PAGE_SIZE = 25
 IN_OFFICE, WFH, LEAVE, NOT_PUNCHED = 'In Office', 'WFH', 'Leave', 'Not Punched'
@@ -118,7 +119,7 @@ class TeamStatsBL():
         entry = {
             'emp_id': user.id,
             'emp_name': f'{user.first_name} {user.last_name}',
-            'emp_image': f"{settings.DEFAULT_SITE_MEDIA_URL}{data['photo']}" if data['photo'] else '',
+            'emp_image': profile_photo_url(user.id, data['photo']),
             'status': NOT_PUNCHED,
             'work_hours': 0,
             'first_punch_in': '-',

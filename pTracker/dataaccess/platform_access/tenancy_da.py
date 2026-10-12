@@ -42,6 +42,9 @@ class TenancyDA():
     def get_company_by_id(self, company_id):
         return Company.objects.filter(pk=company_id).first()
 
+    def get_company_by_uuid(self, company_uuid):
+        return Company.objects.filter(uuid=company_uuid).first()
+
     def get_company_name(self, company_id):
         company = Company.objects.filter(pk=company_id).only('short_name').first()
         return company.short_name if company else ''

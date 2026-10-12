@@ -20,6 +20,7 @@ from datetime import date, timedelta, datetime
 import calendar
 from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_TEAM
 from pTracker.common.company_authorization import users_with_capability
+from pTracker.common.profile_photo import profile_photo_url
 
 def new_dto():
     dto = SimpleNamespace()
@@ -93,7 +94,7 @@ class WorkFromHomeBL_V1():
                 # can still be cancelled: pending, or approved and not started yet
                 'is_cancel': 1 if r.status == 1 or (r.status == 2 and r.start_date > today) else 0,
                 'approver_id': r.approver_id,
-                'emp_image': f"{settings.DEFAULT_SITE_MEDIA_URL}{photos[r.emp_id]}" if photos.get(r.emp_id) else "",
+                'emp_image': profile_photo_url(r.emp_id, photos.get(r.emp_id)),
             } for r in requests]
             return {"wfh_requests": wfh_requests, "status": 200}
         except Exception:

@@ -17,6 +17,8 @@ from pTracker.api.user.views import PasswordResetView_v1
 from pTracker.api.user.views import SetNewPasswordAPIView_v1
 # from pTracker.api.user.views import GetTeamStatsViewbyKeyword_V1
 from pTracker.api.user.views import CustomLogoutView_v1
+from pTracker.api.user.views import PendingProfileImageView_v1
+from pTracker.api.user.views import ProfilePhotoView_v1
 # from pTracker.api.user.views import GetVersionStatus
 from pTracker.api.user.views import SaveEmployeeProileDetails_v1
 from pTracker.api.user.views import GetAllEmployeeProfilesWaitingAction_v1
@@ -24,6 +26,7 @@ from pTracker.api.user.views import GetEmployeeProfileInfoAwaitsAction_v1
 from pTracker.api.user.views import ApplyActionOnProfileChange_v1
 from pTracker.api.user.views import BiometricRegistrationView
 from pTracker.api.user.views import BiometricLoginView
+from pTracker.api.user.views import BiometricChallengeView
 from pTracker.api.user.views import SaveEmployeeProfileImage_v1
 from pTracker.api.user.views import VersionExpiredView
 from pTracker.api.user.views import VersionExpiredLoginView
@@ -61,8 +64,11 @@ urlpatterns = [
      path('save-employee-profile/', SaveEmployeeProileDetails_v1.as_view(),name='save_employee_profile'),
      path('get-pending-profile-approvals/', GetAllEmployeeProfilesWaitingAction_v1.as_view(),name='get_employee_details_awaiting_approval'),
      path('get-profile-info-awaiting-approval/<int:emp_id>/', GetEmployeeProfileInfoAwaitsAction_v1.as_view(),name='get_profile_info_awaiting_approval'),
+     path('pending-profile-image/<int:emp_id>/', PendingProfileImageView_v1.as_view(), name='pending_profile_image'),
+     path('profile-photo/<int:emp_id>/', ProfilePhotoView_v1.as_view(), name='profile_photo'),
      path('apply-action-on-profile-field/', ApplyActionOnProfileChange_v1.as_view(),name='apply_action_on_profile_field'),
 
+     path('biometric-challenge/', BiometricChallengeView.as_view(), name='biometric_challenge'),
      path('biometric-authentication/', BiometricLoginView.as_view(), name='biometric_authentication'),
      path('register-for-biometric-authentication/', BiometricRegistrationView.as_view(),name='biometric_authentication'),
 

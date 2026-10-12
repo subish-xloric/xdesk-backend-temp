@@ -15,6 +15,10 @@ from pTracker.dataaccess.ptracker_access.user_da import UserDA
 from pTracker.dataaccess.ptracker_access.onboarding_da import OnboardingDA
 from pTracker.dataaccess.ptracker_access.rewards_da import RewardsDA
 from pTracker.common.company_authorization import has_capability
+from pTracker.common.company_context import get_active_company_id
+from pTracker.common.profile_photo import ProfilePhotoStore
+from pTracker.common.upload_validation import UploadRejected
+from pTracker.dataaccess.platform_access.tenancy_da import TenancyDA
 
 
 class UserManagementHelperBL():
@@ -73,8 +77,7 @@ class UserManagementHelperBL():
             image_name = user_profile.profile_photo
             if image_name:
                     try:
-                        file_path = os.path.join(settings.MEDIA_ROOT, f'employee_profile_photo/{user_profile.profile_photo}')
-                        image_data = self.__file_manager.read_file(file_path)
+                        image_data = ProfilePhotoStore().read_or_none(image_name)
                         if not image_data:
                             raise FileNotFoundError("Image not found")
                         encoded_string = base64.b64encode(image_data)
@@ -357,20 +360,13 @@ class UserManagementHelperBL():
         return auth_update_data, user_prile_update_data
 
     def save_emp_profile_image(self, emp_code, basic_info):
-        obj_image_name = basic_info.get('photo', None)
-        if obj_image_name is not None:
-            if obj_image_name.lower().endswith('png'):
-                img_type = 'png'
-            elif obj_image_name.lower().endswith('jpg'):
-                img_type = 'jpeg'
-            else:
-                img_type = 'jpeg'
-        obj_photo = str(basic_info.get('photo')).replace(
-            f"data:image/{img_type};base64,", "")
-        file_path = os.path.join(settings.MEDIA_ROOT, f"employee_profile_photo/{emp_code}.{img_type}")
-        FileManager().upload_file(file_path, base64.b64decode((obj_photo)))
-
-        return str(emp_code)+'.'+str(img_type)
+        """ Stores the base64 photo in the active company's confidential
+        storage; returns the profile_photo value. Raises UploadRejected. """
+        company_id = get_active_company_id()
+        company = TenancyDA().get_company_by_id(company_id) if company_id is not None else None
+        if company is None:
+            raise UploadRejected('Select a company first (X-Company-Id header)')
+        return ProfilePhotoStore().save_base64(company, basic_info.get('photo'))
 
     def _clean_contact_info(self, contact_info, emp_code):
         user_prile_update_data = {}
@@ -578,9 +574,19 @@ class UserManagementHelperBL():
                 return result
             if employee:
                 if "basic_info" in  data.keys():
+                    current_profile = UserDA().get_user_profile_by_id(emp_id)
+                    old_photo = current_profile.profile_photo if current_profile else None
                     auth_update_data , user_prile_update_data = self._clean_basic_info(data['basic_info'],employee.username)
-                    UserDA().update_auth_user(auth_update_data, emp_id)
-                    UserDA().update_user_profile(emp_id, user_prile_update_data)
+                    new_photo = user_prile_update_data.get('profile_photo')
+                    try:
+                        UserDA().update_auth_user(auth_update_data, emp_id)
+                        UserDA().update_user_profile(emp_id, user_prile_update_data)
+                    except Exception:
+                        if new_photo:
+                            ProfilePhotoStore().delete(new_photo)
+                        raise
+                    if new_photo and old_photo and old_photo != new_photo:
+                        ProfilePhotoStore().delete(old_photo)
 
                 if "contact_info" in  data.keys():
                     user_prile_update_data = self._clean_contact_info(data['contact_info'],employee.username)
@@ -664,6 +670,9 @@ class UserManagementHelperBL():
                 result["error"] = "Employee does not exist ."
                 result['status'] = 499
                 return result
+        except UploadRejected as rejected:
+            result["error"] = str(rejected)
+            result['status'] = 499
         except Exception as err:
             result["error"] = settings.ERROR_MSG['application_error']\
                 .format(err, self.__logs.error(self.__exception.get_exception()))

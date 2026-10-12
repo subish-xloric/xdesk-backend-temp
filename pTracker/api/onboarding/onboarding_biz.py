@@ -30,6 +30,10 @@ from pTracker.api.onboarding.onboarding_notification import OnBoardingNotificati
 from pTracker.dataaccess.ptracker_access.project_da import ProjectDA
 from pTracker.dataaccess.ptracker_access.leave_da import LeaveDA
 from pTracker.common.company_authorization import has_capability
+from pTracker.common.confidential_storage import StorageError
+from pTracker.common.profile_photo import ProfilePhotoStore
+from pTracker.common.upload_validation import UploadRejected
+from pTracker.dataaccess.platform_access.tenancy_da import TenancyDA
 
 
 def new_dto():
@@ -678,29 +682,28 @@ class OnboardingBL():
         user_profile_data['company_id'] = organization_id
         user_profile_data['secret_key'] = secret_key
         user_profile_data['is_twofa_on'] = 1
-        image_name =self.save_emp_profile_image(emp_code,basic_info)
+        image_name =self.save_emp_profile_image(organization_id, basic_info)
         if image_name:
              user_profile_data['profile_photo'] = image_name
 
         return user_profile_data
 
-    def save_emp_profile_image(self, emp_code, basic_info ):
+    def save_emp_profile_image(self, company_id, basic_info):
+        """ Stores the onboarded employee's base64 photo in their company's
+        confidential storage and returns the profile_photo value. A missing or
+        invalid photo does not stop onboarding: it is skipped (None). """
+        photo = basic_info[0].get('photo', None) if basic_info else None
+        if not photo:
+            return None
+        company = TenancyDA().get_company_by_id(company_id) if company_id else None
+        if company is None:
+            Logs().error(f'Onboarding profile photo skipped: unknown company {company_id}')
+            return None
         try:
-            obj_image_name = basic_info[0].get('photo', None)
-            if obj_image_name is not None:
-                if obj_image_name.lower().endswith('png'):
-                    img_type = 'png'
-                elif obj_image_name.lower().endswith('jpg'):
-                    img_type = 'jpeg'
-                else:
-                    img_type = 'jpeg'
-            obj_photo = str(basic_info[0].get('photo')).replace(f"data:image/{img_type};base64,","")
-            file_path = os.path.join(settings.MEDIA_ROOT, f"employee_profile_photo/{emp_code}.{img_type}")
-            FileManager().upload_file(file_path, base64.b64decode((obj_photo)))
-        except Exception as e:
-            pass
-
-        return str(emp_code)+'.'+str(img_type)
+            return ProfilePhotoStore().save_base64(company, photo)
+        except (UploadRejected, StorageError) as error:
+            Logs().error(f'Onboarding profile photo skipped: {error}')
+            return None
 
     def format_work_exp_details(self, emp_id, work_experiences):
         wrk_exps = []

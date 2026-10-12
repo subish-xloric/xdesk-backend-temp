@@ -91,5 +91,9 @@ CONFIDENTIAL_DOCS = '/var/www/dm_ptracker/confidential_docs/'
 # The path inside the container/server, never the Docker host path.
 COMPANY_DOCUMENT_STORAGE_ROOT = os.getenv('COMPANY_DOCUMENT_STORAGE_ROOT', CONFIDENTIAL_DOCS)
 
+# Origin of this API as clients reach it; used for links in API responses
+# (signed profile photo links).
+API_PUBLIC_URL = os.getenv('API_PUBLIC_URL', DEFUALT_API_URL)
+
 # PROFILE_IMAGE_PROVISIONAL = CONFIDENTIAL_MEDIA+'profile_image_provisional'
 

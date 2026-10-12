@@ -1,15 +1,18 @@
 from django.http.response import HttpResponse
+from django.http import HttpResponseBase
 from dj_rest_auth.views import LoginView
 from dj_rest_auth.views import LogoutView
 from dj_rest_auth.utils import jwt_encode
 from pTracker.common.mobile_login import get_pending_login, record_failed_otp, finish_pending_login
+from pTracker.common.biometric_challenge import CHALLENGE_SECONDS, consume_challenge, issue_challenge
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 from rest_framework_simplejwt.authentication import JWTAuthentication as JSONWebTokenAuthentication
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework import generics
+from rest_framework.throttling import SimpleRateThrottle
 
 from pTracker.dataaccess.ptracker_access.user_da import UserDA
 from pTracker.api.user.user_management_bl import UserManagementBL
@@ -17,9 +20,11 @@ from pTracker.api.user.anniversary_biz import AnniversaryBL
 from pTracker.api.user.lead_emp_mapping import LeadEmpMapping
 from pTracker.api.user.forgot_password_biz import ResetpasswordBL
 from pTracker.api.user.auth_biz import BiometricAuthBL
+from pTracker.api.user.auth_biz import MAX_KEY_IDENTIFIER_LENGTH
 from pTracker.api.user.user_management_helper_bl import UserManagementHelperBL
 from pTracker.api.timesheet.timesheet_biz_v1 import TimeSheetBL_V1
 from pTracker.api.user.access_biz import AccessBL
+from pTracker.api.user.profile_image_biz import ProfilePhotoBL
 
 
 from rest_framework.status import (
@@ -36,50 +41,82 @@ from pTracker.api.user.master_data_biz import JobTitleBL, EmploymentStatusBL
 
 
 
-class BiometricLoginView(APIView):
-    '''
-    Biometric call for user login.
+class BiometricLoginRateThrottle(SimpleRateThrottle):
+    """ Per-client cap on biometric login attempts (no account is known yet). """
+    scope = 'biometric_login'
+    rate = '10/min'
 
+    def get_cache_key(self, request, view):
+        return self.cache_format % {'scope': self.scope, 'ident': self.get_ident(request)}
+
+
+class BiometricChallengeRateThrottle(BiometricLoginRateThrottle):
+    scope = 'biometric_challenge'
+
+
+class BiometricChallengeView(APIView):
+    '''
+    Step 1 of biometric login: a one-time challenge for the device to sign.
+
+    input: keyIdentifier
+    Answers the same way whether or not the device is registered.
     '''
     authentication_classes = []
     permission_classes = []
+    throttle_classes = [BiometricChallengeRateThrottle]
 
     def post(self, request, format=None):
-        keyIdentifier = request.data.get('keyIdentifier', 0)
-        signature = request.data.get('signature', 0)
-        if keyIdentifier:
-            auth_data = UserDA().get_biometric_data_by_keyidentifier(keyIdentifier)
-            if auth_data: #.is_valid():
-
-            #input  sign, keyIdentifier
-
-            # Check if user has valid credentials and return user instance else None
-                user = UserDA().get_user_by_email(auth_data.email)
-                verify_biometric = BiometricAuthBL().verify_biometric_signature(auth_data.publicKey,\
-                    signature, user.email)
-
-                if user and verify_biometric:
-                    role_id, role_name = UserDA().get_user_role_by_id(user.id)
-                    token = str(RefreshToken.for_user(user).access_token)
-                    response = {'token':'', 'user': {}}
-                    response['token'] = token
-                    response['user']['pk'] = user.id
-                    response['user']['username'] = user.username
-                    response['user']['email'] = user.email
-                    response['user']['first_name'] = user.first_name
-                    response['user']['last_name'] = user.last_name
-                    response['role_id'] = role_id
-                    response['role_name'] = role_name
-                    response.update(AccessBL().get_login_access(user.id))
-
-                    if TimeSheetBL_V1().prevent_login_by_timesheet(user.id):
-                        return Response({'error': 'Please contact Operations Manager your account has been blocked due to missing in timesheet entries'}, status=499)
-
-                    return Response(response, status=200)
-                else:
-                    return Response({'error': 'Credentials are not valid!'}, status=403)
-        else:
+        keyIdentifier = request.data.get('keyIdentifier')
+        if not keyIdentifier or not isinstance(keyIdentifier, str) or len(keyIdentifier) > MAX_KEY_IDENTIFIER_LENGTH:
             return Response({"error": "An error occurred. Please try again."}, status=403)
+        return Response({'challenge': issue_challenge(keyIdentifier), 'expires_in': CHALLENGE_SECONDS}, status=200)
+
+
+class BiometricLoginView(APIView):
+    '''
+    Step 2 of biometric login.
+
+    input: keyIdentifier, challenge (from biometric-challenge/), signature (the
+    challenge signed with the device key)
+    '''
+    authentication_classes = []
+    permission_classes = []
+    throttle_classes = [BiometricLoginRateThrottle]
+
+    def post(self, request, format=None):
+        invalid = Response({'error': 'Credentials are not valid!'}, status=403)
+        keyIdentifier = request.data.get('keyIdentifier')
+        challenge = request.data.get('challenge')
+        signature = request.data.get('signature')
+        if not keyIdentifier or not isinstance(keyIdentifier, str):
+            return Response({"error": "An error occurred. Please try again."}, status=403)
+
+        if not consume_challenge(challenge, keyIdentifier):
+            return invalid
+        auth_data = UserDA().get_biometric_data_by_keyidentifier(keyIdentifier)
+        if not auth_data:
+            return invalid
+        user = UserDA().get_user_by_email(auth_data.email)
+        if not user or not BiometricAuthBL().verify_biometric_signature(auth_data.publicKey, signature, challenge):
+            return invalid
+
+        role_id, role_name = UserDA().get_user_role_by_id(user.id)
+        token = str(RefreshToken.for_user(user).access_token)
+        response = {'token':'', 'user': {}}
+        response['token'] = token
+        response['user']['pk'] = user.id
+        response['user']['username'] = user.username
+        response['user']['email'] = user.email
+        response['user']['first_name'] = user.first_name
+        response['user']['last_name'] = user.last_name
+        response['role_id'] = role_id
+        response['role_name'] = role_name
+        response.update(AccessBL().get_login_access(user.id))
+
+        if TimeSheetBL_V1().prevent_login_by_timesheet(user.id):
+            return Response({'error': 'Please contact Operations Manager your account has been blocked due to missing in timesheet entries'}, status=499)
+
+        return Response(response, status=200)
 
 
 class CustomLoginView(LoginView):
@@ -319,10 +356,14 @@ class CheckResetAPIView(LoginView):
         result = ResetpasswordBL().validate_reset_token(request)
         return Response(result)
 
-class BiometricRegistrationView(LoginView):
+class BiometricRegistrationView(APIView):
+    """ Registers the calling device's public key for the logged-in user. """
+    authentication_classes = [JSONWebTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser]
 
     def post(self, request):
-        result = BiometricAuthBL().register_bio_metric_authrntication(request.data)
+        result = BiometricAuthBL().register_bio_metric_authrntication(request.user, request.data)
         return Response(result, status=result.get('status', 200))
 
 
@@ -615,6 +656,29 @@ class GetEmployeeProfileInfoAwaitsAction_v1(APIView):
         result = UserManagementBL().get_employee_profile_info_waiting_action(request.user.id, emp_id)
         # response = UserManagementBL_V1().format_get_employee_profile_info_waiting_action(result)
         return Response(result, status = result.get("status", 200))
+
+class PendingProfileImageView_v1(APIView):
+    """ Streams an employee's pending profile photo (image on success, JSON error otherwise). """
+    authentication_classes = [JSONWebTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, emp_id):
+        response = UserManagementBL().get_pending_profile_image_content(request.user.id, emp_id)
+        if isinstance(response, HttpResponseBase):
+            return response
+        return Response(response, status = response.get("status", 200))
+
+class ProfilePhotoView_v1(APIView):
+    """ Live profile photo behind a signed, expiring link (?t=...), so it can
+    be shown in a plain image tag; there is deliberately no JWT here. """
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request, emp_id):
+        response = ProfilePhotoBL().get_content(emp_id, request.query_params.get('t'))
+        if isinstance(response, HttpResponseBase):
+            return response
+        return Response(response, status = response.get("status", 200))
 
 class ApplyActionOnProfileChange_v1(APIView):
     authentication_classes = [JSONWebTokenAuthentication]

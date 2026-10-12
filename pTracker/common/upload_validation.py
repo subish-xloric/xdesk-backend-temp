@@ -7,6 +7,7 @@ served later both come from the detected type. SVG/HTML and other active
 content is deliberately not accepted.
 """
 
+import io
 import os
 import unicodedata
 import zipfile
@@ -135,4 +136,22 @@ def validate_upload(upload, allowed_types, max_bytes):
         _verify_image(upload)
 
     upload.seek(0)
+    return file_type
+
+
+def validate_content(content, allowed_types, max_bytes):
+    """ validate_upload for raw bytes with no trustworthy file name (e.g. a
+    base64 image sent in JSON): the type comes from the content alone.
+    Returns the detected FileType or raises UploadRejected. """
+    if not content:
+        raise UploadRejected('The file is empty')
+    if len(content) > max_bytes:
+        raise UploadRejected(f'The file is larger than {max_bytes // (1024 * 1024)} MB')
+    buffer = io.BytesIO(content)
+    file_type = _detect(buffer, content[:SNIFF_BYTES])
+    if file_type is None or file_type not in allowed_types:
+        allowed_names = ', '.join(sorted({t.extension for t in allowed_types}))
+        raise UploadRejected(f'File type not allowed. Allowed types: {allowed_names}')
+    if file_type.is_image:
+        _verify_image(buffer)
     return file_type

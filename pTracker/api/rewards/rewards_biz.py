@@ -23,6 +23,7 @@ from pTracker.dataaccess.ptracker_access.user_da import UserDA
 from pTracker.dataaccess.ptracker_access.rewards_da import RewardsDA
 
 from pTracker.cronjobs.email_sender import send_email_notification
+from pTracker.common.profile_photo import profile_photo_url
 
 
 def new_dto():
@@ -1272,7 +1273,7 @@ class RewardsBL():
     def __get_image_url(self, user_id):
         img_url = UserDA().get_user_profile_by_id(user_id)
         if img_url:
-            return f"{settings.DEFAULT_SITE_MEDIA_URL}{img_url.profile_photo}"
+            return profile_photo_url(user_id, img_url.profile_photo)
         else:
             return None
 

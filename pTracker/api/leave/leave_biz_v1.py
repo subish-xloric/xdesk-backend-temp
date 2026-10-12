@@ -19,6 +19,7 @@ from pTracker.dataaccess.attendance_v2_access.org_da import OrgDA
 from pTracker.common.company_context import get_active_company_id
 from pTracker.user_management.holiday_da import HolidayDA
 from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_TEAM
+from pTracker.common.profile_photo import profile_photo_url
 
 
 
@@ -180,8 +181,7 @@ class LeaveBL_V1():
                     "leave_request_id": row.request_id,
                     "emp_id": row.employee_id,
                     "emp_name": names.get(row.employee_id, ""),
-                    "emp_image": f"{settings.DEFAULT_SITE_MEDIA_URL}{photos[row.employee_id]}"
-                                 if photos.get(row.employee_id) else "",
+                    "emp_image": profile_photo_url(row.employee_id, photos.get(row.employee_id)),
                     "leave_type_id": int(row.type_id),
                     "start_date": row.start_date,
                     "end_date": row.end_date,

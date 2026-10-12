@@ -30,6 +30,7 @@ from pTracker.common.utility import Utility
 from pTracker.common.company_authorization import data_scope, has_capability, SCOPE_ALL, SCOPE_TEAM
 from pTracker.common.company_authorization import users_with_capability
 from pTracker.dataaccess.attendance_v2_access.org_da import OrgDA
+from pTracker.common.profile_photo import profile_photo_url
 
 
 def new_dto():
@@ -238,7 +239,7 @@ class LeaveBL():
                     approver_name = approver_details.first_name + ' ' + approver_details.last_name
                 user_profile = UserDA().get_user_profile_by_id(leave_request.employee_id)
                 if user_profile:
-                    emp_image =  f"{settings.DEFAULT_SITE_MEDIA_URL}{user_profile.profile_photo}"
+                    emp_image = profile_photo_url(leave_request.employee_id, user_profile.profile_photo)
                 title = "Notification from DM Desk"
                 msg = user_name + " has applied leave for " + str(len(date_range)) +' '+ day_name +'.'
                 if leave_day_type in (2, 3, '2', '3'):
@@ -391,7 +392,7 @@ class LeaveBL():
                             leave_day_type = 1 # in case of full day
                         user_profile = UserDA().get_user_profile_by_id(leave_request.employee_id)
                         if user_profile:
-                            emp_image =  f"{settings.DEFAULT_SITE_MEDIA_URL}{user_profile.profile_photo}"
+                            emp_image = profile_photo_url(leave_request.employee_id, user_profile.profile_photo)
                         title = "Notification from DM Desk"
                         msg = user_name + " has "+ email_content_dto.status +" your leave request."
                         data =  {

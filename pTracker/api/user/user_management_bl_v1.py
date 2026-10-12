@@ -25,6 +25,9 @@ from pTracker.common.logs import Logs
 from pTracker.common.mobile_login import start_pending_login
 from pTracker.common.file_manager import FileManager
 from pTracker.common.upload_validation import JPEG, PNG, UploadRejected, validate_upload
+from pTracker.common.confidential_storage import FileTooLarge, StorageError
+from pTracker.api.user.profile_image_biz import ProvisionalProfileImageBL
+from pTracker.common.profile_photo import ProfilePhotoStore
 from pTracker.api.user.access_biz import AccessBL
 
 from pTracker.notification_center.email_engine import Email
@@ -40,6 +43,7 @@ from pTracker.common.company_authorization import has_capability
 from pTracker.common.company_authorization import users_with_capability
 from pTracker.common.company_context import get_active_company
 from pTracker.dataaccess.platform_access.tenancy_da import TenancyDA
+from pTracker.common.profile_photo import profile_photo_url
 
 
 
@@ -157,7 +161,7 @@ class UserManagementBL_V1():
     def __get_image_url(self, user_id):
         img_url = UserDA().get_user_profile_by_id(user_id)
         if img_url:
-            return f"{settings.DEFAULT_SITE_MEDIA_URL}{img_url.profile_photo}"
+            return profile_photo_url(user_id, img_url.profile_photo)
         else:
             return None
 
@@ -221,7 +225,7 @@ class UserManagementBL_V1():
             team_members = [{
                 "emp_id": user.id,
                 "emp_name": f"{user.first_name} {user.last_name}",
-                "emp_image": f"{settings.DEFAULT_SITE_MEDIA_URL}{photos[user.id]}" if photos.get(user.id) else "",
+                "emp_image": profile_photo_url(user.id, photos.get(user.id)),
             } for user in users]
             return {"status": 200, "team_members": team_members}
         except Exception:
@@ -309,7 +313,7 @@ class UserManagementBL_V1():
         try:
             img_url = UserDA().get_user_profile_by_id(user_id)
             if img_url:
-                return f"{settings.DEFAULT_SITE_MEDIA_URL}{img_url.profile_photo}"
+                return profile_photo_url(user_id, img_url.profile_photo)
             else:
                 return ""
         except:
@@ -467,7 +471,6 @@ class UserManagementBL_V1():
 
     def save_employee_profile_image(self, user_id, request):
         result = {}
-        edit_data_list = []
         try:
             image = request.FILES.get("image", None)
             emp_id = str(request.data.get('emp_id', '')).strip()
@@ -495,27 +498,10 @@ class UserManagementBL_V1():
                 if image_extension:
 
                     if has_capability(user_id, 'employee.manage'):
-                        profile_image_name = self.update_user_profile_image(image, employee.username, image_extension)
-                        user_profile_update_data = {}
-                        user_profile_update_data['profile_photo'] = profile_image_name
-                        UserDA().update_user_profile(employee.id, user_profile_update_data)
-                        result['message'] = "Profile image uploaded successfully"
+                        return self.__save_live_profile_image(employee, image)
 
                     else:
-                        pending_image_change = self.pending_profile_image_change(emp_id)
-
-                        if pending_image_change:
-                            self.delete_pending_profile_image(pending_image_change[0].value)
-                            UserDA().delete_user_profile_provisional_entries(emp_id, "emp_image")
-
-                        value = self.upload_profile_provisional_image(image, employee.username, image_extension)
-                        field = "emp_image"
-                        user_profile_provisional_obj = UserDA().create_user_profile_provisional_object(user_id, emp_id, field, value)
-                        edit_data_list.append(user_profile_provisional_obj)
-
-                        UserDA().create_emp_profile_changes(edit_data_list)
-
-                        result['message'] = "Profile image uploaded successfully"
+                        return self.__save_provisional_profile_image(user_id, employee, image, image_extension)
 
                 else:
                     result["error"] = image_error
@@ -544,19 +530,6 @@ class UserManagementBL_V1():
         active = get_active_company()
         return active is not None and OrgDA().is_company_member(active.company_id, emp_id)
 
-    def upload_profile_provisional_image(self, image, emp_code, extension):
-
-        try:
-            name = f"{emp_code}.{extension}"
-            file_path = f"{settings.MEDIA_ROOT}confidential_docs/profile_image_provisional/{name}"
-            self.__logs.debug(file_path)
-            self.__file_manager.upload_file(file_path, image.read())
-
-            return name
-        except Exception as err:
-            settings.ERROR_MSG['application_error']\
-                .format(err, self.__logs.error(self.__exception.get_exception()))
-
     PROFILE_IMAGE_MAX_BYTES = 2 * 1024 * 1024
 
     def validate_profile_image(self, image):
@@ -573,12 +546,69 @@ class UserManagementBL_V1():
         profile_image_change = UserDA().get_pending_profile_field_change(emp_id, "emp_image")
         return profile_image_change
 
-    def delete_pending_profile_image(self, image):
+    def __active_company(self):
+        active = get_active_company()
+        return TenancyDA().get_company_by_id(active.company_id) if active else None
+
+    def __save_live_profile_image(self, employee, image):
+        """ Replaces the employee's photo directly (employee.manage), stored in
+        the active company's confidential storage. The old photo is removed
+        only after the update is committed; if it fails the new file goes. """
+        company = self.__active_company()
+        if company is None:
+            return {"error": "Select a company first (X-Company-Id header)", "status": 403}
+
+        photos = ProfilePhotoStore()
         try:
-            file_path = f'{settings.MEDIA_ROOT}confidential_docs/profile_image_provisional/{image}'
-            self.__file_manager.delete_file(file_path)
-        except:
-            pass
+            value = photos.save_upload(company, image)
+        except UploadRejected as rejected:
+            return {"error": str(rejected), "status": 499}
+        except StorageError as error:
+            self.__logs.error(f'Profile photo write failed: company={company.id}: {error}')
+            return {"error": "Image storage is temporarily unavailable", "status": 503}
+
+        try:
+            with transaction.atomic():
+                current = UserDA().get_user_profile_by_id(employee.id)
+                old = current.profile_photo if current else None
+                UserDA().update_user_profile(employee.id, {'profile_photo': value})
+                if old and old != value:
+                    transaction.on_commit(lambda: photos.delete(old))
+        except Exception:
+            photos.delete(value)
+            raise
+        return {"message": "Profile image uploaded successfully"}
+
+    def __save_provisional_profile_image(self, user_id, employee, image, extension):
+        """ Keeps the photo in the active company's confidential storage as the
+        employee's pending change. The previous pending photo is removed only
+        after the new row is committed; if the row cannot be saved the new
+        file is removed again. """
+        company = self.__active_company()
+        if company is None:
+            return {"error": "Select a company first (X-Company-Id header)", "status": 403}
+
+        images = ProvisionalProfileImageBL()
+        try:
+            value = images.save(company, image, extension, self.PROFILE_IMAGE_MAX_BYTES)
+        except FileTooLarge:
+            return {"error": "The file is larger than 2 MB", "status": 499}
+        except StorageError as error:
+            self.__logs.error(f'Pending profile image write failed: company={company.id}: {error}')
+            return {"error": "Image storage is temporarily unavailable", "status": 503}
+
+        try:
+            with transaction.atomic():
+                previous = [change.value for change in self.pending_profile_image_change(employee.id)]
+                UserDA().delete_user_profile_provisional_entries(employee.id, "emp_image")
+                UserDA().create_emp_profile_changes([UserDA().create_user_profile_provisional_object(
+                    user_id, employee.id, "emp_image", value)])
+                transaction.on_commit(lambda: [images.delete(old) for old in previous])
+        except Exception:
+            images.delete(value)
+            raise
+        return {"message": "Profile image uploaded successfully"}
+
     def __get_database_field_of_emergency_contact(self, field):
         if field == "contact_person":
             return "name"
@@ -686,16 +716,6 @@ class UserManagementBL_V1():
             else:
                 return field
 
-    def update_user_profile_image(self, image, emp_code, extension):
-        try:
-            name = f"{emp_code}.{extension}"
-            file_path = f"{settings.MEDIA_ROOT}employee_profile_photo/{name}"
-            self.__file_manager.upload_file(file_path, image.read())
-
-            return name
-        except Exception as err:
-            settings.ERROR_MSG['application_error']\
-                .format(err, self.__logs.error(self.__exception.get_exception()))
 
 
 

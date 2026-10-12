@@ -1,3 +1,4 @@
+from django.db import transaction
 
 from  datetime import datetime, date, timedelta
 from datetime import date
@@ -717,20 +718,15 @@ class UserDA():
         return UserProfileProvisional.objects.filter(status= status, emp_id = emp_id, field = field).update(**update_data)
 
 
-    def create_or_update_auth_biometric_authentication(self, data):
-        device_identifier = data.get('keyIdentifier', 0)
-        email = data.get('email', 0)
-        obj = None
-        obj = AuthBiometric.objects.filter(keyIdentifier=device_identifier)
-        new_obj = obj.filter(email=email)
-        if new_obj and obj:
-            obj = new_obj.update(**data)
-        elif obj:
-            obj = obj.delete()
-            obj = AuthBiometric.objects.create(**data)
-        else:
-            obj = AuthBiometric.objects.create(**data)
-        return obj
+    def register_biometric_key(self, email, key_identifier, public_key):
+        """ One registration per device: re-registering a device replaces its
+        key, and a device that was registered to another account moves to this
+        one (shared/handed-over phone). """
+        with transaction.atomic():
+            rows = AuthBiometric.objects.select_for_update().filter(keyIdentifier=key_identifier)
+            rows.exclude(email=email).delete()
+            if not rows.filter(email=email).update(publicKey=public_key):
+                AuthBiometric.objects.create(email=email, keyIdentifier=key_identifier, publicKey=public_key)
 
     def get_biometric_data_by_keyidentifier(self, identifier):
         return AuthBiometric.objects.filter(keyIdentifier=identifier).first()

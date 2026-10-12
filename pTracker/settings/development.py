@@ -95,6 +95,10 @@ CONFIDENTIAL_DOCS = '/x_desk_backend/dm-desk-docs/confidential_docs/'
 # The path inside the container/server, never the Docker host path.
 COMPANY_DOCUMENT_STORAGE_ROOT = os.getenv('COMPANY_DOCUMENT_STORAGE_ROOT', CONFIDENTIAL_DOCS)
 
+# Origin of this API as clients reach it; used for links in API responses
+# (signed profile photo links).
+API_PUBLIC_URL = os.getenv('API_PUBLIC_URL', 'http://127.0.0.1:8009')
+
 FERNET_KEY = str(os.getenv('FERNET_KEY'))
 
 

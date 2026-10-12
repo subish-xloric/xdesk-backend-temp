@@ -18,6 +18,7 @@ from pTracker.common.company_authorization import data_scope, SCOPE_ALL, SCOPE_T
 from pTracker.common.company_authorization import users_with_capability
 from pTracker.common.company_authorization import oversees_employee
 from pTracker.common.company_context import get_active_company_id
+from pTracker.common.profile_photo import profile_photo_url
 
 def new_dto():
     dto = SimpleNamespace()
@@ -214,7 +215,7 @@ class WorkFromHomeBL():
 
             if is_mobile and approver_id:
                 user_profile = UserDA().get_user_profile_by_id(wfh_request.emp_id)
-                emp_image = f"{settings.DEFAULT_SITE_MEDIA_URL}{user_profile.profile_photo}" if user_profile else ''
+                emp_image = profile_photo_url(wfh_request.emp_id, user_profile.profile_photo) if user_profile else ''
                 title = "Notification from DM Desk"
                 msg = emp_name + " has requested work from home for " + str(no_of_days) + \
                     (" days." if no_of_days > 1 else " day.")
@@ -381,7 +382,7 @@ class WorkFromHomeBL():
                     emp_image = ''
                     user_profile = UserDA().get_user_profile_by_id(wfh_request.emp_id)
                     if user_profile:
-                        emp_image =  f"{settings.DEFAULT_SITE_MEDIA_URL}{user_profile.profile_photo}"
+                        emp_image = profile_photo_url(wfh_request.emp_id, user_profile.profile_photo)
                     title = "Notification from DM Desk"
                     msg = approver_name + " has "+ settings.WFH_REQUEST_STATUS[int(status)] +" your work from home for " + str(email_content_dto.no_of_days)
                     data= {
